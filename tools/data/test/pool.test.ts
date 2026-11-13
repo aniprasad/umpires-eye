@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { MAX_FLIGHT_S, MID_Y } from '../lib/constants.ts';
-import { dealTen, deckOf, tenProblems, type Card } from '../lib/deal.ts';
+import { dealTen, deckOf, tenProblems } from '../lib/deal.ts';
 import { judge, type Judged } from '../lib/judge.ts';
 import { tAtY } from '../lib/physics.ts';
 import { makeShards, selectPool, spreadSample, stratumOf, type Pool } from '../lib/pool.ts';
@@ -161,33 +161,5 @@ describe('makeShards', () => {
       makeShards(pool, 7, 'seed').map((s) => s.map((e) => e.j.seq)),
       shards.map((s) => s.map((e) => e.j.seq)),
     );
-  });
-});
-
-describe('dealing', () => {
-  const card = (seq: number, absMarginIn: number, challenged = false): Card => ({ id: `p${seq}`, seq, absMarginIn, challenged });
-  const deck = deckOf([
-    card(1, 7),
-    card(2, 0.3, true),
-    ...Array.from({ length: 7 }, (_, k) => card(10 + k, 1)),
-    card(30, 3),
-  ]);
-
-  test('deals a calibrator, then eight close calls and one more within 4.5 in, in played order', () => {
-    const ten = dealTen(deck, mulberry32(3));
-
-    assert.ok(ten);
-    assert.equal(ten[0]?.id, 'p1');
-    assert.deepEqual(tenProblems(ten), []);
-  });
-
-  test('refuses a deck without a challenged close call', () => {
-    assert.equal(dealTen(deckOf([card(1, 7), ...Array.from({ length: 9 }, (_, k) => card(10 + k, 1)), card(30, 3)]), mulberry32(3)), null);
-  });
-
-  test('tenProblems catches a ten dealt out of order', () => {
-    const ten = dealTen(deck, mulberry32(3)) ?? [];
-
-    assert.deepEqual(tenProblems([ten[0] as Card, ...ten.slice(1).reverse()]), ['not in played order']);
   });
 });

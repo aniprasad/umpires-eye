@@ -7,7 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cacheDir, openCache } from './lib/cache.ts';
 import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, MAX_FLIGHT_S, NEAR_IN, SEASON, SEED, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
-import type { Card } from './lib/deal.ts';
+import { dealableCards } from './lib/deal.ts';
 import { decodeTables, type DecodedTables, type ShardDoc } from './lib/decode.ts';
 import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
 import { loadInputs } from './lib/inputs.ts';
@@ -139,7 +139,6 @@ for (const meta of manifest.shards) {
   const gameOrder = new Map(games.map((g, i) => [g.gamePk, i]));
   const heights = new Map([...decoded.players].map(([id, pl]) => [id, pl.heightIn]));
   const index = { games: gameOrder, heights, types: new Set(decoded.pitchTypes.keys()), umpires };
-  const cards: Card[] = [];
   let prev: [number, number, number] = [-1, -1, -1];
 
   if (doc.format !== SHARD_FORMAT || doc.version !== FORMAT_VERSION || doc.season !== SEASON) fail(`${meta.file}: wrong format header`);
@@ -155,7 +154,7 @@ for (const meta of manifest.shards) {
     if (!name || name.trim().toLowerCase() === 'no umpire') fail(`${meta.file}: umpire ${id} has no real name`);
   }
 
-  for (const [k, p] of pitches.entries()) {
+  for (const p of pitches) {
     const where = `${meta.file} ${p.id}`;
     const mid = crossing(p.traj);
     const judged = absJudge(mid.x, mid.z, p.zoneTop, p.zoneBottom);
@@ -190,7 +189,6 @@ for (const meta of manifest.shards) {
     totals.pitches++;
     if (p.dealable) {
       totals.dealable++;
-      cards.push({ id: p.id, seq: k, absMarginIn: m, challenged: p.challenge !== null });
       if (m <= CLOSE_IN) totals.close++;
       else if (m <= NEAR_IN) totals.near++;
       else if (m < CALIBRATOR_MIN_IN) totals.mid++;
@@ -203,7 +201,8 @@ for (const meta of manifest.shards) {
     }
   }
 
-  const deal = dealingCheck(cards, `${SEED}|validate|${meta.file}`, DEALS_PER_SHARD);
+  // The app's deck: the rows whose stored dealable flag is set, in the shard's played order.
+  const deal = dealingCheck(dealableCards(pitches), `${SEED}|validate|${meta.file}`, DEALS_PER_SHARD);
 
   for (const msg of deal.problems.slice(0, 3)) fail(`${meta.file}: ${msg}`);
   table.push(

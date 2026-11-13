@@ -197,7 +197,7 @@ export function startGame(): void {
 export function playAnother(): void {
   const w = world();
 
-  G.set = pickPoolTen(w.data.pitches, w.data.today).map(prep);
+  G.set = pickPoolTen(w.data.pitches, w.data.today, Math.random).map(prep);
   G.mode = 'pool';
   G.results = [];
   G.i = 0;
