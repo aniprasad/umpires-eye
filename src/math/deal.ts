@@ -42,18 +42,23 @@ interface PitchCard extends Card {
   p: Pitch;
 }
 
+const cardOf = (p: Pitch): PitchCard => ({ id: p.id, seq: p.order, absMarginIn: Math.abs(p.edgeMarginIn), challenged: p.challenge !== null, p });
+
 /**
- * "Another ten", dealt by core's dealer the way Today's Ten is (see dealTen), from a source's deck: its dealable pitches
- * in played order. It leaves out the pitches it's given (Today's Ten), and throws when the deck can't deal a full ten.
+ * A ten dealt by core's dealer the way Today's Ten is (see dealTen), from a source's deck: its dealable pitches in played
+ * order. It never deals a pitch whose ID is in `leaveOut`, and gives null when what's left can't deal a full ten.
  */
+export function dealFrom(deck: readonly Pitch[], leaveOut: ReadonlySet<string>, rand: Rand): Pitch[] | null {
+  const ten = dealTen(pilesOf(deck.filter((p) => !leaveOut.has(p.id)).map(cardOf)), rand);
+
+  return ten ? ten.map((c) => c.p) : null;
+}
+
+/** "Another ten" as M1 dealt it, leaving out only the pitches it's given (Today's Ten). Throws when it can't deal a ten. */
 export function pickPoolTen(deck: readonly Pitch[], leaveOut: readonly Pitch[], rand: Rand): Pitch[] {
-  const skip = new Set(leaveOut.map((p) => p.id));
-  const cards = deck
-    .filter((p) => !skip.has(p.id))
-    .map((p): PitchCard => ({ id: p.id, seq: p.order, absMarginIn: Math.abs(p.edgeMarginIn), challenged: p.challenge !== null, p }));
-  const ten = dealTen(pilesOf(cards), rand);
+  const ten = dealFrom(deck, new Set(leaveOut.map((p) => p.id)), rand);
 
   if (!ten) throw new Error("Another ten couldn't be dealt: the pool has run short of close calls, near calls or calibrators.");
 
-  return ten.map((c) => c.p);
+  return ten;
 }
