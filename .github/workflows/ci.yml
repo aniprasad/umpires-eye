@@ -1,9 +1,9 @@
 name: CI
 
+# Manual only until the owner opts in, so pushes don't spend the repo's Actions minutes. To opt in, replace the
+# trigger with: on: { push: { branches: [main] }, pull_request: {}, workflow_dispatch: {} }
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

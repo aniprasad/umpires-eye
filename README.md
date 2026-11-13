@@ -25,6 +25,8 @@ npm run dev        # http://localhost:5173
 | `npm run e2e` | Playwright browser tests. It builds and serves the app itself. |
 | `npm run assets` | Rebuilds the shipped images, fonts and pitch pool from the masters in `mockup/`. The output is committed, so you only need this when a master changes. |
 
+CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: they run only when someone starts them from the Actions tab.
+
 ### Browser tests
 
 - `npx playwright install webkit` once, for the WebKit runs. Chromium-based runs use the installed Microsoft Edge (`channel: 'msedge'`), because Playwright's own Chromium doesn't run on Windows ARM64. CI on Linux uses Playwright's Chromium instead.
