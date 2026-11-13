@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { cacheDir, openCache } from './lib/cache.ts';
 import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, MAX_FLIGHT_S, NEAR_IN, SEASON, SEED, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
 import type { Card } from './lib/deal.ts';
-import { decodeGames, decodeNames, decodePitches, decodePlayers, type ShardDoc } from './lib/decode.ts';
+import { decodeTables, type DecodedTables, type ShardDoc } from './lib/decode.ts';
 import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
@@ -125,13 +125,20 @@ for (const meta of manifest.shards) {
   if (Buffer.byteLength(text) !== meta.bytes || sha256(text) !== meta.sha256) fail(`${meta.file}: size or hash differs from the manifest`);
 
   const doc = JSON.parse(text) as ShardDoc;
-  const games = decodeGames(doc);
-  const venues = decodeNames(doc, 'venues');
-  const umpires = decodeNames(doc, 'umpires');
+  let decoded: DecodedTables;
+
+  // The app's reader: the format, every cell and the references between tables.
+  try {
+    decoded = decodeTables(doc, SHARD_FORMAT);
+  } catch (e) {
+    fail(`${meta.file}: ${e instanceof Error ? e.message : String(e)}`);
+    continue;
+  }
+
+  const { games, venues, umpires, pitches } = decoded;
   const gameOrder = new Map(games.map((g, i) => [g.gamePk, i]));
-  const heights = new Map([...decodePlayers(doc)].map(([id, pl]) => [id, pl.heightIn]));
-  const index = { games: gameOrder, heights, types: new Set(Object.keys(doc.pitchTypes)), umpires };
-  const pitches = decodePitches(doc);
+  const heights = new Map([...decoded.players].map(([id, pl]) => [id, pl.heightIn]));
+  const index = { games: gameOrder, heights, types: new Set(decoded.pitchTypes.keys()), umpires };
   const cards: Card[] = [];
   let prev: [number, number, number] = [-1, -1, -1];
 

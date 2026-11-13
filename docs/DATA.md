@@ -300,7 +300,7 @@ Besides the common head, a shard has:
 
 Each shard is self-contained: its tables hold every game, venue, plate umpire and player its pitches mention.
 
-Read columns by name from `fields`, not by position, so readers survive a later version that adds fields. `tools/data/lib/decode.ts` does this (`decodeGames`, `decodeNames`, `decodePlayers`, `decodePitches`).
+Read columns by name from `fields`, not by position, so readers survive a later version that adds fields. `src/core/decode.ts`, which the app and the tools share, does this (`decodeGames`, `decodeNames`, `decodePlayers`, `decodePitches`). `decodeTables` reads a whole file: it checks the format and version, every cell against the field's type, and that each pitch's game, players, plate umpire and pitch type, and each game's venue, are in their tables. It throws a `DecodeError` naming the table, row and field. `data:validate` reads every shard with it.
 
 | Table | Fields |
 |---|---|
@@ -364,8 +364,8 @@ The code lives in `tools/data/`, and in `src/core/`, which it shares with the ap
   - `judge.ts`: the ABS model and the dealing rules for each pitch;
   - `pool.ts`: pool and shards;
   - `deal.ts`: the Today's Ten rule;
-  - `format.ts` and `decode.ts`: the files;
+  - `format.ts`: writing the files;
   - `integrity.ts`: the allowlist and the per-pitch checks `data:validate` runs;
   - `stats.ts`: totals and the validation report;
   - `pipeline.ts`: the build.
-- `src/core/`: the rules (`rules.ts`), the seeded draws (`rng.ts`), the trajectory (`kinematics.ts`) and the ABS rule and deal box (`abs.ts`). The tools import these files as they are, under Node. `lib/constants.ts`, `rng.ts` and `physics.ts` re-export them.
+- `src/core/`: the rules (`rules.ts`), the seeded draws (`rng.ts`), the trajectory (`kinematics.ts`), the ABS rule and deal box (`abs.ts`), and the file formats and field lists (`schema.ts`) with their reader (`decode.ts`). The tools import these files as they are, under Node. `lib/constants.ts`, `rng.ts`, `physics.ts` and `decode.ts` re-export them, and so does `format.ts` for the field lists.
