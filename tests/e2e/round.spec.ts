@@ -1,11 +1,15 @@
 import { expect, test } from '@playwright/test';
 import type { CallKey } from './helpers';
-import { activeId, callOf, callPitch, openPaused, phaseMarks, recordPhases, secondsBetween, todaysTen, trackErrors, waitReady } from './helpers';
+import { activeId, callOf, callPitch, openPaused, phaseMarks, recordPhases, secondsBetween, stepClockUntil, todaysTen, trackErrors, waitReady } from './helpers';
 
 // Every binding gets used, and the strikes and balls are mixed so the expected score comes from the data.
 const KEYS: readonly CallKey[] = ['S', 'B', 'ArrowRight', 'ArrowLeft', 's', 'b', 'S', 'ArrowLeft', 'ArrowRight', 'B'];
 const WORD = { strike: 'Strike', ball: 'Ball' } as const;
 const COPY_DONE = /^(Copied ✓|Copy failed: select the text)$/;
+// When an uncalled pitch's reveal may come, in seconds after Play.
+const EARLIEST_REVEAL_S = 3.9;
+const LATEST_REVEAL_S = 6.5;
+const REVEAL_STEP_MS = 200;
 
 test('a keyboard round of ten ends on the umpire card', async ({ page }) => {
   test.setTimeout(180_000);
@@ -54,8 +58,8 @@ test('an early press is ignored, and no call by the end of the window counts as 
   const errors = trackErrors(page);
   const app = page.locator('#app');
 
-  await page.goto('./');
-  await waitReady(page);
+  // On the stopped clock the toast can't time out before it's seen, and no delay can move the end of the window.
+  await openPaused(page, './');
   await recordPhases(page);
   await page.keyboard.press('Enter');
   await expect(app).toHaveAttribute('data-phase', 'pitch');
@@ -63,15 +67,18 @@ test('an early press is ignored, and no call by the end of the window counts as 
   await expect(page.locator('#toast')).toHaveClass(/\bon\b/);
   await expect(page.locator('#toast')).toHaveText('Wait for the pitch');
   await expect(page.locator('#btnStrike')).not.toHaveClass(/\bis-called\b/);
-  await expect(app).toHaveAttribute('data-phase', 'reveal', { timeout: 8_000 });
+  // Release comes 2.4 s after Play, the ball takes about 0.4 s, and the window stays open 1.5 s past the catch. One
+  // jump lands a step short of the earliest it may close, where the pitch must still be live; steps find the reveal.
+  await page.clock.fastForward(EARLIEST_REVEAL_S * 1000 - REVEAL_STEP_MS);
+  await expect(app).toHaveAttribute('data-phase', 'pitch');
+  await stepClockUntil(page, REVEAL_STEP_MS, async () => (await app.getAttribute('data-phase')) === 'reveal', 'The reveal');
   await expect(page.locator('#vLine')).toHaveText(/^\s*You No call/);
   await expect(page.locator('#vCtx')).toContainText('Time ran out, which counts as a miss');
 
-  // Release comes 2.4 s after Play, the ball takes about 0.4 s, and the window stays open 1.5 s past the catch.
   const waited = secondsBetween(await phaseMarks(page), 'pitch', 'reveal');
 
-  expect(waited).toBeGreaterThan(3.9);
-  expect(waited).toBeLessThan(6.5);
+  expect(waited).toBeGreaterThan(EARLIEST_REVEAL_S);
+  expect(waited).toBeLessThan(LATEST_REVEAL_S);
   await expect(page.locator('#err')).toBeHidden();
   expect(errors).toEqual([]);
 });

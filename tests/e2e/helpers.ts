@@ -148,7 +148,7 @@ const VERDICT_STEP_MS = 1000;
 // More steps than the release or the verdict needs.
 const CLOCK_STEPS_MAX = 20;
 
-async function stepClockUntil(page: Page, stepMs: number, done: () => Promise<boolean>, what: string): Promise<void> {
+export async function stepClockUntil(page: Page, stepMs: number, done: () => Promise<boolean>, what: string): Promise<void> {
   for (let k = 0; k < CLOCK_STEPS_MAX; k++) {
     if (await done()) return;
     await page.clock.fastForward(stepMs);
