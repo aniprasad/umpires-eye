@@ -29,7 +29,7 @@ import {
   type StatsDoc,
 } from '../../src/core/schema.ts';
 import { cacheDir, openCache } from './lib/cache.ts';
-import { buildIdOf, unstamped } from './lib/build-id.ts';
+import { buildIdProblems } from './lib/build-id.ts';
 import { BOOT_BUDGET_GZIP, MONTH_BUDGET_GZIP, SESSION_BUDGET_GZIP } from './lib/constants.ts';
 import { checkDaily } from './lib/daily-check.ts';
 import { DAILY_DIR, DAILY_REPORT_PATH } from './lib/daily.ts';
@@ -218,13 +218,8 @@ const today = checkDaily({
 });
 const monthGzip = Object.values(today.monthGzipBytes);
 const kb1 = (n: number): string => `${(n / 1000).toFixed(1)} KB`;
-// The id names the shards' and stats' content, so it's recomputed from them, as they were before it was stamped in.
-const bare = [...texts, statsText].map((t) => unstamped(t, manifest.build));
 
-if (bare.every((t): t is string => t !== null) && buildIdOf(bare) !== manifest.build) {
-  fail(`the build id ${manifest.build} isn't the hash of the shards and stats, which is ${buildIdOf(bare)}`);
-}
-
+for (const f of buildIdProblems(manifest.build, [...shardTexts, ['stats.json', statsText]])) fail(f);
 for (const f of today.failures) fail(f);
 if (
   totals.pitches !== pool.pitches ||

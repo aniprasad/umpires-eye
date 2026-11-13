@@ -332,7 +332,7 @@ All files are UTF-8 JSON. Shards and month files keep one row per line so diffs 
 - `data:build` stamps it right after `season` in the manifest, `stats.json`, every shard and the build report. A rebuild from the same inputs keeps it, and `data:daily` writing the manifest's daily block doesn't change it.
 - `data:daily` stamps each month file with the id of the shards its rows came from.
 - So a file whose id differs from the manifest's comes from another build: the app refetches the manifest once, as `docs/M2-DESIGN.md` §4.3 describes.
-- `data:validate` checks that every file carries the manifest's id, and recomputes the id from the files with their stamps taken out.
+- `data:validate` checks that every file carries the manifest's id, and recomputes the id from the shards and `stats.json` with their stamps taken out. A shard or `stats.json` whose stamp isn't right after `season`, as `data:build` writes it, fails instead of being skipped: `stats.json` has no hash in the manifest, so with `--no-rebuild`, as CI runs it, this is the only check that covers all of it.
 
 ### `manifest.json` (`umpires-eye.season-manifest`)
 

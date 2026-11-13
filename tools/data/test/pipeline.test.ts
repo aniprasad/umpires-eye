@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import type { ManifestDaily } from '../../../src/core/daily.ts';
 import { decodeGames, decodePitches } from '../../../src/core/decode.ts';
 import type { ShardDoc } from '../../../src/core/schema.ts';
-import { buildIdOf, unstamped } from '../lib/build-id.ts';
+import { buildIdOf, buildIdProblems, unstamped } from '../lib/build-id.ts';
 import type { PlayByPlay, ScheduleResponse } from '../lib/mlb.ts';
 import { buildDataset, OUT_DIR, REPORT_PATH } from '../lib/pipeline.ts';
 import { AWAY, challenge, HOME, person, peopleOf, pitch, play, xForMargin } from './fixtures.ts';
@@ -107,6 +107,38 @@ test('every file carries one build id: the hash of the shards and stats before i
   );
   assert.equal(buildIdOf(['shards/00.json', 'stats.json'].map((rel) => unstamped(text(rel), build) ?? '')), build);
   assert.equal(unstamped(text('stats.json'), 'another id'), null);
+});
+
+test("validate fails a file whose build stamp it can't take out, instead of skipping the id check", () => {
+  const { files, build } = buildDataset(inputs);
+  const shard = files.get(`${OUT_DIR}/shards/00.json`) ?? '';
+  const stats = files.get(`${OUT_DIR}/stats.json`) ?? '';
+  const id = JSON.stringify(build);
+  const problems = (shardText: string, statsText: string): string[] =>
+    buildIdProblems(build, [
+      ['shards/00.json', shardText],
+      ['stats.json', statsText],
+    ]);
+  const lost = (name: string): string => `${name} doesn't carry build ${build} right after its season, so the id can't be recomputed`;
+  const edited = stats.replace('"pct": 100', '"pct": 99.9');
+  // The same edit, with the stamp moved to the end or the file re-indented, as an editor might leave it. Each still
+  // carries the right id as JSON, so only the stamp check can catch it.
+  const tampered = [
+    edited.replace(`\n  "build": ${id},`, '').replace(/\n}\n$/, `,\n  "build": ${id}\n}\n`),
+    JSON.stringify(JSON.parse(edited), null, 4),
+  ];
+  // The stamp moved further into the head, in its own form, with no edit.
+  const shuffled = shard.replace(`"build":${id},`, '').replace('"credit":', `"build":${id},"credit":`);
+
+  assert.deepEqual(problems(shard, stats), []);
+  assert.match(problems(shard, edited).join(), /isn't the hash of the shards and stats/);
+  for (const t of tampered) {
+    assert.equal(JSON.parse(t).build, build);
+    assert.deepEqual(problems(shard, t), [lost('stats.json')]);
+  }
+  assert.equal(JSON.parse(shuffled).build, build);
+  assert.notEqual(shuffled, shard);
+  assert.deepEqual(problems(shuffled, stats), [lost('shards/00.json')]);
 });
 
 test('a build keeps the daily block it is given, which leaves the build id and the other files alone', () => {
