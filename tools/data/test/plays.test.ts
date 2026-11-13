@@ -47,6 +47,22 @@ describe('called pitches', () => {
 
     assert.equal(checks.countMismatches.length, 1);
   });
+
+  test('leaves out a pitch whose fit never reaches the plate', () => {
+    const fit = (over: Record<string, number>) => {
+      const e = pitch(0, 1, { code: 'B', after: [1, 0] });
+
+      return { ...e, pitchData: { ...e.pitchData, coordinates: { ...e.pitchData?.coordinates, ...over } } };
+    };
+    // One heads back toward the mound; the other slows so hard that it stops short.
+    const { pitches, checks } = extract([
+      play({ atBat: 0, events: [fit({ vY0: 30 })] }),
+      play({ atBat: 1, events: [fit({ vY0: -20, aY: 50 })] }),
+    ]);
+
+    assert.deepEqual(pitches, []);
+    assert.equal(checks.noTracking, 2);
+  });
 });
 
 describe('game state before each pitch', () => {
@@ -193,6 +209,23 @@ describe('game state before each pitch', () => {
     assert.deepEqual(checks.runnersMismatches, []);
     assert.deepEqual(checks.midPaSubstitutions, []);
   });
+
+  test('puts a runner the feed never placed in the place of whoever held his starting base', () => {
+    // Runner 56 replaces 55 at first with no substitution event, then steals second.
+    const { pitches, checks } = extract([
+      play({ atBat: 0, batter: 55, events: [pitch(0, 1, { code: 'X', after: [0, 0] })], runners: [runner(55, null, '1B', 0)], post: { first: 55 } }),
+      play({
+        atBat: 1,
+        batter: 12,
+        events: [pitch(0, 1, { code: 'B', after: [1, 0] }), action(1, 'stolen_base_2b'), pitch(2, 2, { code: 'B', after: [2, 0] })],
+        runners: [runner(56, '1B', '2B', 1)],
+        post: { second: 56 },
+      }),
+    ]);
+
+    assert.deepEqual(pitches.map((p) => p.bases), [1, 2]);
+    assert.deepEqual(checks.runnersMismatches, []);
+  });
 });
 
 describe('ABS challenges', () => {
@@ -305,6 +338,36 @@ describe('mid plate-appearance substitutions', () => {
       pitches.map((p) => p.attribution),
       ['uncertain', 'matchup'],
     );
+  });
+
+  test('credit pitches before a pinch hitter to the batter he replaced, from his side of the plate', () => {
+    // A left-handed batter takes two pitches, then a right-handed pinch hitter finishes the plate appearance.
+    const { pitches, checks } = extract(
+      [
+        play({
+          atBat: 0,
+          batter: 12,
+          bats: 'R',
+          events: [
+            pitch(0, 1, { code: 'B', after: [1, 0] }),
+            pitch(1, 2, { code: 'C', after: [1, 1] }),
+            action(2, 'offensive_substitution', { player: { id: 12 }, replacedPlayer: { id: 13 }, position: { abbreviation: 'PH' } }),
+            pitch(3, 3, { code: 'B', after: [2, 1] }),
+          ],
+        }),
+      ],
+      peopleOf(person(12, { bats: 'R' }), person(13, { bats: 'L' })),
+    );
+
+    assert.deepEqual(
+      pitches.map((p) => [p.batterId, p.batterName, p.bats, p.attribution]),
+      [
+        [13, 'Player 13', 'L', 'replaced'],
+        [13, 'Player 13', 'L', 'replaced'],
+        [12, 'Player 12', 'R', 'matchup'],
+      ],
+    );
+    assert.deepEqual(checks.midPaSubstitutions, ['900001-0 batter']);
   });
 });
 
