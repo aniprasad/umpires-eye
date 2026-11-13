@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inDealBox } from '../../../src/core/abs.ts';
-import { dealableCards, dealTen, deckOf, tenProblems, type Card, type Deck } from '../../../src/core/deal.ts';
+import { dealableCards, dealTen, pilesOf, tenProblems, type Card, type Piles } from '../../../src/core/deal.ts';
 import { decodeTables } from '../../../src/core/decode.ts';
 import { crossing, flightTime } from '../../../src/core/kinematics.ts';
 import { mulberry32, type Rand } from '../../../src/core/rng.ts';
@@ -11,41 +11,41 @@ import { asFile, pitchCells, shardDoc, trajThrough } from './fixtures.ts';
 const card = (seq: number, absMarginIn: number, challenged = false): Card => ({ id: `p${seq}`, seq, absMarginIn, challenged });
 
 describe('dealing a round of ten', () => {
-  const deck = deckOf([card(1, 7), card(2, 0.3, true), ...Array.from({ length: 7 }, (_, k) => card(10 + k, 1)), card(30, 3)]);
+  const piles = pilesOf([card(1, 7), card(2, 0.3, true), ...Array.from({ length: 7 }, (_, k) => card(10 + k, 1)), card(30, 3)]);
 
   it('deals a calibrator, then eight close calls and one more within 4.5 in, in played order', () => {
-    const ten = dealTen(deck, mulberry32(3));
+    const ten = dealTen(piles, mulberry32(3));
 
     expect(ten?.[0]?.id).toBe('p1');
     expect(tenProblems(ten ?? [])).toEqual([]);
   });
 
-  it('gives null when a pile runs short, such as a deck without a challenged close call', () => {
-    expect(dealTen(deckOf([card(1, 7), ...Array.from({ length: 9 }, (_, k) => card(10 + k, 1)), card(30, 3)]), mulberry32(3))).toBeNull();
+  it('gives null when a pile runs short, such as no challenged close call', () => {
+    expect(dealTen(pilesOf([card(1, 7), ...Array.from({ length: 9 }, (_, k) => card(10 + k, 1)), card(30, 3)]), mulberry32(3))).toBeNull();
   });
 
   it('names what breaks the rules, such as a ten out of played order', () => {
-    const ten = dealTen(deck, mulberry32(3)) ?? [];
+    const ten = dealTen(piles, mulberry32(3)) ?? [];
 
     expect(tenProblems([ten[0] as Card, ...ten.slice(1).reverse()])).toEqual(['not in played order']);
   });
 
-  it("throws rather than deal a ten that breaks the rules from piles deckOf didn't make", () => {
-    const wrong: Deck<Card> = { ...deck, near: [card(40, 5)] };
+  it("throws rather than deal a ten that breaks the rules from piles pilesOf didn't make", () => {
+    const wrong: Piles<Card> = { ...piles, near: [card(40, 5)] };
 
     expect(() => dealTen(wrong, mulberry32(3))).toThrow('breaks the rules of the round: 0 calls between 1.5 and 4.5 in');
   });
 });
 
-describe('dealing over 1,000 seeded random decks', () => {
-  // Close calls are common, as in a shard, and challenged ones rare enough that some decks have none.
+describe('dealing from 1,000 seeded random sets of cards', () => {
+  // Close calls are common, as in a shard, and challenged ones rare enough that some sets have none.
   const margin = (r: Rand): number => {
     const u = r();
 
     return u < 0.5 ? r() * 1.5 : u < 0.65 ? 1.5 + r() * 3 : u < 0.75 ? 4.5 + r() * 1.5 : 6 + r() * 6;
   };
 
-  it('deals ten distinct cards from the deck that meet the rules, or null exactly when a pile is short', () => {
+  it('deals ten distinct cards from the set that meet the rules, or null exactly when a pile is short', () => {
     let dealt = 0;
 
     for (let seed = 1; seed <= 1000; seed++) {
@@ -56,9 +56,9 @@ describe('dealing over 1,000 seeded random decks', () => {
         absMarginIn: margin(r),
         challenged: r() < 0.08,
       }));
-      const deck = deckOf(cards);
-      const ten = dealTen(deck, mulberry32(seed + 1e6));
-      const canDeal = deck.closeChallenged.length > 0 && deck.close.length >= 8 && deck.near.length > 0 && deck.calibrators.length > 0;
+      const piles = pilesOf(cards);
+      const ten = dealTen(piles, mulberry32(seed + 1e6));
+      const canDeal = piles.closeChallenged.length > 0 && piles.close.length >= 8 && piles.near.length > 0 && piles.calibrators.length > 0;
 
       expect(ten !== null, `seed ${seed}`).toBe(canDeal);
       if (!ten) continue;

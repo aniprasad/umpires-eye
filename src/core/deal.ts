@@ -15,7 +15,7 @@ export interface Card {
 }
 
 /** The piles a ten is drawn from. A challenged close call is in both close piles. */
-export interface Deck<T extends Card> {
+export interface Piles<T extends Card> {
   calibrators: T[];
   closeChallenged: T[];
   close: T[];
@@ -23,7 +23,7 @@ export interface Deck<T extends Card> {
 }
 
 /** Sorts cards into piles. Pass only dealable cards: each source decides which of its pitches those are. */
-export function deckOf<T extends Card>(dealable: readonly T[]): Deck<T> {
+export function pilesOf<T extends Card>(dealable: readonly T[]): Piles<T> {
   const close = dealable.filter((c) => c.absMarginIn <= CLOSE_IN);
 
   return {
@@ -58,10 +58,10 @@ export function tenProblems(ten: readonly Card[]): string[] {
  * in whatever mix the draw gives, so counting them tells a player nothing. Every draw comes from `rand`, so a seeded
  * rand deals the same ten each time.
  *
- * Returns ten distinct cards that meet those rules, or null when a pile has run short, as it does once a deck has dealt
- * enough tens.
+ * Returns ten distinct cards that meet those rules, or null when a pile has run short, as one does once the piles have
+ * dealt enough tens.
  */
-export function dealTen<T extends Card>(deck: Deck<T>, rand: Rand): T[] | null {
+export function dealTen<T extends Card>(piles: Piles<T>, rand: Rand): T[] | null {
   const picked = new Set<T>();
   const out: T[] = [];
   const take = (list: readonly T[], n: number): boolean => {
@@ -78,19 +78,19 @@ export function dealTen<T extends Card>(deck: Deck<T>, rand: Rand): T[] | null {
     return true;
   };
 
-  if (!take(deck.closeChallenged, 1) || !take(deck.close, 7) || !take(deck.near, 1)) return null;
+  if (!take(piles.closeChallenged, 1) || !take(piles.close, 7) || !take(piles.near, 1)) return null;
   out.sort((a, b) => a.seq - b.seq);
 
-  const calibrators = deck.calibrators.filter((c) => !picked.has(c));
+  const calibrators = piles.calibrators.filter((c) => !picked.has(c));
   const first = calibrators[Math.floor(rand() * calibrators.length)];
 
   if (!first) return null;
 
   const ten = [first, ...out];
-  // Piles built some other way than deckOf, or two cards with one id, could still break the rules.
+  // Piles built some other way than pilesOf, or two cards with one id, could still break the rules.
   const problems = tenProblems(ten);
 
-  if (problems.length) throw new Error(`The deck dealt a ten that breaks the rules of the round: ${problems.join('; ')}`);
+  if (problems.length) throw new Error(`These piles dealt a ten that breaks the rules of the round: ${problems.join('; ')}`);
 
   return ten;
 }

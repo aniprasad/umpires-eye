@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { dealTen, deckOf, tenProblems } from '../../../src/core/deal.ts';
+import { dealTen, pilesOf, tenProblems } from '../../../src/core/deal.ts';
 import { tAtY } from '../../../src/core/kinematics.ts';
 import { mulberry32 } from '../../../src/core/rng.ts';
 import { MAX_FLIGHT_S, MID_Y } from '../../../src/core/rules.ts';
@@ -149,10 +149,10 @@ describe('makeShards', () => {
   test('lets every shard deal a full ten', () => {
     for (const s of shards) {
       const cards = s.filter((e) => e.dealable).map((e) => ({ id: e.j.p.id, seq: e.j.seq, absMarginIn: Math.abs(e.j.marginIn), challenged: !!e.j.p.challenge }));
-      const deck = deckOf(cards);
+      const piles = pilesOf(cards);
       const rand = mulberry32(1);
 
-      for (let k = 0; k < 50; k++) assert.deepEqual(tenProblems(dealTen(deck, rand) ?? []), []);
+      for (let k = 0; k < 50; k++) assert.deepEqual(tenProblems(dealTen(piles, rand) ?? []), []);
     }
   });
 

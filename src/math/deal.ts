@@ -1,5 +1,5 @@
 import { inDealBox } from '../core/abs.ts';
-import { dealTen, deckOf, type Card } from '../core/deal.ts';
+import { dealTen, pilesOf, type Card } from '../core/deal.ts';
 import { quickEnough } from '../core/kinematics.ts';
 import type { Rand } from '../core/rng.ts';
 import { CLOSE_IN } from '../core/rules.ts';
@@ -45,7 +45,7 @@ export function pickPoolTen(deck: readonly Pitch[], leaveOut: readonly Pitch[], 
   const cards = deck
     .filter((p) => !skip.has(p.id))
     .map((p): PitchCard => ({ id: p.id, seq: p.order, absMarginIn: Math.abs(p.edgeMarginIn), challenged: p.challenge !== null, p }));
-  const ten = dealTen(deckOf(cards), rand);
+  const ten = dealTen(pilesOf(cards), rand);
 
   if (!ten) throw new Error("Another ten couldn't be dealt: the pool has run short of close calls, near calls or calibrators.");
 

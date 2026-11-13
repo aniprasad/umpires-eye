@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { absJudge } from '../../../src/core/abs.ts';
-import { dealTen, deckOf, tenProblems, type Card } from '../../../src/core/deal.ts';
+import { dealTen, pilesOf, tenProblems, type Card } from '../../../src/core/deal.ts';
 import { crossing } from '../../../src/core/kinematics.ts';
 import { hash32, mulberry32 } from '../../../src/core/rng.ts';
 import {
@@ -107,22 +107,22 @@ function cardOf(e: PoolEntry): DealCard {
 }
 
 export function dealingCheck(cards: readonly Card[], seed: string, deals: number) {
-  const deck = deckOf(cards);
+  const piles = pilesOf(cards);
   const rand = mulberry32(hash32(seed));
   const problems: string[] = [];
 
   for (let k = 0; k < deals; k++) {
-    const ten = dealTen(deck, rand);
+    const ten = dealTen(piles, rand);
     const found = ten ? tenProblems(ten) : ['not enough pitches'];
 
     for (const p of found) problems.push(`deal ${k}: ${p}`);
   }
 
   return {
-    calibrators: deck.calibrators.length,
-    close: deck.close.length,
-    closeChallenged: deck.closeChallenged.length,
-    near: deck.near.length,
+    calibrators: piles.calibrators.length,
+    close: piles.close.length,
+    closeChallenged: piles.closeChallenged.length,
+    near: piles.near.length,
     deals,
     problems,
   };
