@@ -34,7 +34,7 @@ This isn't a stats chart with a dot. Each pitch is replayed from its tracked tra
   - It's our reconstruction. It matched all 29 ABS challenges in the 2026 World Series.
 - Data credit: MLB Stats API, © MLB Advanced Media, L.P., for individual, non-commercial use.
   - The app is free, non-commercial and credited, and isn't affiliated with MLB.
-  - Whether the dataset is published in the public repo is decided at publish time.
+  - Whether the dataset is published, in the public repo or on the Pages site, is decided at publish time. The first Pages run publishes it.
 - No MLB or team logos and no player likenesses. Players, field and catch are illustrations.
 
 ## Evidence on Hand

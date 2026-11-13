@@ -26,7 +26,7 @@ npm run dev        # http://localhost:5173
 | `npm run assets` | Rebuilds the shipped images, fonts and pitch pool from the masters in `mockup/`. The output is committed, so you only need this when a master changes. |
 | `npm run data:*` | The season dataset's tools: `fetch`, `build`, `validate`, `test` and `typecheck`. See `docs/DATA.md`. |
 
-CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: they run only when someone starts them from the Actions tab.
+CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: they run only when someone starts them from the Actions tab. Running the Pages deploy publishes the site, dataset included, even while the repo is private, so it waits for the owner's word (`docs/PLAN.md`, M5).
 
 ### Browser tests
 

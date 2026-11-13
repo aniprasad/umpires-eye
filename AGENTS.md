@@ -11,6 +11,7 @@ The approved look and behaviour live in `mockup/`. Open `mockup/index.html` to p
 ## Ground rules
 
 - Never push, add or change a remote, create a GitHub repository, or publish anything. Only the lead pushes, and only `main`. The owner decides when the repo goes public.
+- Don't use `gh` or the GitHub API against this repo: the machine's `gh` is signed in to a different account.
 - Work on your own branch and commit in small, descriptive steps. Don't change git config.
 - Keep usernames, home-folder paths and account names out of files and commit messages. Always merge with an explicit message (`git merge -m "…"`), because git's default merge message includes the branch name.
 - `mockup/` is the reference: read it, don't edit it.
