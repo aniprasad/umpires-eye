@@ -11,47 +11,54 @@ const EARLIEST_REVEAL_S = 3.9;
 const LATEST_REVEAL_S = 6.5;
 const REVEAL_STEP_MS = 200;
 
-test('a keyboard round of ten ends on the umpire card', async ({ page }) => {
-  test.setTimeout(180_000);
+test.describe(() => {
+  // Each pitch repaints the static layers for a new stance: 2-5 s of WebKit's time at 2x, about 1 s at 1x. At 2x this
+  // round took 90 s alone and up to 168 s of its 180 s on a loaded machine; at 1x, 24 s. Nothing it checks depends on the
+  // pixel density, and the other tests here keep the project's 2x.
+  test.use({ deviceScaleFactor: 1 });
 
-  const errors = trackErrors(page);
-  const app = page.locator('#app');
-  const ten = todaysTen();
-  const expected = ten.filter((pitch, k) => callOf(KEYS[k]) === pitch.absTruth).length;
-  const umpRight = ten.filter((pitch) => pitch.umpCorrect).length;
+  test('a keyboard round of ten ends on the umpire card', async ({ page }) => {
+    test.setTimeout(180_000);
 
-  expect(ten).toHaveLength(KEYS.length);
-  await openPaused(page, './');
-  await expect(page.locator('#btnPlay')).toBeEnabled();
-  await expect(page.locator('#btnPlay')).toHaveText('Play ball');
-  await expect.poll(() => activeId(page)).toBe('btnPlay');
-  await page.keyboard.press('Enter');
+    const errors = trackErrors(page);
+    const app = page.locator('#app');
+    const ten = todaysTen();
+    const expected = ten.filter((pitch, k) => callOf(KEYS[k]) === pitch.absTruth).length;
+    const umpRight = ten.filter((pitch) => pitch.umpCorrect).length;
 
-  for (const [k, key] of KEYS.entries()) {
-    const n = k + 1;
+    expect(ten).toHaveLength(KEYS.length);
+    await openPaused(page, './');
+    await expect(page.locator('#btnPlay')).toBeEnabled();
+    await expect(page.locator('#btnPlay')).toHaveText('Play ball');
+    await expect.poll(() => activeId(page)).toBe('btnPlay');
+    await page.keyboard.press('Enter');
 
-    await test.step(`pitch ${n}: ${key}`, async () => {
-      await expect(app).toHaveAttribute('data-phase', 'pitch');
-      await expect(page.locator('#indPitch')).toHaveText(`${n}/10`);
-      await callPitch(page, key);
-      await expect(app).toHaveAttribute('data-phase', 'reveal');
-      await expect(page.locator('#vLine')).toHaveText(new RegExp(`^\\s*You ${WORD[callOf(key)]}`));
-      await expect(page.locator('#nextLabel')).toHaveText(n < KEYS.length ? 'Next pitch' : 'See your card');
-      await expect.poll(() => activeId(page)).toBe('btnNext');
-      await page.keyboard.press('Space');
-    });
-  }
+    for (const [k, key] of KEYS.entries()) {
+      const n = k + 1;
 
-  await expect(app).toHaveAttribute('data-phase', 'card');
-  await expect(page.locator('#cards')).toBeVisible();
-  await expect(page.locator('#ubPitches')).toHaveText('10');
-  await expect(page.locator('#ubCorrect')).toHaveText(String(expected));
-  await expect(page.locator('#ucNum')).toHaveText(String(Math.round((100 * expected) / 10)));
-  await expect(page.locator('#ubUmp')).toHaveText(`${umpRight}/10`);
-  await expect(page.locator('#cardsSum')).toContainText(`You called ${expected} of 10 right`);
-  await expect.poll(() => activeId(page)).toBe('btnCopy');
-  await expect(page.locator('#err')).toBeHidden();
-  expect(errors).toEqual([]);
+      await test.step(`pitch ${n}: ${key}`, async () => {
+        await expect(app).toHaveAttribute('data-phase', 'pitch');
+        await expect(page.locator('#indPitch')).toHaveText(`${n}/10`);
+        await callPitch(page, key);
+        await expect(app).toHaveAttribute('data-phase', 'reveal');
+        await expect(page.locator('#vLine')).toHaveText(new RegExp(`^\\s*You ${WORD[callOf(key)]}`));
+        await expect(page.locator('#nextLabel')).toHaveText(n < KEYS.length ? 'Next pitch' : 'See your card');
+        await expect.poll(() => activeId(page)).toBe('btnNext');
+        await page.keyboard.press('Space');
+      });
+    }
+
+    await expect(app).toHaveAttribute('data-phase', 'card');
+    await expect(page.locator('#cards')).toBeVisible();
+    await expect(page.locator('#ubPitches')).toHaveText('10');
+    await expect(page.locator('#ubCorrect')).toHaveText(String(expected));
+    await expect(page.locator('#ucNum')).toHaveText(String(Math.round((100 * expected) / 10)));
+    await expect(page.locator('#ubUmp')).toHaveText(`${umpRight}/10`);
+    await expect(page.locator('#cardsSum')).toContainText(`You called ${expected} of 10 right`);
+    await expect.poll(() => activeId(page)).toBe('btnCopy');
+    await expect(page.locator('#err')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
 });
 
 test('an early press is ignored, and no call by the end of the window counts as a miss', async ({ page }) => {

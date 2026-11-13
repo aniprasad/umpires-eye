@@ -11,6 +11,10 @@ const KEYS: readonly CallKey[] = ['S', 'B', 'ArrowRight', 'ArrowLeft', 's', 'b',
 const WORD = { strike: 'Strike', ball: 'Ball' } as const;
 const CALL = { S: 'strike', B: 'ball' } as const;
 
+// Each pitch repaints the static layers for a new stance: 2-5 s of WebKit's time at 2x, about 1 s at 1x. At 2x this round
+// took 108 s alone of its 180 s; at 1x, 28 s. Nothing it checks depends on the pixel density.
+test.use({ deviceScaleFactor: 1 });
+
 /** Serves the synthetic season in place of the real one, and records every data request, ?v= included. */
 async function serveSeason(page: Page): Promise<string[]> {
   const asked: string[] = [];
