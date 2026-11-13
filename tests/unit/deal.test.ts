@@ -11,7 +11,7 @@ const data = fromPoolFile(JSON.parse(readFileSync(new URL('../../public/data/ws-
 describe('Another ten on the World Series pool', () => {
   it("deals the self-test's 200 seeded tens exactly as M1's dealer did", () => {
     const rand = mulberry32(20261031);
-    const deals = Array.from({ length: 200 }, () => pickPoolTen(data.pitches, data.today, rand).map((p) => p.id).join(','));
+    const deals = Array.from({ length: 200 }, () => pickPoolTen(data.deck, data.today, rand).map((p) => p.id).join(','));
 
     expect(deals[0]).toBe('849802-25-3,849802-12-1,849802-71-2,849804-3-2,849804-18-3,849804-29-5,849804-44-2,849803-2-4,849803-8-1,849803-77-2');
     // Recorded from M1's own pickPoolTen, before core's dealer replaced it.

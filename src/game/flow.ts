@@ -197,7 +197,7 @@ export function startGame(): void {
 export function playAnother(): void {
   const w = world();
 
-  G.set = pickPoolTen(w.data.pitches, w.data.today, Math.random).map(prep);
+  G.set = pickPoolTen(w.deck.pitches, w.today, Math.random).map(prep);
   G.mode = 'pool';
   G.results = [];
   G.i = 0;
@@ -310,7 +310,7 @@ export function bootFlow(): void {
   G.set = w.today;
   G.mode = 'today';
   G.results = [];
-  UI.startLede.textContent = todayLede(w.data.today, w.data.label);
+  UI.startLede.textContent = todayLede(w.today, w.source.label);
   UI.btnPlay.disabled = false;
   UI.btnPlay.textContent = 'Play ball';
   const idx = clamp(parseInt(Q.get('i') || '1', 10) || 1, 1, G.set.length) - 1;

@@ -21,8 +21,12 @@ export function playPoints(today: readonly Pitch[], pool: readonly Pitch[]): Pla
 
 export const listJoin = (a: readonly (string | number)[]): string => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 
+/** The Series games the pitches come from, in order: the start lede and the card name them. */
+export const seriesGames = (pitches: readonly Pitch[]): number[] =>
+  [...new Set(pitches.flatMap((p) => (p.game.seriesGame === null ? [] : [p.game.seriesGame])))].sort((a, b) => a - b);
+
 export function todayLede(today: readonly Pitch[], label: string): string {
-  const games = [...new Set(today.map((p) => p.gameNumber))].sort((a, b) => a - b);
+  const games = seriesGames(today);
   const close = today.filter((p) => Math.abs(p.edgeMarginIn) <= CLOSE_IN).length;
 
   return `Today's Ten: real pitches from Game${games.length > 1 ? 's' : ''} ${listJoin(games)} of the ${label}, ${close} of them close calls within ${CLOSE_IN} in of the zone, at real speed, from the plate umpire's eye.`;
@@ -32,22 +36,15 @@ interface PitchCard extends Card {
   p: Pitch;
 }
 
-/** M1's played order for the World Series pool: the game, then the plate appearance and the pitch within it. */
-function playedOrder(p: Pitch): number {
-  const [, atBat = 0, pitch = 0] = p.id.split('-').map(Number);
-
-  return p.gameNumber * 1e6 + atBat * 100 + pitch;
-}
-
 /**
- * "Another ten", dealt by core's dealer the way Today's Ten is (see dealTen), from the pool's playable pitches. It never
- * repeats Today's Ten, and throws when the pool can't deal a full ten.
+ * "Another ten", dealt by core's dealer the way Today's Ten is (see dealTen), from a source's deck: its dealable pitches
+ * in played order. It leaves out the pitches it's given (Today's Ten), and throws when the deck can't deal a full ten.
  */
-export function pickPoolTen(pool: readonly Pitch[], today: readonly Pitch[], rand: Rand): Pitch[] {
-  const todayIds = new Set(today.map((p) => p.id));
-  const cards = pool
-    .filter((p) => playable(p) && !todayIds.has(p.id))
-    .map((p): PitchCard => ({ id: p.id, seq: playedOrder(p), absMarginIn: Math.abs(p.edgeMarginIn), challenged: p.challenge !== null, p }));
+export function pickPoolTen(deck: readonly Pitch[], leaveOut: readonly Pitch[], rand: Rand): Pitch[] {
+  const skip = new Set(leaveOut.map((p) => p.id));
+  const cards = deck
+    .filter((p) => !skip.has(p.id))
+    .map((p): PitchCard => ({ id: p.id, seq: p.order, absMarginIn: Math.abs(p.edgeMarginIn), challenged: p.challenge !== null, p }));
   const ten = dealTen(deckOf(cards), rand);
 
   if (!ten) throw new Error("Another ten couldn't be dealt: the pool has run short of close calls, near calls or calibrators.");

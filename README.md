@@ -47,13 +47,14 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 | `?state=reveal&i=4&call=strike` | The reveal for pitch 4 after a strike call. |
 | `?state=card&correct=8` | The umpire card for a round with 8 right. |
 | `?selftest=1` | The self-test report. The page title becomes `SELFTEST PASS` or `SELFTEST FAIL`. |
+| `?pool=ws` | The 2026 World Series pool. It's also the default for now; other values are ignored. |
 | `?canvasFilter=fallback` | Draws the depth of field without the canvas `filter`, as WebKit does. |
 
 ## How it's built
 
-- `src/core/`: pure TypeScript the app shares with the data tools: the rules, the seeded draws, the trajectory, the ABS rule and deal box, the season files' formats and their reader, and the dealer. The tools run these files as they are under Node, so relative imports end in `.ts`. Lint and `src/core/tsconfig.json` keep core free of the DOM, Node, Vite and `Math.random`.
+- `src/core/`: pure TypeScript the app shares with the data tools: the rules, the seeded draws, the trajectory, the ABS rule and deal box, the season files' formats and their reader, the dealer, and the daily schedule's types, reserve rule and local dates. The tools run these files as they are under Node, so relative imports end in `.ts`. Lint and `src/core/tsconfig.json` keep core free of the DOM, Node, Vite and `Math.random`.
 - `src/math/`: pure TypeScript with no DOM. Camera and lens fit, stance, depth of field, the batter, catcher, mitt framing, pitcher pose, mask clearance, dealing, and the reveal's wording.
-- `src/data/`: `PitchSource`, the seam a dataset plugs into, and the 2026 World Series source (`public/data/ws-2026/pool.json`).
+- `src/data/`: the source contract a dataset implements (`source.ts`: Today's Ten for a date, the deck for Another ten, the lens points and the ump figure), the `?pool=` switch, and the 2026 World Series source (`public/data/ws-2026/pool.json`).
 - `src/render/`: the scene. Static layers are painted once per stance, and the next pitch's are painted ahead. The ball, mitt, pitcher and reveal are drawn every frame. `filter.ts` draws every blur and colour grade, with a fallback for engines without canvas `filter`, such as Safari.
 - `src/game/` and `src/ui/`: the flow (start, ten pitches, reveal, card), input, the HUD, the verdict panel and the card.
 - `src/selftest/`: the mockup's self-test checks as pure functions. Vitest runs them, and so does `?selftest=1`.

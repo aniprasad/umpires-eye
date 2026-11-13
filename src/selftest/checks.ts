@@ -6,7 +6,7 @@ import { BALL_R, CLOSE_IN, DEAL_BOX, MID_Y, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y 
 import { batterDof, batterRig, headSpan } from '../math/batter';
 import { catcherRig, frameOf, frameShift, mittBox, mittProgress, mittState } from '../math/catcher';
 import { CATCH_Y, CROSS_PAD, FRAME, MOUND_H, STANCE, STANCE_MAX } from '../math/constants';
-import { listJoin, pickPoolTen, playPoints, playable } from '../math/deal';
+import { listJoin, pickPoolTen, playable, seriesGames } from '../math/deal';
 import { DOF, dofBlur } from '../math/dof';
 import { makeCam, sphereOutline, vfovDeg, withUnion, type LensCam } from '../math/geometry';
 import { ballT, prep, type PreparedPitch } from '../math/kinematics';
@@ -16,11 +16,13 @@ import { pitcherPose } from '../math/pitcher';
 import { eyeOf, stanceCorners, stanceOf } from '../math/stance';
 import type { Call, Pitch, Side } from '../math/types';
 import { lastName } from '../math/words';
-import type { PitchData } from '../data/source';
+import type { WorldSeries } from '../data/ws2026';
 
 export interface SelfTestCtx {
   pool: readonly Pitch[];
   today: readonly Pitch[];
+  /** What Another ten deals from. */
+  deck: readonly Pitch[];
   /** The prepared Today's Ten the app plays (fresh preps in Node). */
   todaySet: readonly PreparedPitch[];
   lens: Lens;
@@ -41,12 +43,13 @@ export interface Check {
 export const SIZES: readonly (readonly [number, number])[] = [[1440, 900], [1920, 1080], [1280, 800], [1024, 768], [390, 844]];
 const SIDES: readonly Side[] = ['R', 'L'];
 
-export function selfTestContext(data: PitchData, todaySet?: readonly PreparedPitch[]): SelfTestCtx {
+export function selfTestContext(ws: WorldSeries, todaySet?: readonly PreparedPitch[]): SelfTestCtx {
   return {
-    pool: data.pitches,
-    today: data.today,
-    todaySet: todaySet || data.today.map(prep),
-    lens: createLens(playPoints(data.today, data.pitches)),
+    pool: ws.pitches,
+    today: ws.today,
+    deck: ws.deck,
+    todaySet: todaySet || ws.today.map(prep),
+    lens: createLens(ws.lensPoints),
   };
 }
 
@@ -107,7 +110,7 @@ function todayPitches(ctx: SelfTestCtx): CheckResult {
       bad++;
       failures.push(`today ${p.id}`);
     }
-    lines.push(`${String(i + 1).padStart(2)} ${p.id.padEnd(12)} G${p.gameNumber} ${lastName(p.batter.name).padEnd(9)} ${p.pitchType.code} | edge ${f(r.P.k.judge.marginIn, 2)} in (data ${f(p.edgeMarginIn, 2)}) | truth ${r.truth.padEnd(6)} data ${p.absTruth.padEnd(6)} ump ${p.umpCall.padEnd(6)}${p.challenge ? ' (ABS challenge)' : ''} | dMid x${f(r.dmx)} z${f(r.dmz)} ft | release->plate ${r.P.k.flight.toFixed(3)} s (to mid ${r.P.k.toMid.toFixed(3)}, to mitt ${r.P.k.toCatch.toFixed(3)}) | ${describeFraming(ctx.lens, r.P)} | ${r.ok ? 'PASS' : 'FAIL'}`);
+    lines.push(`${String(i + 1).padStart(2)} ${p.id.padEnd(12)} G${p.game.seriesGame} ${lastName(p.batter.name).padEnd(9)} ${p.pitchType.code} | edge ${f(r.P.k.judge.marginIn, 2)} in (data ${f(p.edgeMarginIn, 2)}) | truth ${r.truth.padEnd(6)} data ${p.absTruth.padEnd(6)} ump ${p.umpCall.padEnd(6)}${p.challenge ? ' (ABS challenge)' : ''} | dMid x${f(r.dmx)} z${f(r.dmz)} ft | release->plate ${r.P.k.flight.toFixed(3)} s (to mid ${r.P.k.toMid.toFixed(3)}, to mitt ${r.P.k.toCatch.toFixed(3)}) | ${describeFraming(ctx.lens, r.P)} | ${r.ok ? 'PASS' : 'FAIL'}`);
   });
 
   return { lines, failures, stats: { pitches: ctx.today.length, bad } };
@@ -139,7 +142,7 @@ function todayMakeUp(ctx: SelfTestCtx): CheckResult {
   const sides = new Set(T.map((p) => p.batter.side));
   const tBalls = T.filter((p) => Math.abs(p.edgeMarginIn) <= CLOSE_IN && p.absTruth === 'ball').length;
   const challenged = T.filter((p) => p.challenge).length;
-  const games = [...new Set(T.map((p) => p.gameNumber))].sort((a, b) => a - b);
+  const games = seriesGames(T);
   const lines = [
     `today: calibrator first (${f(T[0].edgeMarginIn, 2)} in) | ${nClose}/10 within ${CLOSE_IN} in (${tm.filter((m) => m <= CLOSE_IN).sort((a, b) => a - b).map((m) => m.toFixed(2)).join(', ')}): ${tBalls} balls, ${nClose - tBalls} strikes | ABS-challenged ${challenged} | games ${listJoin(games)} | families ${[...fam].join('/')} | bats ${[...sides].join('/')}`,
     `today: real ump right ${umpRight}/10 on the field (data umpCorrect says ${umpData}/10), ${umpAfter}/10 after ABS challenges; flight ${flightMin.toFixed(3)}-${flightMax.toFixed(3)} s`,
@@ -598,7 +601,7 @@ function picker(ctx: SelfTestCtx): CheckResult {
   const todayIds = new Set(ctx.today.map((p) => p.id));
 
   for (let r = 0; r < 200; r++) {
-    const s = pickPoolTen(ctx.pool, ctx.today, pr);
+    const s = pickPoolTen(ctx.deck, ctx.today, pr);
     const ids = new Set(s.map((p) => p.id));
     const m = s.map((p) => Math.abs(p.edgeMarginIn));
     const close = s.filter((_p, k) => m[k] <= CLOSE_IN);
@@ -610,7 +613,7 @@ function picker(ctx: SelfTestCtx): CheckResult {
     cbMax = Math.max(cbMax, cb);
     pickUmp += s.filter((p) => p.umpCorrect).length;
     pickCh += s.filter((p) => p.challenge).length;
-    pickGames += new Set(s.map((p) => p.gameNumber)).size;
+    pickGames += new Set(s.map((p) => p.gamePk)).size;
   }
   const failures = pickBad || cbMin === cbMax ? ['pool picker'] : [];
 

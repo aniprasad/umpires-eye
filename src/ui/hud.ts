@@ -1,5 +1,5 @@
 import { REDUCED } from '../game/params';
-import { G, gameOf, world, type Phase } from '../game/state';
+import { G, type Phase } from '../game/state';
 import type { PreparedPitch } from '../math/kinematics';
 import { fmtHeight, type Result } from '../math/words';
 import { UI } from './dom';
@@ -31,7 +31,7 @@ export function setPhase(ph: Phase): void {
 }
 
 export function fillMatchup(P: PreparedPitch, animate: boolean): void {
-  const gm = gameOf(P);
+  const gm = P.game;
 
   if (animate) {
     UI.matchup.classList.remove('swap');
@@ -49,7 +49,7 @@ export function fillMatchup(P: PreparedPitch, animate: boolean): void {
   UI.muBatterMeta.textContent = `Bats ${P.batter.side} · ${fmtHeight(P.batter.heightFt)}`;
   UI.muPitcher.textContent = P.pitcher.name;
   UI.muPitcherMeta.textContent = `${P.pitcher.hand}HP`;
-  UI.muGame.textContent = `${world().data.label} · Game ${P.gameNumber} · ${P.countBefore.balls}–${P.countBefore.strikes} count`;
+  UI.muGame.textContent = `${gm.label} · ${P.countBefore.balls}–${P.countBefore.strikes} count`;
 }
 
 /** The ump's palm indicator: balls, strikes and outs on its wheels. */

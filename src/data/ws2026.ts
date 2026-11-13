@@ -1,5 +1,7 @@
-import type { Game, Pitch } from '../math/types';
-import { SourceUnreachable, type PitchData, type PitchSource } from './source';
+import { playable, playPoints } from '../math/deal';
+import type { PlayPoint } from '../math/lens';
+import type { GameMeta, Pitch } from '../math/types';
+import { LoadError, type Deck, type PitchSource, type TodayResult, type UmpFigure } from './source';
 
 /**
  * Today's Ten for the World Series pool: one easy calibrator first, then eight close calls within 1.5 in of the ABS
@@ -14,38 +16,119 @@ export const WS_TODAY_IDS: readonly string[] = [
 
 export const WS_LABEL = '2026 World Series';
 
-/** The shape of public/data/ws-2026/pool.json (the mockup's pool.json, minified). */
-export interface PoolFile {
-  games: Game[];
-  pitches: Pitch[];
+/** The figure M1 cites: UmpScorecards, via mlb.com. */
+const WS_UMP_FIGURE: UmpFigure = { pct: 94, label: 'MLB umps', definition: 'UmpScorecards via mlb.com', approx: true };
+
+/** A game as public/data/ws-2026/pool.json (the mockup's pool.json, minified) stores it. */
+export interface PoolGame {
+  gamePk: number;
+  /** The game's number in the Series, 1 to 5. */
+  gameNumber: number;
+  date: string;
+  away: string;
+  home: string;
+  venue?: string;
+  plateUmpire?: string;
 }
 
-export function fromPoolFile(file: PoolFile): PitchData {
-  const byId = new Map(file.pitches.map((p) => [p.id, p]));
-  const missing = WS_TODAY_IDS.filter((id) => !byId.has(id));
+/** A pitch as the pool file stores it: numbered by its game in the Series, which also gives its played order. */
+export type PoolPitch = Omit<Pitch, 'game' | 'order' | 'plateUmpire'> & { gameNumber: number };
 
-  if (missing.length) throw new Error(`Today's Ten pitches are missing from the pool: ${missing.join(', ')}`);
+export interface PoolFile {
+  games: PoolGame[];
+  pitches: PoolPitch[];
+}
+
+/** The pool, read. */
+export interface WorldSeries {
+  readonly label: string;
+  /** Every pitch in the file, in played order, playable or not: the self-test's mockup numbers count them all. */
+  readonly pitches: readonly Pitch[];
+  /** Today's Ten, in play order. */
+  readonly today: readonly Pitch[];
+  /** What Another ten deals from: the playable pitches, in played order, without Today's Ten. */
+  readonly deck: readonly Pitch[];
+  /** Today's Ten and every playable pitch, as M1 fitted the lens. */
+  readonly lensPoints: readonly PlayPoint[];
+}
+
+/** The World Series source, with the pool behind it for the self-test. */
+export interface WorldSeriesSource extends PitchSource {
+  readonly id: 'ws-2026';
+  readonly ws: WorldSeries;
+}
+
+const gameMeta = (g: PoolGame): GameMeta => ({
+  gamePk: g.gamePk,
+  date: g.date,
+  away: g.away,
+  home: g.home,
+  label: `${WS_LABEL} · Game ${g.gameNumber}`,
+  seriesGame: g.gameNumber,
+  venue: g.venue ?? null,
+});
+
+export function fromPoolFile(file: PoolFile): WorldSeries {
+  if (!Array.isArray(file.games) || !Array.isArray(file.pitches)) throw new LoadError('data', 'The pitch data has no games or no pitches.');
+  const games = new Map(file.games.map((g) => [g.gamePk, g]));
+  const metas = new Map(file.games.map((g) => [g.gamePk, gameMeta(g)]));
+  const pitches = file.pitches.map(({ gameNumber, ...p }): Pitch => {
+    const game = metas.get(p.gamePk);
+    const [, atBat = 0, pitch = 0] = p.id.split('-').map(Number);
+
+    if (!game) throw new LoadError('data', `Pitch ${p.id} is from game ${p.gamePk}, which isn't in the pool's games.`);
+
+    // One plate umpire worked each game of the Series, so every pitch takes its game's.
+    return { ...p, game, order: gameNumber * 1e6 + atBat * 100 + pitch, plateUmpire: games.get(p.gamePk)?.plateUmpire ?? null };
+  });
+  const byId = new Map(pitches.map((p) => [p.id, p]));
+  const today = WS_TODAY_IDS.flatMap((id) => byId.get(id) ?? []);
+
+  if (today.length < WS_TODAY_IDS.length) {
+    throw new LoadError('data', `Today's Ten pitches are missing from the pool: ${WS_TODAY_IDS.filter((id) => !byId.has(id)).join(', ')}`);
+  }
+  const todayIds = new Set(WS_TODAY_IDS);
 
   return {
     label: WS_LABEL,
-    games: file.games,
-    pitches: file.pitches,
-    today: WS_TODAY_IDS.map((id) => byId.get(id) as Pitch),
+    pitches,
+    today,
+    deck: pitches.filter((p) => playable(p) && !todayIds.has(p.id)),
+    lensPoints: playPoints(today, pitches),
   };
 }
 
-/** The 742 called pitches of the 2026 World Series, fetched from a static JSON file. */
-export function worldSeriesSource(url: string): PitchSource {
+/** Serves a read pool through the source contract. The Series has one ten, whatever the date, and one deck. */
+export function worldSeriesSource(ws: WorldSeries): WorldSeriesSource {
+  const deck: Deck = { pitches: ws.deck, next: () => Promise.resolve(null) };
+
   return {
     id: 'ws-2026',
-    async load(): Promise<PitchData> {
-      const res = await fetch(url).catch((e: unknown) => {
-        throw new SourceUnreachable(`Could not reach the pitch data (${e instanceof Error ? e.message : String(e)}).`);
-      });
-
-      if (!res.ok) throw new Error(`Could not load the pitch data (${res.status} ${res.statusText}).`);
-
-      return fromPoolFile((await res.json()) as PoolFile);
-    },
+    label: ws.label,
+    lensPoints: ws.lensPoints,
+    ws,
+    today: (dateKey) => Promise.resolve<TodayResult>({ kind: 'ten', dateKey, pitches: ws.today }),
+    deck: () => Promise.resolve(deck),
+    umpFigure: () => Promise.resolve(WS_UMP_FIGURE),
   };
+}
+
+export const isWorldSeries = (source: PitchSource): source is WorldSeriesSource => 'ws' in source;
+
+/** The 742 called pitches of the 2026 World Series. The whole pool loads before the source is handed over. */
+export async function loadWorldSeries(url: string): Promise<WorldSeriesSource> {
+  const res = await fetch(url).catch((e: unknown) => {
+    throw new LoadError('network', `Could not reach the pitch data (${e instanceof Error ? e.message : String(e)}).`);
+  });
+
+  if (!res.ok) {
+    const kind = res.status === 404 ? 'missing' : res.status >= 500 ? 'network' : 'data';
+
+    throw new LoadError(kind, `Could not load the pitch data (${res.status} ${res.statusText}).`);
+  }
+  const file = (await res.json().catch((e: unknown) => {
+    throw new LoadError('data', e instanceof Error ? e.message : String(e));
+  })) as PoolFile;
+
+  return worldSeriesSource(fromPoolFile(file));
 }

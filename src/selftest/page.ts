@@ -1,3 +1,4 @@
+import { isWorldSeries } from '../data/ws2026';
 import { world } from '../game/state';
 import { BEAT } from '../math/constants';
 import { LAY, view } from '../render/env';
@@ -8,7 +9,10 @@ import { runSelfTest, selfTestContext } from './checks';
 /** ?selftest=1: the mockup's report, on the page, with the verdict in the title for scripts to read. */
 export function showSelfTest(): boolean {
   const w = world();
-  const { lines, failures } = runSelfTest(selfTestContext(w.data, w.today));
+
+  // The report's figures are the mockup's, counted on the World Series pool.
+  if (!isWorldSeries(w.source)) throw new Error('the self-test needs the World Series pool (?pool=ws)');
+  const { lines, failures } = runSelfTest(selfTestContext(w.source.ws, w.today));
   const [title, ...rest] = lines;
 
   document.title = failures.length ? 'SELFTEST FAIL' : 'SELFTEST PASS';

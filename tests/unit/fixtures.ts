@@ -1,11 +1,21 @@
-import type { Pitch } from '../../src/math/types';
+import type { PoolPitch } from '../../src/data/ws2026';
+import type { GameMeta, Pitch } from '../../src/math/types';
 
-/** A small synthetic pitch: a 130 ft/s fastball down the middle. Override what a test cares about. */
-export function synthPitch(over: Partial<Pitch> = {}): Pitch {
-  const base: Pitch = {
+export const SYNTH_GAME: GameMeta = {
+  gamePk: 1,
+  date: '2026-10-23',
+  away: 'AWY',
+  home: 'HOM',
+  label: '2026 World Series · Game 1',
+  seriesGame: 1,
+  venue: null,
+};
+
+/** What a pitch is, whichever file it came from. */
+function basePitch(): Omit<Pitch, 'game' | 'order' | 'plateUmpire'> {
+  return {
     id: '1-1-1',
     gamePk: 1,
-    gameNumber: 1,
     inning: 1,
     half: 'top',
     outs: 0,
@@ -29,6 +39,14 @@ export function synthPitch(over: Partial<Pitch> = {}): Pitch {
     umpCorrect: true,
     challenge: null,
   };
+}
 
-  return { ...base, ...over };
+/** A small synthetic pitch: a 130 ft/s fastball down the middle. Override what a test cares about. */
+export function synthPitch(over: Partial<Pitch> = {}): Pitch {
+  return { ...basePitch(), game: SYNTH_GAME, order: 1_000_101, plateUmpire: null, ...over };
+}
+
+/** The same pitch as the World Series pool file stores it. */
+export function poolPitch(over: Partial<PoolPitch> = {}): PoolPitch {
+  return { ...basePitch(), gameNumber: 1, ...over };
 }

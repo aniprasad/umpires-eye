@@ -126,3 +126,26 @@ test('the card copies the result and deals another ten', async ({ page }) => {
   await expect(page.locator('#err')).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test('?pool=ws plays the World Series pool, as the default still does', async ({ page }) => {
+  const errors = trackErrors(page);
+  const data: string[] = [];
+
+  page.on('request', (req) => {
+    if (req.url().includes('/data/')) data.push(new URL(req.url()).pathname);
+  });
+  await page.goto('./');
+  await waitReady(page);
+  const lede = await page.locator('#startLede').textContent();
+
+  await page.goto('./?pool=ws');
+  await waitReady(page);
+  await expect(page.locator('#startLede')).toHaveText(lede ?? '');
+  await expect(page.locator('#startLede')).toContainText('from Games 1, 2 and 5 of the 2026 World Series');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+  await expect(page.locator('#muGame')).toHaveText(/^2026 World Series · Game 5 · \d–\d count$/);
+  expect(data.length).toBeGreaterThan(0);
+  expect(data.filter((path) => !path.endsWith('/data/ws-2026/pool.json'))).toEqual([]);
+  expect(errors).toEqual([]);
+});

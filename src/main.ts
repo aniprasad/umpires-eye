@@ -1,10 +1,11 @@
 import backdropWideUrl from './assets/img/backdrop-wide.webp';
 import backdropUrl from './assets/img/backdrop.webp';
 import batterUrl from './assets/img/batter.webp';
-import { SourceUnreachable } from './data/source';
-import { worldSeriesSource } from './data/ws2026';
+import { dateKeyOf } from './core/daily.ts';
+import { LoadError } from './data/source';
+import { openSource, sourceIdOf } from './data/sources';
 import { bootFlow, wireInput } from './game/flow';
-import { SELFTEST } from './game/params';
+import { POOL, SELFTEST } from './game/params';
 import { createWorld, setWorld } from './game/state';
 import { BACKDROPS } from './render/backdrop';
 import { IMG, sizeCanvases } from './render/env';
@@ -26,7 +27,7 @@ const loadImg = (img: HTMLImageElement, src: string): Promise<HTMLImageElement> 
 function dataFailed(e: unknown): void {
   fail(`The pitch data didn't load: ${message(e)}`);
   // Only a failed connection is worth a reload; for a missing or broken file, the error box says what's wrong.
-  UI.startLede.textContent = e instanceof SourceUnreachable
+  UI.startLede.textContent = e instanceof LoadError && (e.kind === 'network' || e.kind === 'offline')
     ? "The pitches didn't load, so there's nothing to call yet. Check your connection, then reload the page."
     : "The pitches didn't load, so there's nothing to call yet. The note at the bottom of the screen says what went wrong.";
   UI.btnPlay.textContent = "Couldn't load the pitches";
@@ -53,7 +54,11 @@ async function boot(): Promise<void> {
   ]).then((results) => results.flatMap((r) => (r.status === 'rejected' ? [message(r.reason)] : [])).join('\n'));
 
   try {
-    setWorld(createWorld(await worldSeriesSource(`${import.meta.env.BASE_URL}data/ws-2026/pool.json`).load()));
+    const source = await openSource(sourceIdOf(POOL), import.meta.env.BASE_URL);
+    const today = await source.today(dateKeyOf(new Date()));
+
+    if (today.kind === 'none') throw new LoadError('data', `There's no Today's Ten for ${today.dateKey}.`);
+    setWorld(createWorld(source, today.pitches, await source.deck()));
   } catch (e) {
     dataFailed(e);
 

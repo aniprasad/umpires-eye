@@ -1,6 +1,7 @@
 import { PLATE_HALF } from '../core/rules.ts';
 import { REDUCED } from '../game/params';
 import { G, world } from '../game/state';
+import { seriesGames } from '../math/deal';
 import { cardStateResults } from '../math/flow';
 import { clamp } from '../math/util';
 import { resultText, toughest, type Result } from '../math/words';
@@ -58,14 +59,14 @@ export function drawMissMap(results: readonly (Result | undefined)[]): void {
 }
 
 export function showCards(instant = false): void {
-  const label = world().data.label;
+  const label = world().source.label;
   const n = G.set.length;
   const right = G.results.filter((r) => r && r.correct).length;
   const ump = G.set.filter((P) => P.umpCorrect).length;
   const after = G.set.filter((P) => P.finalCall === P.absTruth).length;
   const pct = Math.round((right / n) * 100);
   const tough = toughest(G.results);
-  const games = [...new Set(G.set.map((P) => P.gameNumber))].sort((a, b) => a - b);
+  const games = seriesGames(G.set);
 
   CARD.num.textContent = String(pct);
   CARD.pitches.textContent = String(n);
@@ -94,7 +95,7 @@ export function bootCard(correct: number): void {
 }
 
 export async function copyResult(): Promise<void> {
-  const text = resultText({ label: world().data.label, roundLabel: roundLabel(), set: G.set, results: G.results });
+  const text = resultText({ label: world().source.label, roundLabel: roundLabel(), set: G.set, results: G.results });
   let ok = false;
 
   try {

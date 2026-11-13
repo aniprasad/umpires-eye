@@ -1,30 +1,31 @@
-import type { PitchData } from '../data/source';
-import { playPoints } from '../math/deal';
+import type { Deck, PitchSource } from '../data/source';
 import type { PreparedPitch } from '../math/kinematics';
 import { prep } from '../math/kinematics';
 import { createLens, type Lens } from '../math/lens';
-import type { Game, Pitch } from '../math/types';
+import type { Pitch } from '../math/types';
 import type { CallOrNone, Result } from '../math/words';
 
 export type Phase = 'boot' | 'start' | 'pitch' | 'reveal' | 'replay' | 'card';
 
 /** The loaded dataset and everything derived from it once. */
 export interface World {
-  data: PitchData;
-  games: Map<number, Game>;
+  source: PitchSource;
   /** Today's Ten, prepared once, so per-pitch caches (stance, framing, path dots) live for the session. */
   today: PreparedPitch[];
+  /** What Another ten deals from. */
+  deck: Deck;
+  /** Fitted once, to the source's lens points, so it never shifts with what's loaded. */
   lens: Lens;
 }
 
 let current: World | null = null;
 
-export function createWorld(data: PitchData): World {
+export function createWorld(source: PitchSource, today: readonly Pitch[], deck: Deck): World {
   return {
-    data,
-    games: new Map(data.games.map((g) => [g.gamePk, g])),
-    today: data.today.map(prep),
-    lens: createLens(playPoints(data.today, data.pitches)),
+    source,
+    today: today.map(prep),
+    deck,
+    lens: createLens(source.lensPoints),
   };
 }
 
@@ -36,10 +37,6 @@ export function world(): World {
   if (!current) throw new Error('The pitch data has not loaded.');
 
   return current;
-}
-
-export function gameOf(p: Pitch): Game {
-  return world().games.get(p.gamePk) || { gamePk: p.gamePk, gameNumber: p.gameNumber, away: 'Away', home: 'Home' };
 }
 
 /** The round in play. Times are performance.now() milliseconds; s is seconds since release. */
