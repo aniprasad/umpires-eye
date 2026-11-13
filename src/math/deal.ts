@@ -25,12 +25,18 @@ export const listJoin = (a: readonly (string | number)[]): string => (a.length <
 export const seriesGames = (pitches: readonly Pitch[]): number[] =>
   [...new Set(pitches.flatMap((p) => (p.game.seriesGame === null ? [] : [p.game.seriesGame])))].sort((a, b) => a - b);
 
+const closeCalls = (today: readonly Pitch[]): number => today.filter((p) => Math.abs(p.edgeMarginIn) <= CLOSE_IN).length;
+const lede = (from: string, today: readonly Pitch[]): string =>
+  `Today's Ten: real pitches from ${from}, ${closeCalls(today)} of them close calls within ${CLOSE_IN} in of the zone, at real speed, from the plate umpire's eye.`;
+
 export function todayLede(today: readonly Pitch[], label: string): string {
   const games = seriesGames(today);
-  const close = today.filter((p) => Math.abs(p.edgeMarginIn) <= CLOSE_IN).length;
 
-  return `Today's Ten: real pitches from Game${games.length > 1 ? 's' : ''} ${listJoin(games)} of the ${label}, ${close} of them close calls within ${CLOSE_IN} in of the zone, at real speed, from the plate umpire's eye.`;
+  return lede(`Game${games.length > 1 ? 's' : ''} ${listJoin(games)} of the ${label}`, today);
 }
+
+/** A season ten comes from games all over the season, so its lede names none of them. */
+export const seasonLede = (today: readonly Pitch[], label: string): string => lede(`the ${label}`, today);
 
 interface PitchCard extends Card {
   p: Pitch;

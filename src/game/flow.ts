@@ -1,7 +1,8 @@
 import { prep } from '../math/kinematics';
 import type { Deck } from '../data/source';
+import { isWorldSeries } from '../data/ws2026';
 import { BEAT, FIRST_BEAT, REPLAY_RATE, WINDUP } from '../math/constants';
-import { pickPoolTen, todayLede } from '../math/deal';
+import { pickPoolTen, seasonLede, todayLede } from '../math/deal';
 import { callWindowEnd, clockLeft, countAfter, judged, replayLength, revealAt, urlStateResult } from '../math/flow';
 import { PT } from '../math/pitcher';
 import type { Call } from '../math/types';
@@ -329,7 +330,7 @@ export function bootFlow(): void {
   G.set = w.today;
   G.mode = 'today';
   G.results = [];
-  UI.startLede.textContent = todayLede(w.today, w.source.label);
+  UI.startLede.textContent = isWorldSeries(w.source) ? todayLede(w.today, w.source.label) : seasonLede(w.today, w.source.label);
   UI.btnPlay.disabled = false;
   UI.btnPlay.textContent = 'Play ball';
   const idx = clamp(parseInt(Q.get('i') || '1', 10) || 1, 1, G.set.length) - 1;

@@ -5,7 +5,7 @@ import { dateKeyOf } from './core/daily.ts';
 import { LoadError } from './data/source';
 import { openSource, sourceIdOf } from './data/sources';
 import { bootFlow, wireInput } from './game/flow';
-import { POOL, SELFTEST } from './game/params';
+import { DATE, POOL, SELFTEST } from './game/params';
 import { createWorld, setWorld } from './game/state';
 import { BACKDROPS } from './render/backdrop';
 import { IMG, sizeCanvases } from './render/env';
@@ -55,7 +55,7 @@ async function boot(): Promise<void> {
 
   try {
     const source = await openSource(sourceIdOf(POOL), import.meta.env.BASE_URL);
-    const today = await source.today(dateKeyOf(new Date()));
+    const today = await source.today(DATE ?? dateKeyOf(new Date()));
 
     if (today.kind === 'none') throw new LoadError('data', `There's no Today's Ten for ${today.dateKey}.`);
     setWorld(createWorld(source, today.pitches));
