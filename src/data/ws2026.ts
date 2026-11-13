@@ -1,6 +1,7 @@
 import { playable, playPoints } from '../math/deal';
 import type { PlayPoint } from '../math/lens';
 import type { GameMeta, Pitch } from '../math/types';
+import { fetchJson, type Net } from './fetch';
 import { LoadError, type Deck, type PitchSource, type TodayResult, type UmpFigure } from './source';
 
 /**
@@ -68,8 +69,12 @@ const gameMeta = (g: PoolGame): GameMeta => ({
   venue: g.venue ?? null,
 });
 
-export function fromPoolFile(file: PoolFile): WorldSeries {
-  if (!Array.isArray(file.games) || !Array.isArray(file.pitches)) throw new LoadError('data', 'The pitch data has no games or no pitches.');
+/** Reads a pool file's parsed body. Throws a `data` LoadError for one that doesn't add up. */
+export function fromPoolFile(body: unknown): WorldSeries {
+  const { games: gameList, pitches: pitchList } = (typeof body === 'object' && body !== null ? body : {}) as Partial<PoolFile>;
+
+  if (!Array.isArray(gameList) || !Array.isArray(pitchList)) throw new LoadError('data', 'The pitch data has no games or no pitches.');
+  const file: PoolFile = { games: gameList, pitches: pitchList };
   const games = new Map(file.games.map((g) => [g.gamePk, g]));
   const metas = new Map(file.games.map((g) => [g.gamePk, gameMeta(g)]));
   const pitches = file.pitches.map(({ gameNumber, ...p }): Pitch => {
@@ -116,19 +121,6 @@ export function worldSeriesSource(ws: WorldSeries): WorldSeriesSource {
 export const isWorldSeries = (source: PitchSource): source is WorldSeriesSource => 'ws' in source;
 
 /** The 742 called pitches of the 2026 World Series. The whole pool loads before the source is handed over. */
-export async function loadWorldSeries(url: string): Promise<WorldSeriesSource> {
-  const res = await fetch(url).catch((e: unknown) => {
-    throw new LoadError('network', `Could not reach the pitch data (${e instanceof Error ? e.message : String(e)}).`);
-  });
-
-  if (!res.ok) {
-    const kind = res.status === 404 ? 'missing' : res.status >= 500 ? 'network' : 'data';
-
-    throw new LoadError(kind, `Could not load the pitch data (${res.status} ${res.statusText}).`);
-  }
-  const file = (await res.json().catch((e: unknown) => {
-    throw new LoadError('data', e instanceof Error ? e.message : String(e));
-  })) as PoolFile;
-
-  return worldSeriesSource(fromPoolFile(file));
+export async function loadWorldSeries(url: string, net?: Net): Promise<WorldSeriesSource> {
+  return worldSeriesSource(fromPoolFile(await fetchJson(url, { what: 'the pitch data', net })));
 }
