@@ -310,7 +310,10 @@ function cameraSide(ctx: SelfTestCtx, W: number, H: number, side: Side, PLAYP: r
   // the catcher keys off the ump, so his helmet holds its place on screen; it must stay under every dealt zone
   const helmClear = (c: LensCam, Pz: PreparedPitch): number => {
     const m = catcherRig(side, c.eye);
-    const ring = sphereOutline(c, m.head, m.r, 96) || [];
+    const ring = sphereOutline(c, m.head, m.r, 96);
+
+    // a helmet without an outline can't be shown to clear the zone, so it counts as over it
+    if (!ring) return -Infinity;
     const zl = c.p({ x: -PLATE_HALF, y: MID_Y, z: Pz.zone.bottom });
     const zr = c.p({ x: PLATE_HALF, y: MID_Y, z: Pz.zone.bottom });
     let helm = 1e9;

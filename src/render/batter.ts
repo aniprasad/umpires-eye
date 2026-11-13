@@ -81,7 +81,6 @@ function batterParts(cam: Cam, P: Pitch): { parts: Part[]; rig: BatterRig } {
   return { parts, rig: R };
 }
 
-/** A cleared work sheet with an identity transform and no filter. */
 function sheet(C: HTMLCanvasElement): CanvasRenderingContext2D {
   const c = ctx2d(C);
 

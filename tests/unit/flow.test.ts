@@ -41,7 +41,7 @@ describe('URL states', () => {
     const missed = res.filter((r) => !r.correct).map((r) => r.P.edgeMarginIn);
 
     expect(res.filter((r) => r.correct)).toHaveLength(7);
-    expect(missed.sort()).toEqual([-0.2, 0.05, -0.4].sort());
+    expect(missed.sort((a, b) => a - b)).toEqual([-0.4, -0.2, 0.05]);
   });
 
   it('earlier pitches behind ?state=pitch|reveal are wrong only within 1 in of the edge', () => {

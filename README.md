@@ -9,7 +9,7 @@ Call real MLB pitches from the plate umpire's eye, at real speed. Then see the A
 You need Node 22.18 or later.
 
 ```sh
-npm install
+npm ci
 npm run dev        # http://localhost:5173
 ```
 
