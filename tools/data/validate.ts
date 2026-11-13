@@ -1,5 +1,6 @@
-// npm run data:validate: checks public/data/season-2026 on its own terms (schema, ABS truth recomputed from what is
-// stored, dealing, sizes, totals) and, when the cache is present, that a rebuild reproduces every file exactly.
+// npm run data:validate: checks public/data/season-2026 on its own terms (schema, ABS truth and the dealing rules
+// recomputed from what is stored, dealing, sizes, totals), judges the report's integrity findings against the
+// allowlist in lib/integrity.ts, and, when the cache is present, checks that a rebuild reproduces every file exactly.
 // Pass --no-rebuild to skip the rebuild.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -7,11 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { cacheDir, openCache } from './lib/cache.ts';
 import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, MAX_FLIGHT_S, NEAR_IN, SEASON, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
 import type { Card } from './lib/deal.ts';
-import { decodeGames, decodeNames, decodePitches, type ShardDoc, type StoredPitch } from './lib/decode.ts';
+import { decodeGames, decodeNames, decodePitches, decodePlayers, type ShardDoc } from './lib/decode.ts';
 import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
 import { loadInputs } from './lib/inputs.ts';
-import { absJudge, crossing, flightTime, inDealBox, TRAJ_KEYS } from './lib/physics.ts';
-import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, SEED, sessionSizes, sha256 } from './lib/pipeline.ts';
+import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
+import { absJudge, crossing, flightTime, inDealBox } from './lib/physics.ts';
+import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, REPORT_PATH, SEED, sessionSizes, sha256 } from './lib/pipeline.ts';
 import { compareGames } from './lib/schedule.ts';
 import type { Tally } from './lib/stats.ts';
 
@@ -39,6 +41,7 @@ interface Stats {
   version: number;
   season: number;
   credit: string;
+  truthNote: string;
   calledPitches: { total: number };
   challenges: { total: number; overturned: number; absAgreesWithFinalCall: Tally };
   umpVsAbs: { overall: Tally; close: Tally };
@@ -53,39 +56,11 @@ const fail = (msg: string): void => {
   problems.push(msg);
 };
 const read = (rel: string): string | null => (existsSync(join(root, rel)) ? readFileSync(join(root, rel), 'utf8') : null);
-const isInt = (v: unknown): boolean => Number.isInteger(v);
-const inRange = (v: number, lo: number, hi: number): boolean => Number.isInteger(v) && v >= lo && v <= hi;
 const kb = (n: number): string => `${(n / 1000).toFixed(0)} KB`;
-
-function pitchProblems(p: StoredPitch, games: Map<number, number>, players: Set<number>, types: Set<string>): string[] {
-  const out: string[] = [];
-  const role = p.challenge?.role;
-
-  if (![p.gamePk, p.atBat, p.pitch, p.batter, p.pitcher].every(isInt)) out.push('ids are not integers');
-  if (!games.has(p.gamePk)) out.push('game missing from the games table');
-  if (!players.has(p.batter) || !players.has(p.pitcher)) out.push('batter or pitcher missing from the players table');
-  if (p.challenge && !players.has(p.challenge.by)) out.push('challenger missing from the players table');
-  if (p.type !== null && !types.has(p.type)) out.push(`pitch type ${p.type} missing from pitchTypes`);
-  if (!(p.inning >= 1 && isInt(p.inning)) || !inRange(p.outs, 0, 2)) out.push('bad inning or outs');
-  if (!inRange(p.balls, 0, 9) || !inRange(p.strikes, 0, 9)) out.push(`bad count ${p.balls}-${p.strikes}`);
-  // A feed scoring error can leave an impossible count; such a pitch may sit in the pool only as an undealable challenge.
-  if (p.dealable && (p.balls > 3 || p.strikes > 2)) out.push(`dealable with an impossible count ${p.balls}-${p.strikes}`);
-  if (!inRange(p.awayScore, 0, 99) || !inRange(p.homeScore, 0, 99) || !inRange(p.bases, 0, 7)) out.push('bad score or bases');
-  if (!['L', 'R'].includes(p.bats) || !['L', 'R'].includes(p.throws)) out.push('bad batter side or pitcher hand');
-  if (![p.ump, p.final, p.abs].every((c) => c === 'S' || c === 'B')) out.push('bad call code');
-  if (!TRAJ_KEYS.every((k) => Number.isFinite(p.traj[k])) || p.traj.vY0 >= 0) out.push('bad trajectory');
-  if (!(p.zoneBottom > 0 && p.zoneTop > p.zoneBottom) || !Number.isFinite(p.marginIn)) out.push('bad zone or margin');
-  if (p.challenge === null ? p.ump !== p.final : p.challenge.overturned !== (p.ump !== p.final)) {
-    out.push('ump and final calls disagree with the challenge record');
-  }
-  // Only the batter may challenge a strike, and only the pitcher or catcher a ball.
-  if (role && (role === 'B') !== (p.ump === 'S')) out.push(`role ${role} challenged a called ${p.ump}`);
-
-  return out;
-}
 
 const manifestText = read(`${OUT_DIR}/manifest.json`);
 const statsText = read(`${OUT_DIR}/stats.json`);
+const reportText = read(REPORT_PATH);
 
 if (!manifestText || !statsText) {
   console.error(`No dataset in ${OUT_DIR}. Run npm run data:build.`);
@@ -105,9 +80,29 @@ for (const [name, doc, format] of [
 ] as const) {
   if (doc.format !== format || doc.version !== FORMAT_VERSION || doc.season !== SEASON) fail(`${name}: wrong format header`);
   if (doc.credit !== CREDIT) fail(`${name}: the MLB credit is missing or changed`);
+  if (doc.truthNote !== TRUTH_NOTE) fail(`${name}: the reconstruction note is missing or changed`);
 }
-if (manifest.truthNote !== TRUTH_NOTE) fail('manifest.json: the reconstruction note is missing or changed');
 if (JSON.stringify(listed) !== JSON.stringify(onDisk)) fail(`shards on disk ${onDisk.join(',')} differ from the manifest`);
+
+// The build refuses findings outside the allowlist; judging the committed report again catches a hand-edited one.
+if (reportText === null) {
+  fail(`${REPORT_PATH} is missing`);
+} else {
+  const integrity = (JSON.parse(reportText) as { integrity?: Record<string, { count?: unknown; first?: unknown }> }).integrity ?? {};
+  const findings: Partial<Record<FailingKind, string[]>> = {};
+
+  for (const kind of FAILING_KINDS) {
+    const listedFindings = integrity[kind];
+
+    if (!listedFindings || typeof listedFindings.count !== 'number' || !Array.isArray(listedFindings.first)) {
+      fail(`${REPORT_PATH}: integrity.${kind} is missing`);
+      continue;
+    }
+    if (listedFindings.count > listedFindings.first.length) fail(`${REPORT_PATH}: ${listedFindings.count} ${kind}, more than it lists`);
+    findings[kind] = listedFindings.first.map(String);
+  }
+  for (const f of judgeFindings(findings).failures) fail(`${REPORT_PATH}: ${f}`);
+}
 
 const ids = new Set<string>();
 const texts: string[] = [];
@@ -134,8 +129,8 @@ for (const meta of manifest.shards) {
   const venues = decodeNames(doc, 'venues');
   const umpires = decodeNames(doc, 'umpires');
   const gameOrder = new Map(games.map((g, i) => [g.gamePk, i]));
-  const players = new Set(doc.players.map((r) => r[0] as number));
-  const types = new Set(Object.keys(doc.pitchTypes));
+  const heights = new Map([...decodePlayers(doc)].map(([id, pl]) => [id, pl.heightIn]));
+  const index = { games: gameOrder, heights, types: new Set(Object.keys(doc.pitchTypes)), umpires };
   const pitches = decodePitches(doc);
   const cards: Card[] = [];
   let prev: [number, number, number] = [-1, -1, -1];
@@ -163,12 +158,10 @@ for (const meta of manifest.shards) {
     const m = Math.abs(p.marginIn);
     const key: [number, number, number] = [gameOrder.get(p.gamePk) ?? -1, p.atBat, p.pitch];
 
-    for (const msg of pitchProblems(p, gameOrder, players, types)) fail(`${where}: ${msg}`);
+    for (const msg of pitchProblems(p, index)) fail(`${where}: ${msg}`);
     if (p.umpire === null) {
       noUmpire.add(p.gamePk);
       noUmpirePitches++;
-    } else if (!umpires.has(p.umpire)) {
-      fail(`${where}: plate umpire ${p.umpire} missing from the umpires table`);
     }
     if (ids.has(p.id)) fail(`${where}: appears twice`);
     ids.add(p.id);

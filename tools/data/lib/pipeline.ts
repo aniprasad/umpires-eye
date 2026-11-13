@@ -39,6 +39,7 @@ import {
   type Row,
 } from './format.ts';
 import { countPossible, judge, type Judged } from './judge.ts';
+import { ALLOWED, FAILING_KINDS, findingId, judgeFindings, type FailingKind } from './integrity.ts';
 import type { PlayByPlay, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import type { Person } from './people.ts';
 import { absJudge, crossing } from './physics.ts';
@@ -152,6 +153,29 @@ const READINGS: Record<Reading, string> = {
 const paAt = (atBat: number, afterPitch: number): string =>
   atBat < 0 ? 'start' : `PA ${atBat}${afterPitch ? ` after pitch ${afterPitch}` : ''}`;
 
+// Everything that fails the build unless pinned in the allowlist. Dealable here means dealable over the whole season,
+// before the pool samples it.
+export function integrityFindings(all: readonly Judged[], checks: Checks, people: Map<number, Person>): Record<FailingKind, string[]> {
+  const dealable = all.filter((j) => j.inBox && j.showable);
+
+  return {
+    countMismatches: checks.countMismatches,
+    outsMismatches: checks.outsMismatches,
+    scoreMismatches: checks.scoreMismatches,
+    runnersMismatches: checks.runnersMismatches,
+    impossibleCounts: all.filter((j) => !countPossible(j.p)).map((j) => `${j.p.id}: ${j.p.balls}-${j.p.strikes} before the pitch`),
+    challengesOnExcludedPitches: checks.challengesOnExcluded,
+    orphanChallenges: checks.orphanReviews,
+    challengeRoleAnomalies: checks.roleAnomalies,
+    challengeMismatches: all
+      .filter((j) => j.p.challenge && j.truth !== j.p.finalCall)
+      .map((j) => `${j.p.id}: final call ${j.p.finalCall}, reconstruction ${j.truth} by ${round(Math.abs(j.marginIn), 2)} in`),
+    umpireProblems: checks.umpireProblems,
+    dealableWithoutBatterHeight: dealable.filter((j) => !people.get(j.p.batterId)?.heightIn).map((j) => `${j.p.id}: batter ${j.p.batterId}`),
+    dealableWithoutPitchType: dealable.filter((j) => !j.p.pitchType).map((j) => j.p.id),
+  };
+}
+
 function countBy(list: readonly Judged[], key: (j: Judged) => string): Record<string, number> {
   const counts = new Map<string, number>();
 
@@ -234,6 +258,15 @@ export function buildDataset(inputs: Inputs): BuildResult {
   }
   if (missing.length) {
     throw new Error(`${missing.length} games are not in the cache (${missing.slice(0, 5).join(', ')}). Run npm run data:fetch.`);
+  }
+
+  const findings = integrityFindings(all, checks, inputs.people);
+  const verdict = judgeFindings(findings);
+
+  if (verdict.failures.length) {
+    throw new Error(
+      `${verdict.failures.length} integrity findings outside the allowlist in lib/integrity.ts: ${verdict.failures.slice(0, 5).join('; ')}`,
+    );
   }
 
   const teamAbbr = (id: number): string => teams.get(id)?.abbr ?? String(id);
@@ -475,7 +508,6 @@ export function buildDataset(inputs: Inputs): BuildResult {
 
   const mismatches = challengeMismatches(all, inputs.people, games);
   const geometricOnly = all.filter((j) => j.inBox && !j.showable);
-  const impossible = all.filter((j) => !countPossible(j.p)).map((j) => `${j.p.id}: ${j.p.balls}-${j.p.strikes} before the pitch`);
   const report = {
     note: 'Written by npm run data:build from the cached MLB Stats API responses. Deterministic: rebuilding gives the same file.',
     season: SEASON,
@@ -500,19 +532,13 @@ export function buildDataset(inputs: Inputs): BuildResult {
       calledPitchesKept: all.length,
       excluded: stats.excluded,
       runnersChecked: checks.runnersChecked,
-      countMismatches: sample(checks.countMismatches),
-      outsMismatches: sample(checks.outsMismatches),
-      scoreMismatches: sample(checks.scoreMismatches),
-      runnersMismatches: sample(checks.runnersMismatches),
-      impossibleCounts: sample(impossible),
-      challengesOnExcludedPitches: sample(checks.challengesOnExcluded),
-      orphanChallenges: sample(checks.orphanReviews),
-      challengeRoleAnomalies: sample(checks.roleAnomalies),
+      // These fail the build unless pinned in the allowlist.
+      ...Object.fromEntries(FAILING_KINDS.map((k) => [k, sample(findings[k])])),
+      enforced: { allowlist: ALLOWED, allowed: verdict.allowed, staleAllowlist: verdict.stale },
       catcherChallengesByListedPosition: Object.fromEntries(
         Object.entries(checks.catcherListedAs).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
       ),
       midPlateAppearanceSubstitutions: sample(checks.midPaSubstitutions),
-      umpireProblems: sample(checks.umpireProblems),
       attribution: {
         matchup: all.filter((j) => j.p.attribution === 'matchup').length,
         replaced: all.filter((j) => j.p.attribution === 'replaced').length,
@@ -569,7 +595,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `ump vs ABS: overall ${ump.overall.agree}/${ump.overall.total} (${ump.overall.pct}%), within ${CLOSE_IN} in ${ump.close.agree}/${ump.close.total} (${ump.close.pct}%)`,
     `pool ${composition.pitches}: close ${composition.close} of ${pool.season.close}, near ${composition.near} of ${pool.season.near}, calibrators ${composition.calibrators} of ${pool.season.clear} clear calls, ${composition.mid} challenged between ${NEAR_IN} and ${CALIBRATOR_MIN_IN} in, challenged ${composition.challenged}`,
     `shards ${count}: ${kb(Math.min(...sizes.shardBytes))}-${kb(Math.max(...sizes.shardBytes))} raw, ${kb(Math.min(...sizes.shardGzipBytes))}-${kb(Math.max(...sizes.shardGzipBytes))} gzipped; largest session ${kb(sizes.largestSessionGzipBytes)} of ${kb(SESSION_BUDGET_GZIP)}`,
-    `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${impossible.length} called pitches with an impossible count (not dealable)`,
+    `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${verdict.allowed.length} allowlisted findings (${verdict.allowed.map(findingId).join(', ')})${verdict.stale.length ? `; stale pins: ${verdict.stale.join(', ')}` : ''}`,
     `plate umpire: changed or unknown in ${report.plateUmpire.plateChanged.length} games (${report.plateUmpire.plateChanged.map((g) => g.gamePk).join(', ')}); ${report.plateUmpire.calledPitchesWithoutOne} called pitches name no one`,
     `slow pitches (over ${MAX_FLIGHT_S} s to the plate): ${report.dealableRule.slowPitches.calledPitches} called, ${report.dealableRule.slowPitches.keptFromDealingOnlyForSpeed} kept from dealing only for speed`,
   ];

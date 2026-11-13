@@ -84,3 +84,10 @@ test('a synthetic season builds into a manifest, stats, one dealable shard and a
   assert.deepEqual([shard.venues, shard.umpires], [[[32, 'A Park']], [[70, 'Plate Ump']]]);
   assert.match(shard.credit, /Not affiliated with MLB/);
 });
+
+test('the build fails on an integrity finding that is not on the allowlist', () => {
+  // The feed's count after the first pitch, a ball, says 0-1.
+  const broken = [play({ atBat: 0, batter: 11, events: [pitch(0, 1, { code: 'B', after: [0, 1], x: xForMargin(-0.05) })] }), ...plays.slice(1)];
+
+  assert.throws(() => buildDataset({ ...inputs, loadPlays: () => ({ allPlays: broken }) }), /1 integrity findings outside the allowlist.*900001-0-1/);
+});

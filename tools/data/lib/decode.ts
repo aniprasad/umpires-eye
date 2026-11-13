@@ -109,6 +109,14 @@ export function decodeNames(doc: ShardDoc, table: 'venues' | 'umpires'): Map<num
   return new Map(doc[table].map((row) => [col(row, 'id') as number, col(row, 'name') as string]));
 }
 
+export function decodePlayers(doc: ShardDoc): Map<number, { name: string; heightIn: number | null }> {
+  const col = columns(doc.fields.players);
+
+  return new Map(
+    doc.players.map((row) => [col(row, 'id') as number, { name: col(row, 'name') as string, heightIn: col(row, 'heightIn') as number | null }]),
+  );
+}
+
 export function decodePitches(doc: ShardDoc): StoredPitch[] {
   const col = columns(doc.fields.pitches);
   const challengeCol = columns(doc.fields.challenge);
