@@ -1,0 +1,44 @@
+import { defineConfig, devices } from '@playwright/test';
+
+// Playwright's bundled Chromium doesn't run on Windows ARM64, so local runs drive the installed Edge.
+// CI runs on Linux x64 and uses the bundled Chromium.
+const edge = process.env.CI ? {} : { channel: 'msedge' as const };
+const desktop = { width: 1440, height: 900 };
+const desktopSpecs = /(round|shots|selftest|blur|failures)\.spec\.ts/;
+// Browsers refuse the Fetch standard's "bad ports" (https://fetch.spec.whatwg.org/#port-blocking), and WebKit doesn't
+// even fail the load, so every test would sit out its timeout. These are the ones from 1024 up.
+const BAD_PORTS = [1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080];
+// Several checkouts share one machine, so every run serves its own build and never reuses a server already on the
+// port: that server would be another checkout's build. UE_E2E_PORT lets parallel runs use separate ports.
+const port = Number(process.env.UE_E2E_PORT || 4173);
+
+if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error(`UE_E2E_PORT must be a port from 1024 to 65535, not "${process.env.UE_E2E_PORT}".`);
+if (BAD_PORTS.includes(port)) throw new Error(`Browsers block port ${port} (a Fetch "bad port"; WebKit never loads it). Choose another UE_E2E_PORT, such as 4191.`);
+const origin = `http://localhost:${port}/`;
+
+export default defineConfig({
+  testDir: 'tests/e2e',
+  timeout: 120_000,
+  expect: { timeout: 10_000 },
+  fullyParallel: true,
+  workers: process.env.CI ? 2 : 3,
+  retries: process.env.CI ? 1 : 0,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: {
+    baseURL: origin,
+    trace: 'retain-on-failure',
+  },
+  webServer: {
+    command: `npm run build && npm run preview -- --port ${port}`,
+    url: origin,
+    reuseExistingServer: false,
+    timeout: 180_000,
+  },
+  projects: [
+    { name: 'desktop-edge', testMatch: desktopSpecs, use: { ...devices['Desktop Chrome'], ...edge, viewport: desktop } },
+    { name: 'desktop-webkit', testMatch: desktopSpecs, use: { ...devices['Desktop Safari'], viewport: desktop } },
+    { name: 'iphone', testMatch: /phone\.spec\.ts/, use: { ...devices['iPhone 13'] } },
+    { name: 'pixel', testMatch: /phone\.spec\.ts/, use: { ...devices['Pixel 7'], ...edge } },
+    { name: 'parity', testMatch: /parity\.spec\.ts/, use: { ...devices['Desktop Chrome'], ...edge } },
+  ],
+});
