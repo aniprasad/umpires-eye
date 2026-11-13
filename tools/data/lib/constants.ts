@@ -25,6 +25,10 @@ export const RUBBER_Y = 60.5;
 // The app's lens is fitted to every crossing inside this box, so dealing anything outside it would widen the lens.
 export const DEAL_BOX = { zMin: 0.9, zMax: 4.5, xMax: 1.5 } as const;
 
+// From release to the front of the plate. An eephus or a position player's lob arcs high and slow enough to leave the
+// app's frame on the way in, so only pitches this quick are dealt.
+export const MAX_FLIGHT_S = 0.6;
+
 export const CLOSE_IN = 1.5;
 export const NEAR_IN = 4.5;
 export const CALIBRATOR_MIN_IN = 6;

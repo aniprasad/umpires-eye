@@ -8,6 +8,7 @@ import {
   DEAL_BOX,
   GAME_TYPE_NAMES,
   GAME_TYPES,
+  MAX_FLIGHT_S,
   MID_Y,
   NEAR_IN,
   PLATE_FRONT_Y,
@@ -42,7 +43,7 @@ import type { PlayByPlay, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import type { Person } from './people.ts';
 import { absJudge, crossing } from './physics.ts';
 import { addChecks, emptyChecks, extractGame, type Checks } from './plays.ts';
-import { makeShards, PER_CLOSE, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
+import { band, makeShards, PER_CLOSE, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
 import { hash32, mulberry32 } from './rng.ts';
 import { parseSchedule, parseTeams, type Game, type Named } from './schedule.ts';
 import {
@@ -150,6 +151,40 @@ const READINGS: Record<Reading, string> = {
 
 const paAt = (atBat: number, afterPitch: number): string =>
   atBat < 0 ? 'start' : `PA ${atBat}${afterPitch ? ` after pitch ${afterPitch}` : ''}`;
+
+function countBy(list: readonly Judged[], key: (j: Judged) => string): Record<string, number> {
+  const counts = new Map<string, number>();
+
+  for (const j of list) counts.set(key(j), (counts.get(key(j)) ?? 0) + 1);
+
+  return Object.fromEntries([...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)));
+}
+
+// Pitches too slow to deal. They stay in every season total; only dealing leaves them out.
+export function slowPitches(all: readonly Judged[]) {
+  const slow = all.filter((j) => j.flightS !== null && j.flightS > MAX_FLIGHT_S);
+  // In the crossing box and showable but for their speed, so the flight-time bound alone keeps these from the deck.
+  const onlyForSpeed = slow.filter((j) => j.inBox && j.p.mph !== null && j.p.attribution !== 'uncertain' && countPossible(j.p));
+  const dealableFlights = all.flatMap((j) => (j.inBox && j.showable && j.flightS !== null ? [j.flightS] : []));
+  const type = (j: Judged): string => j.p.pitchType ?? 'none';
+
+  return {
+    maxFlightS: MAX_FLIGHT_S,
+    calledPitches: slow.length,
+    byPitchType: countBy(slow, type),
+    keptFromDealingOnlyForSpeed: onlyForSpeed.length,
+    keptFromDealingByPitchType: countBy(onlyForSpeed, type),
+    keptFromDealingByBand: countBy(onlyForSpeed, (j) => band(j)),
+    slowestDealableS: round(
+      dealableFlights.reduce((m, v) => Math.max(m, v), 0),
+      4,
+    ),
+    slowest: [...slow]
+      .sort((a, b) => (b.flightS ?? 0) - (a.flightS ?? 0) || a.seq - b.seq)
+      .slice(0, 10)
+      .map((j) => `${j.p.id}: ${type(j)} ${j.p.mph ?? '?'} mph, ${round(j.flightS ?? 0, 3)} s`),
+  };
+}
 
 function plateReport(tracks: ReadonlyArray<{ game: Game; track: PlateTrack }>, nameOf: (id: number | null) => string | null) {
   const describe = ({ game, track }: { game: Game; track: PlateTrack }) => ({
@@ -366,6 +401,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
       frontOfPlateYFt: PLATE_FRONT_Y,
       rubberYFt: RUBBER_Y,
       dealBox: DEAL_BOX,
+      maxFlightS: MAX_FLIGHT_S,
       closeIn: CLOSE_IN,
       nearIn: NEAR_IN,
       calibratorMinIn: CALIBRATOR_MIN_IN,
@@ -496,6 +532,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
       geometric: all.filter((j) => j.inBox).length,
       geometricButNotShowable: geometricOnly.length,
       geometricButNotShowableInPoolRange: pool.notShowable,
+      slowPitches: slowPitches(all),
     },
     storedPrecision: { decimalsUsed: decimals, maxMarginDriftIn: round(marginDrift, 4) },
     pool: composition,
@@ -529,6 +566,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `shards ${count}: ${kb(Math.min(...sizes.shardBytes))}-${kb(Math.max(...sizes.shardBytes))} raw, ${kb(Math.min(...sizes.shardGzipBytes))}-${kb(Math.max(...sizes.shardGzipBytes))} gzipped; largest session ${kb(sizes.largestSessionGzipBytes)} of ${kb(SESSION_BUDGET_GZIP)}`,
     `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${impossible.length} called pitches with an impossible count (not dealable)`,
     `plate umpire: changed or unknown in ${report.plateUmpire.plateChanged.length} games (${report.plateUmpire.plateChanged.map((g) => g.gamePk).join(', ')}); ${report.plateUmpire.calledPitchesWithoutOne} called pitches name no one`,
+    `slow pitches (over ${MAX_FLIGHT_S} s to the plate): ${report.dealableRule.slowPitches.calledPitches} called, ${report.dealableRule.slowPitches.keptFromDealingOnlyForSpeed} kept from dealing only for speed`,
   ];
 
   return { files, summary, sizes };

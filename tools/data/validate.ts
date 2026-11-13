@@ -5,12 +5,12 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cacheDir, openCache } from './lib/cache.ts';
-import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, NEAR_IN, SEASON, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
+import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, MAX_FLIGHT_S, NEAR_IN, SEASON, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
 import type { Card } from './lib/deal.ts';
 import { decodeGames, decodeNames, decodePitches, type ShardDoc, type StoredPitch } from './lib/decode.ts';
 import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
 import { loadInputs } from './lib/inputs.ts';
-import { absJudge, crossing, inDealBox, TRAJ_KEYS } from './lib/physics.ts';
+import { absJudge, crossing, flightTime, inDealBox, TRAJ_KEYS } from './lib/physics.ts';
 import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, SEED, sessionSizes, sha256 } from './lib/pipeline.ts';
 import { compareGames } from './lib/schedule.ts';
 import type { Tally } from './lib/stats.ts';
@@ -115,6 +115,7 @@ const table: string[] = [];
 const totals = { pitches: 0, dealable: 0, close: 0, near: 0, calibrators: 0, challenged: 0, agree: 0, overturned: 0 };
 let maxDrift = 0;
 let heldBack = 0;
+let slowestDealable = 0;
 let noUmpirePitches = 0;
 const noUmpire = new Set<number>();
 
@@ -156,7 +157,9 @@ for (const meta of manifest.shards) {
     const where = `${meta.file} ${p.id}`;
     const mid = crossing(p.traj);
     const judged = absJudge(mid.x, mid.z, p.zoneTop, p.zoneBottom);
-    const drawable = inDealBox(mid) && p.extension !== null && p.mph !== null;
+    const boxed = inDealBox(mid) && p.extension !== null && p.mph !== null;
+    const flight = p.extension === null ? null : flightTime(p.traj, p.extension);
+    const drawable = boxed && flight !== null && flight <= MAX_FLIGHT_S;
     const m = Math.abs(p.marginIn);
     const key: [number, number, number] = [gameOrder.get(p.gamePk) ?? -1, p.atBat, p.pitch];
 
@@ -176,7 +179,11 @@ for (const meta of manifest.shards) {
     if (judged.strike !== (p.abs === 'S')) fail(`${where}: stored ABS call differs from the one recomputed from the stored trajectory`);
     maxDrift = Math.max(maxDrift, Math.abs(judged.marginIn - p.marginIn));
     if (Math.abs(judged.marginIn - p.marginIn) > MARGIN_TOLERANCE_IN) fail(`${where}: margin drifts ${judged.marginIn} vs ${p.marginIn}`);
-    if (p.dealable && !drawable) fail(`${where}: dealable but outside the crossing box or missing release data`);
+    if (p.dealable && !boxed) fail(`${where}: dealable but outside the crossing box or missing release data`);
+    if (p.dealable && flight !== null) {
+      slowestDealable = Math.max(slowestDealable, flight);
+      if (flight > MAX_FLIGHT_S) fail(`${where}: dealable but ${flight.toFixed(3)} s from release to the plate`);
+    }
     if (!p.dealable && drawable) heldBack++;
     if (!p.challenge && !(p.dealable && (m <= NEAR_IN || m >= CALIBRATOR_MIN_IN))) fail(`${where}: does not belong in the pool`);
 
@@ -233,6 +240,7 @@ console.log(`largest play session: ${kb(sizes.largestSessionGzipBytes)} gzipped 
 console.log(
   `challenges: ABS reconstruction = final call on ${totals.agree}/${totals.challenged}; max stored-margin drift ${maxDrift.toFixed(4)} in; ${heldBack} drawable pitches held back (uncertain batter or pitcher, or an impossible count)`,
 );
+console.log(`slowest dealable pitch: ${slowestDealable.toFixed(3)} s from release to the plate (limit ${MAX_FLIGHT_S} s)`);
 console.log(`pitches in the shards without a plate umpire: ${noUmpirePitches}, in games ${[...noUmpire].sort((a, b) => a - b).join(', ') || 'none'}`);
 
 if (rebuild) {

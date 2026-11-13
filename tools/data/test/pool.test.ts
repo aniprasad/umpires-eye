@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import { MAX_FLIGHT_S, MID_Y } from '../lib/constants.ts';
 import { dealTen, deckOf, tenProblems, type Card } from '../lib/deal.ts';
 import { judge, type Judged } from '../lib/judge.ts';
+import { tAtY } from '../lib/physics.ts';
 import { makeShards, selectPool, spreadSample, stratumOf, type Pool } from '../lib/pool.ts';
 import { mulberry32 } from '../lib/rng.ts';
+import { umpVsAbs } from '../lib/stats.ts';
 import { judged } from './fixtures.ts';
 
 function season(n: number): Judged[] {
@@ -61,6 +64,18 @@ describe('selectPool', () => {
       selectPool([fine, broken], 'seed').entries.map((e) => e.j.seq),
       [0],
     );
+  });
+
+  test('leaves out a pitch too slow to reach the plate in time, but the season still counts it', () => {
+    // A 48 mph lob that drops through the middle of the zone: an eephus, or a position player pitching.
+    const base = { y0: 50, vY0: -70, aY: 6, vX0: 0, aX: 0, vZ0: 8, aZ: -32 };
+    const t = tAtY({ ...base, x0: 0, z0: 0 }, MID_Y);
+    const lob = judge({ ...judged({ seq: 0, marginIn: 0.4 }).p, traj: { ...base, x0: 0, z0: 2.5 - base.vZ0 * t - 0.5 * base.aZ * t * t } }, 0);
+
+    assert.deepEqual([lob.inBox, lob.truth, lob.showable], [true, 'S', false]);
+    assert.ok((lob.flightS ?? 0) > MAX_FLIGHT_S);
+    assert.deepEqual(selectPool([lob], 'seed').entries, []);
+    assert.equal(umpVsAbs([lob]).overall.total, 1);
   });
 });
 

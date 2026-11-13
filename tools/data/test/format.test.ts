@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BALL_R, PLATE_HALF } from '../lib/constants.ts';
+import { BALL_R, MAX_FLIGHT_S, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from '../lib/constants.ts';
 import { decodeGames, decodeNames, decodePitches, type ShardDoc } from '../lib/decode.ts';
 import {
   CHALLENGE_FIELDS,
@@ -12,10 +12,11 @@ import {
   pitchRow,
   quantize,
   round,
+  roundTraj,
   rowsJson,
 } from '../lib/format.ts';
 import { judge } from '../lib/judge.ts';
-import { absJudge, crossing } from '../lib/physics.ts';
+import { absJudge, crossing, quickEnough } from '../lib/physics.ts';
 import type { CalledPitch } from '../lib/plays.ts';
 import { GAME, HOME, judged, trajThrough, ZONE } from './fixtures.ts';
 
@@ -35,6 +36,21 @@ test('quantize keeps four decimals unless rounding would flip the call', () => {
   assert.equal(j.truth, 'S');
   assert.notEqual(q.decimals, 4);
   assert.equal(absJudge(mid.x, mid.z, q.zoneTop, q.zoneBottom).strike, true);
+});
+
+test('quantize keeps more decimals when rounding the extension would push a pitch past the flight-time bound', () => {
+  // Steady speed, so flight time is distance over speed: 1e-5 s inside the bound at an extension of 6.5049 ft, and
+  // outside it once that rounds to 6.50, which moves release 0.0049 ft farther from the plate.
+  const extension = 6.5049;
+  const speed = (RUBBER_Y - extension - PLATE_FRONT_Y) / (MAX_FLIGHT_S - 1e-5);
+  const traj = { x0: 0, y0: 50, z0: 2.5, vX0: 0, vY0: -speed, vZ0: 0, aX: 0, aY: 0, aZ: 0 };
+  const j = judge({ ...judged({ seq: 1, marginIn: 0.8 }).p, traj, extension }, 1);
+  const q = quantize(j);
+
+  assert.equal(j.showable, true);
+  assert.equal(quickEnough(roundTraj(traj, 4), round(extension, 2)), false);
+  assert.deepEqual([q.decimals, q.extension], [5, 6.505]);
+  assert.equal(q.extension !== null && quickEnough(q.traj, q.extension), true);
 });
 
 test('a pitch row decodes back to the same pitch', () => {

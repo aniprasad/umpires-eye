@@ -1,4 +1,4 @@
-import { BALL_R, DEAL_BOX, MID_Y, PLATE_HALF, RUBBER_Y } from './constants.ts';
+import { BALL_R, DEAL_BOX, MAX_FLIGHT_S, MID_Y, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from './constants.ts';
 
 export interface Traj {
   x0: number;
@@ -47,6 +47,13 @@ export function crossing(tr: Traj, y: number = MID_Y): Point {
 export function releaseT(tr: Traj, extension: number): number {
   return tAtY(tr, RUBBER_Y - extension);
 }
+
+// Seconds from release to the front of the plate.
+export function flightTime(tr: Traj, extension: number): number {
+  return tAtY(tr, PLATE_FRONT_Y) - releaseT(tr, extension);
+}
+
+export const quickEnough = (tr: Traj, extension: number): boolean => flightTime(tr, extension) <= MAX_FLIGHT_S;
 
 // A strike if any part of the ball touches the zone rectangle: the distance from the ball's centre to the rectangle is
 // at most the radius, which rounds the corners. marginIn is how far the ball would have to move to flip the call,

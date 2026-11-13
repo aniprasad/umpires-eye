@@ -1,4 +1,4 @@
-import { absJudge, crossing, inDealBox, TRAJ_KEYS, type Traj } from './physics.ts';
+import { absJudge, crossing, inDealBox, quickEnough, TRAJ_KEYS, type Traj } from './physics.ts';
 import type { Judged } from './judge.ts';
 import type { Role } from './plays.ts';
 import type { Game } from './schedule.ts';
@@ -89,25 +89,34 @@ export interface Quantized {
   traj: Traj;
   zoneTop: number;
   zoneBottom: number;
+  extension: number | null;
   decimals: number | null;
 }
 
 const LEVELS = [4, 5, 6, 8];
 
-// Four decimals is plenty for drawing, but a pitch a hair from the edge can flip when its inputs are rounded. Such a
-// pitch keeps more decimals, so recomputing from what is stored always reproduces the stored truth and dealable flag.
+// Four decimals is plenty for drawing, but a pitch a hair from an edge can flip when its inputs are rounded. Such a
+// pitch keeps more decimals, so recomputing from what is stored always reproduces the stored truth, the crossing box
+// and the flight-time bound. Extension, a release distance, keeps two decimals fewer than the trajectory.
 export function quantize(j: Judged): Quantized {
+  const ext = j.p.extension;
+  const quick = ext !== null && quickEnough(j.p.traj, ext);
+
   for (const d of LEVELS) {
     const traj = roundTraj(j.p.traj, d);
     const zoneTop = round(j.p.zoneTop, d);
     const zoneBottom = round(j.p.zoneBottom, d);
+    const extension = ext === null ? null : round(ext, d - 2);
     const mid = crossing(traj);
     const k = absJudge(mid.x, mid.z, zoneTop, zoneBottom);
+    const stillQuick = extension !== null && quickEnough(traj, extension);
 
-    if (k.strike === (j.truth === 'S') && inDealBox(mid) === j.inBox) return { traj, zoneTop, zoneBottom, decimals: d };
+    if (k.strike === (j.truth === 'S') && inDealBox(mid) === j.inBox && stillQuick === quick) {
+      return { traj, zoneTop, zoneBottom, extension, decimals: d };
+    }
   }
 
-  return { traj: { ...j.p.traj }, zoneTop: j.p.zoneTop, zoneBottom: j.p.zoneBottom, decimals: null };
+  return { traj: { ...j.p.traj }, zoneTop: j.p.zoneTop, zoneBottom: j.p.zoneBottom, extension: ext, decimals: null };
 }
 
 // The venue is an id here; its name is in the shard's venues table.
@@ -149,7 +158,7 @@ export function pitchRow(j: Judged, q: Quantized, dealable: boolean, teamAbbr: (
     p.pitchType,
     p.mph === null ? null : round(p.mph, 1),
     ...TRAJ_KEYS.map((k) => q.traj[k]),
-    p.extension === null ? null : round(p.extension, 2),
+    q.extension,
     q.zoneTop,
     q.zoneBottom,
     p.umpCall,

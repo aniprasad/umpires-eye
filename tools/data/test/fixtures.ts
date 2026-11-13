@@ -2,7 +2,7 @@ import { BALL_R, MID_Y, PLATE_HALF } from '../lib/constants.ts';
 import type { Judged } from '../lib/judge.ts';
 import type { Play, PlayEvent, Review, Runner } from '../lib/mlb.ts';
 import type { Person } from '../lib/people.ts';
-import { tAtY, type Traj } from '../lib/physics.ts';
+import { flightTime, tAtY, type Traj } from '../lib/physics.ts';
 import type { Call, CalledPitch, Side } from '../lib/plays.ts';
 import type { Game } from '../lib/schedule.ts';
 
@@ -200,6 +200,7 @@ export function judged(s: JudgedSpec): Judged {
     truth,
     marginIn: s.marginIn,
     inBox: s.inBox ?? true,
+    flightS: flightTime(p.traj, 6.5),
     showable: s.showable ?? true,
   };
 }

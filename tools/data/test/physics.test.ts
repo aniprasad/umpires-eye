@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BALL_R, MID_Y, PLATE_FRONT_Y, PLATE_HALF } from '../lib/constants.ts';
-import { absJudge, boxStrike, crossing, inDealBox, posAt, tAtY } from '../lib/physics.ts';
+import { BALL_R, MID_Y, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from '../lib/constants.ts';
+import { absJudge, boxStrike, crossing, flightTime, inDealBox, posAt, quickEnough, tAtY } from '../lib/physics.ts';
 import { hash32, mulberry32 } from '../lib/rng.ts';
 import { trajThrough, ZONE } from './fixtures.ts';
 
@@ -54,6 +54,16 @@ test('the fixture trajectory crosses mid-plate where it is asked to', () => {
 
   close(mid.x, 0.75, 1e-12);
   close(mid.z, 1.7, 1e-12);
+});
+
+test('flight time runs from release, 60.5 ft less the extension, to the front of the plate', () => {
+  const steady = (mph: number) => ({ x0: 0, y0: 50, z0: 2.5, vX0: 0, vY0: -mph * (5280 / 3600), vZ0: 0, aX: 0, aY: 0, aZ: 0 });
+  const travel = RUBBER_Y - 6.5 - PLATE_FRONT_Y;
+
+  close(flightTime(steady(90), 6.5), travel / (90 * (5280 / 3600)), 1e-12);
+  // About 60 mph all the way is right at the bound; an eephus is slower still.
+  assert.equal(quickEnough(steady(61), 6.5), true);
+  assert.equal(quickEnough(steady(59), 6.5), false);
 });
 
 test('hash32 is FNV-1a', () => {
