@@ -145,6 +145,17 @@ export async function referenceKey(page: Page): Promise<string> {
   return `${size?.width}x${size?.height}@${dpr}`;
 }
 
+/** The build of the app a page runs: its entry script, whose hashed name changes with the code and the assets it imports. */
+export async function servedBuild(page: Page): Promise<string> {
+  return page.evaluate(() => [...document.querySelectorAll<HTMLScriptElement>('script[type="module"][src]')].map((s) => new URL(s.src).pathname).join(' '));
+}
+
+/** What the native-reference project writes: the build it drew, and a drawing per size and density. */
+export interface References {
+  build: string;
+  shots: Record<string, CatcherShot>;
+}
+
 function referenceFile(testInfo: TestInfo): string {
   const project = testInfo.config.projects.find((p) => p.name === REFERENCE_PROJECT);
 
@@ -153,29 +164,32 @@ function referenceFile(testInfo: TestInfo): string {
   return join(project.outputDir, `${REFERENCE_PROJECT}.json`);
 }
 
-export function writeReferences(testInfo: TestInfo, shots: Record<string, CatcherShot>): void {
+export function writeReferences(testInfo: TestInfo, refs: References): void {
   const file = referenceFile(testInfo);
 
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(shots));
+  writeFileSync(file, JSON.stringify(refs));
 }
 
 /**
- * Edge's native drawing at the page's size and density. Playwright clears the output folder when a run starts, so the
- * file can only come from this run's native-reference project.
+ * Edge's native drawing at the page's size and density, by the build the page runs. A command-line run clears the
+ * output folder before it starts, but UI mode and the VS Code extension keep it, and run native-reference only when it's
+ * ticked, so a reference left by an earlier build is refused.
  */
-export function readReference(testInfo: TestInfo, key: string): CatcherShot {
+export function readReference(testInfo: TestInfo, key: string, build: string): CatcherShot {
   const file = referenceFile(testInfo);
-  let shots: Record<string, CatcherShot>;
+  const redraw = `The ${REFERENCE_PROJECT} project draws it at the start of a run: don't skip it with --no-deps, and in UI mode or the VS Code extension, tick it too.`;
+  let refs: References;
 
   try {
-    shots = JSON.parse(readFileSync(file, 'utf8')) as Record<string, CatcherShot>;
+    refs = JSON.parse(readFileSync(file, 'utf8')) as References;
   } catch (e) {
-    throw new Error(`No native reference in ${file}: the ${REFERENCE_PROJECT} project writes it before the desktop projects run, unless --no-deps skips it. (${String(e)})`);
+    throw new Error(`No native reference in ${file}. ${redraw} (${String(e)})`);
   }
-  const shot = shots[key];
+  if (refs.build !== build) throw new Error(`The native reference in ${file} is from another build of the app (${String(refs.build)}, not ${build}). ${redraw}`);
+  const shot = refs.shots[key];
 
-  if (!shot) throw new Error(`The native reference has no ${key}, only ${Object.keys(shots).join(', ')}.`);
+  if (!shot) throw new Error(`The native reference has no ${key}, only ${Object.keys(refs.shots).join(', ')}.`);
 
   return shot;
 }

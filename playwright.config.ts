@@ -17,7 +17,7 @@ if (BAD_PORTS.includes(port)) throw new Error(`Browsers block port ${port} (a Fe
 const origin = `http://localhost:${port}/`;
 // In WebKit a trace's screencast and DOM snapshots made the page's frames three times slower, which pushed the long
 // rounds toward their timeouts under load. WebKit's traces keep the steps and their timings, plus one screenshot when a
-// test fails; Edge's traces keep everything.
+// test fails. Edge's traces keep everything, except the speed test's, which speed.spec.ts makes light in both engines.
 const lightTrace = {
   trace: { mode: 'retain-on-failure', screenshots: false, snapshots: false },
   screenshot: 'only-on-failure',
