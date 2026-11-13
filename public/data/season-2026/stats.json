@@ -1,0 +1,152 @@
+{
+  "format": "umpires-eye.season-stats",
+  "version": 1,
+  "season": 2026,
+  "credit": "MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.",
+  "truthNote": "abs and marginIn are our reconstruction of the 2026 ABS call from the feed's tracking, not MLB's official ABS output.",
+  "games": {
+    "total": 2469,
+    "byType": {
+      "R": 2429,
+      "F": 9,
+      "D": 16,
+      "L": 10,
+      "W": 5
+    }
+  },
+  "calledPitches": {
+    "total": 362177,
+    "calledStrikes": 117510,
+    "balls": 244667,
+    "byType": {
+      "R": 356498,
+      "F": 1260,
+      "D": 2322,
+      "L": 1355,
+      "W": 742
+    }
+  },
+  "excluded": {
+    "ballInDirt": 15142,
+    "automatic": 2347,
+    "noTracking": 192
+  },
+  "challenges": {
+    "total": 10749,
+    "overturned": 5804,
+    "byRole": {
+      "catcher": {
+        "challenges": 5738,
+        "overturned": 3363
+      },
+      "pitcher": {
+        "challenges": 180,
+        "overturned": 72
+      },
+      "batter": {
+        "challenges": 4831,
+        "overturned": 2369
+      }
+    },
+    "absAgreesWithFinalCall": {
+      "agree": 10748,
+      "total": 10749,
+      "pct": 99.99
+    }
+  },
+  "umpVsAbs": {
+    "overall": {
+      "agree": 337685,
+      "total": 362177,
+      "pct": 93.24
+    },
+    "close": {
+      "withinIn": 1.5,
+      "agree": 40933,
+      "total": 59910,
+      "pct": 68.32
+    },
+    "near": {
+      "withinIn": 4.5,
+      "agree": 145576,
+      "total": 169925,
+      "pct": 85.67
+    },
+    "afterChallenges": {
+      "agree": 343489,
+      "total": 362177,
+      "pct": 94.84
+    },
+    "missed": {
+      "strikesCalledBalls": 11382,
+      "ballsCalledStrikes": 13110
+    }
+  },
+  "umpVsAbsByGameType": {
+    "R": {
+      "overall": {
+        "agree": 332370,
+        "total": 356498,
+        "pct": 93.23
+      },
+      "close": {
+        "withinIn": 1.5,
+        "agree": 40318,
+        "total": 59024,
+        "pct": 68.31
+      }
+    },
+    "F": {
+      "overall": {
+        "agree": 1198,
+        "total": 1260,
+        "pct": 95.08
+      },
+      "close": {
+        "withinIn": 1.5,
+        "agree": 150,
+        "total": 200,
+        "pct": 75
+      }
+    },
+    "D": {
+      "overall": {
+        "agree": 2170,
+        "total": 2322,
+        "pct": 93.45
+      },
+      "close": {
+        "withinIn": 1.5,
+        "agree": 245,
+        "total": 357,
+        "pct": 68.63
+      }
+    },
+    "L": {
+      "overall": {
+        "agree": 1264,
+        "total": 1355,
+        "pct": 93.28
+      },
+      "close": {
+        "withinIn": 1.5,
+        "agree": 142,
+        "total": 206,
+        "pct": 68.93
+      }
+    },
+    "W": {
+      "overall": {
+        "agree": 683,
+        "total": 742,
+        "pct": 92.05
+      },
+      "close": {
+        "withinIn": 1.5,
+        "agree": 78,
+        "total": 123,
+        "pct": 63.41
+      }
+    }
+  }
+}

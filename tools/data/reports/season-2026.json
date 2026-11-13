@@ -1,0 +1,1207 @@
+{
+  "note": "Written by npm run data:build from the cached MLB Stats API responses. Deterministic: rebuilding gives the same file.",
+  "season": 2026,
+  "schedule": {
+    "games": 2469,
+    "byType": {
+      "R": 2429,
+      "F": 9,
+      "D": 16,
+      "L": 10,
+      "W": 5
+    },
+    "skippedListings": {
+      "Cancelled": 1
+    },
+    "venues": 34,
+    "scheduledPlateUmpires": 91,
+    "gamesWithoutVenue": {
+      "count": 0,
+      "first": []
+    },
+    "gamesWithoutScheduledPlateUmpire": {
+      "count": 0,
+      "first": []
+    }
+  },
+  "plateUmpire": {
+    "onPitches": 91,
+    "calledPitchesWithoutOne": 163,
+    "readings": {
+      "takes-plate": "moves to the plate",
+      "leaves-plate": "the plate umpire moves to a base, so no one is named until someone takes the plate",
+      "replaces-plate": "replaces the plate umpire",
+      "vacates-plate": "the plate umpire leaves, so no one is named until someone takes the plate",
+      "former-slot": "names an umpire who took the plate earlier in the play, so it fills his former slot and the plate is unchanged",
+      "conflict": "contradicts the plate umpire on record, so no one is named for the game up to here",
+      "base": "a change among the base umpires; the plate is unchanged",
+      "unreadable": "not a form the build reads; the build fails"
+    },
+    "gamesWithUmpireChanges": 16,
+    "umpireChanges": 39,
+    "plateChanged": [
+      {
+        "gamePk": 823806,
+        "date": "2026-04-01",
+        "scheduled": "CB Bucknor",
+        "plate": [
+          "start: CB Bucknor, 20 called",
+          "PA 8 after pitch 6: Chad Fairchild, 121 called"
+        ],
+        "events": [
+          "PA 8 after pitch 6: [takes-plate] Umpire Chad Fairchild moving to HP.",
+          "PA 8 after pitch 6: [base] Umpire Jeremie Rehak moving to 2B.",
+          "PA 8 after pitch 6: [base] Umpire change: NO UMPIRE replaces 1B umpire Jeremie Rehak."
+        ]
+      },
+      {
+        "gamePk": 824289,
+        "date": "2026-04-16",
+        "scheduled": "Andy Fletcher",
+        "plate": [
+          "start: Andy Fletcher, 104 called",
+          "PA 54: Cory Blaser, 48 called"
+        ],
+        "events": [
+          "PA 54: [base] Umpire change: NO UMPIRE replaces umpire Jansen Visconti.",
+          "PA 54: [base] Umpire change: Jansen Visconti replaces umpire Cory Blaser.",
+          "PA 54: [replaces-plate] Umpire change: Cory Blaser replaces umpire Andy Fletcher."
+        ]
+      },
+      {
+        "gamePk": 824195,
+        "date": "2026-05-13",
+        "scheduled": "Roberto Ortiz",
+        "plate": [
+          "start: Roberto Ortiz, 86 called",
+          "PA 49 after pitch 4: Alex MacKay, 72 called"
+        ],
+        "events": [
+          "PA 49 after pitch 4: [takes-plate] Umpire Alex MacKay moving to HP.",
+          "PA 49 after pitch 4: [base] Umpire Willie Traynor moving to 1B.",
+          "PA 49 after pitch 4: [base] Umpire change: NO UMPIRE replaces 1B umpire Willie Traynor."
+        ]
+      },
+      {
+        "gamePk": 824600,
+        "date": "2026-05-16",
+        "scheduled": "Brian O'Nora",
+        "plate": [
+          "start: Brian O'Nora, 52 called",
+          "PA 29 after pitch 1: Erich Bacchus, 93 called"
+        ],
+        "events": [
+          "PA 29 after pitch 1: [takes-plate] Umpire Erich Bacchus moving to HP.",
+          "PA 29 after pitch 1: [former-slot] Umpire change: NO UMPIRE replaces HP umpire Erich Bacchus."
+        ]
+      },
+      {
+        "gamePk": 824334,
+        "date": "2026-07-04",
+        "scheduled": "Scott Barry",
+        "plate": [
+          "start: Scott Barry, 70 called",
+          "PA 40: Manny Gonzalez, 72 called"
+        ],
+        "events": [
+          "PA 40: [takes-plate] Umpire Manny Gonzalez moving to HP.",
+          "PA 40: [base] Umpire Tom Hanahan moving to 2B."
+        ]
+      },
+      {
+        "gamePk": 824971,
+        "date": "2026-08-02",
+        "scheduled": "Jeremie Rehak",
+        "plate": [
+          "start: Jeremie Rehak, 93 called",
+          "PA 43 after pitch 5: Adam Beck, 85 called"
+        ],
+        "events": [
+          "PA 43 after pitch 5: [takes-plate] Umpire Adam Beck moving to HP.",
+          "PA 43 after pitch 5: [former-slot] Umpire change: NO UMPIRE replaces HP umpire Adam Beck."
+        ]
+      },
+      {
+        "gamePk": 824398,
+        "date": "2026-08-18",
+        "scheduled": "Jordan Baker",
+        "plate": [
+          "start: Jordan Baker, 82 called",
+          "PA 41: Rob Drake, 70 called"
+        ],
+        "events": [
+          "PA 41: [takes-plate] Umpire Rob Drake moving to HP.",
+          "PA 41: [base] Umpire Stu Scheurwater moving to 1B.",
+          "PA 41: [base] Umpire change: NO UMPIRE replaces umpire Steven Jaschinski.",
+          "PA 41: [former-slot] Umpire change: Steven Jaschinski replaces HP umpire Rob Drake."
+        ]
+      },
+      {
+        "gamePk": 824874,
+        "date": "2026-08-29",
+        "scheduled": "Ron Kulpa",
+        "plate": [
+          "start: Ron Kulpa, 94 called",
+          "PA 52 after pitch 3: Manny Gonzalez, 39 called"
+        ],
+        "events": [
+          "PA 52 after pitch 3: [takes-plate] Umpire Manny Gonzalez moving to HP.",
+          "PA 52 after pitch 3: [former-slot] Umpire change: NO UMPIRE replaces HP umpire Manny Gonzalez."
+        ]
+      },
+      {
+        "gamePk": 824473,
+        "date": "2026-08-31",
+        "scheduled": "Manny Gonzalez",
+        "plate": [
+          "start: Manny Gonzalez, 79 called",
+          "PA 37: D.J. Reyburn, 73 called"
+        ],
+        "events": [
+          "PA 37: [takes-plate] Umpire D.J. Reyburn moving to HP.",
+          "PA 37: [base] Umpire Ron Kulpa moving to 2B.",
+          "PA 37: [base] Umpire change: NO UMPIRE replaces 1B umpire Ron Kulpa."
+        ]
+      },
+      {
+        "gamePk": 824716,
+        "date": "2026-09-01",
+        "scheduled": "Will Little",
+        "plate": [
+          "start: no one named, 163 called"
+        ],
+        "events": [
+          "PA 53: [base] Umpire Ryan Wills moving to 2B.",
+          "PA 53: [conflict] Umpire change: NO UMPIRE replaces HP umpire Ryan Wills."
+        ]
+      },
+      {
+        "gamePk": 824793,
+        "date": "2026-09-07",
+        "scheduled": "Chris Guccione",
+        "plate": [
+          "start: Chris Guccione, 19 called",
+          "PA 8 after pitch 4: James Jean, 128 called"
+        ],
+        "events": [
+          "PA 8 after pitch 4: [base] Umpire change: NO UMPIRE replaces umpire Charlie Ramos.",
+          "PA 8 after pitch 4: [base] Umpire change: Charlie Ramos replaces umpire James Jean.",
+          "PA 8 after pitch 4: [replaces-plate] Umpire change: James Jean replaces umpire Chris Guccione."
+        ]
+      }
+    ],
+    "plateUnchanged": [
+      {
+        "gamePk": 823569,
+        "date": "2026-04-04",
+        "scheduled": "Ron Kulpa",
+        "plate": [
+          "start: Ron Kulpa, 222 called"
+        ],
+        "events": [
+          "PA 35: [base] Umpire Scott Barry moving to 1B.",
+          "PA 35: [base] Umpire Manny Gonzalez moving to 2B."
+        ]
+      },
+      {
+        "gamePk": 823867,
+        "date": "2026-05-18",
+        "scheduled": "Alfonso Márquez",
+        "plate": [
+          "start: Alfonso Márquez, 167 called"
+        ],
+        "events": [
+          "PA 10 after pitch 2: [base] Umpire Mike Estabrook moving to 1B.",
+          "PA 10 after pitch 2: [base] Umpire Jonathan Parra moving to 1B.",
+          "PA 10 after pitch 2: [base] Umpire change: NO UMPIRE replaces 1B umpire Jonathan Parra."
+        ]
+      },
+      {
+        "gamePk": 824426,
+        "date": "2026-06-13",
+        "scheduled": "Doug Eddings",
+        "plate": [
+          "start: Doug Eddings, 120 called"
+        ],
+        "events": [
+          "PA 14: [base] Umpire change: NO UMPIRE replaces umpire Emil Jimenez.",
+          "PA 14: [base] Umpire change: Emil Jimenez replaces umpire Mike Muchlinski."
+        ]
+      },
+      {
+        "gamePk": 824912,
+        "date": "2026-06-16",
+        "scheduled": "Jordan Baker",
+        "plate": [
+          "start: Jordan Baker, 168 called"
+        ],
+        "events": [
+          "PA 20: [base] Umpire change: John Bacon replaces umpire Junior Valentine."
+        ]
+      },
+      {
+        "gamePk": 822886,
+        "date": "2026-06-19",
+        "scheduled": "Emil Jimenez",
+        "plate": [
+          "start: Emil Jimenez, 132 called"
+        ],
+        "events": [
+          "PA 9: [base] Umpire Mike Muchlinski moving to 2B.",
+          "PA 9: [base] Umpire Gabe Morales moving to 3B."
+        ]
+      }
+    ]
+  },
+  "integrity": {
+    "plays": 187264,
+    "pitchEvents": 725996,
+    "calledCodes": 362369,
+    "calledPitchesKept": 362177,
+    "excluded": {
+      "ballInDirt": 15142,
+      "automatic": 2347,
+      "noTracking": 192
+    },
+    "runnersChecked": 143557,
+    "countMismatches": {
+      "count": 0,
+      "first": []
+    },
+    "outsMismatches": {
+      "count": 0,
+      "first": []
+    },
+    "scoreMismatches": {
+      "count": 0,
+      "first": []
+    },
+    "runnersMismatches": {
+      "count": 0,
+      "first": []
+    },
+    "impossibleCounts": {
+      "count": 2,
+      "first": [
+        "824212-42-5: 0-3 before the pitch",
+        "824212-42-9: 2-3 before the pitch"
+      ]
+    },
+    "challengesOnExcludedPitches": {
+      "count": 0,
+      "first": []
+    },
+    "orphanChallenges": {
+      "count": 0,
+      "first": []
+    },
+    "challengeRoleAnomalies": {
+      "count": 0,
+      "first": []
+    },
+    "challengeMismatches": {
+      "count": 1,
+      "first": [
+        "825000-30-3: final call S, reconstruction B by 0.76 in"
+      ]
+    },
+    "umpireProblems": {
+      "count": 0,
+      "first": []
+    },
+    "dealableWithoutBatterHeight": {
+      "count": 0,
+      "first": []
+    },
+    "dealableWithoutPitchType": {
+      "count": 0,
+      "first": []
+    },
+    "enforced": {
+      "allowlist": {
+        "impossibleCounts": [
+          "824212-42-5",
+          "824212-42-9"
+        ],
+        "challengeMismatches": [
+          "825000-30-3"
+        ]
+      },
+      "allowed": [
+        "impossibleCounts: 824212-42-5: 0-3 before the pitch",
+        "impossibleCounts: 824212-42-9: 2-3 before the pitch",
+        "challengeMismatches: 825000-30-3: final call S, reconstruction B by 0.76 in"
+      ],
+      "staleAllowlist": []
+    },
+    "catcherChallengesByListedPosition": {
+      "C": 5415,
+      "DH": 321,
+      "RF": 2
+    },
+    "midPlateAppearanceSubstitutions": {
+      "count": 70,
+      "first": [
+        "824702-34 pitcher",
+        "824861-28 pitcher",
+        "824458-10 pitcher",
+        "824053-45 pitcher",
+        "824051-43 batter",
+        "824051-43 pitcher",
+        "824374-13 batter",
+        "823565-2 batter",
+        "823804-58 pitcher",
+        "823154-15 pitcher",
+        "823317-24 pitcher",
+        "825022-55 pitcher",
+        "823883-58 batter",
+        "823394-31 pitcher",
+        "824689-79 pitcher",
+        "824527-57 pitcher",
+        "822911-32 pitcher",
+        "823717-61 pitcher",
+        "823795-13 pitcher",
+        "823471-48 pitcher",
+        "822744-46 pitcher",
+        "823388-73 pitcher",
+        "824682-71 pitcher",
+        "824681-29 pitcher",
+        "823632-51 batter"
+      ]
+    },
+    "attribution": {
+      "matchup": 362086,
+      "replaced": 24,
+      "uncertain": 67
+    },
+    "missingExtensionOrSpeed": 110,
+    "challengeSources": {
+      "pitchEvent": 8049,
+      "playOnly": 2700
+    }
+  },
+  "model": {
+    "challengeAgreement": {
+      "agree": 10748,
+      "total": 10749,
+      "pct": 99.99
+    },
+    "challengeMismatches": {
+      "count": 1,
+      "closest": [
+        {
+          "id": "825000-30-3",
+          "date": "2026-05-30",
+          "role": "batter",
+          "overturned": false,
+          "source": "pitch",
+          "ump": "S",
+          "final": "S",
+          "abs": "B",
+          "marginIn": -0.763,
+          "frontMarginIn": 0.413,
+          "rosterZoneMarginIn": -0.847,
+          "zone": [
+            3.286,
+            1.658
+          ],
+          "heightIn": 74
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "mid-plate, r = 1.45 in, exact geometry (used)",
+        "umpAgreement": {
+          "agree": 337685,
+          "total": 362177,
+          "pct": 93.24
+        },
+        "challengeMatches": {
+          "agree": 10748,
+          "total": 10749,
+          "pct": 99.99
+        }
+      },
+      {
+        "variant": "mid-plate, r = 1.45 in, box rule",
+        "umpAgreement": {
+          "agree": 337477,
+          "total": 362177,
+          "pct": 93.18
+        },
+        "challengeMatches": {
+          "agree": 10722,
+          "total": 10749,
+          "pct": 99.75
+        }
+      },
+      {
+        "variant": "front of plate, r = 1.45 in, exact geometry",
+        "umpAgreement": {
+          "agree": 335127,
+          "total": 362177,
+          "pct": 92.53
+        },
+        "challengeMatches": {
+          "agree": 9139,
+          "total": 10749,
+          "pct": 85.02
+        }
+      },
+      {
+        "variant": "feed pX/pZ, r = 1.45 in, exact geometry",
+        "umpAgreement": {
+          "agree": 335119,
+          "total": 362177,
+          "pct": 92.53
+        },
+        "challengeMatches": {
+          "agree": 9134,
+          "total": 10749,
+          "pct": 84.98
+        }
+      },
+      {
+        "variant": "mid-plate, ball centre only (r = 0)",
+        "umpAgreement": {
+          "agree": 327285,
+          "total": 362177,
+          "pct": 90.37
+        },
+        "challengeMatches": {
+          "agree": 7054,
+          "total": 10749,
+          "pct": 65.62
+        }
+      },
+      {
+        "variant": "mid-plate, zone from roster height x 53.5% / 27%",
+        "umpAgreement": {
+          "agree": 337667,
+          "total": 362177,
+          "pct": 93.23
+        },
+        "challengeMatches": {
+          "agree": 10618,
+          "total": 10749,
+          "pct": 98.78
+        }
+      }
+    ],
+    "zones": {
+      "batters": 660,
+      "battersWithMoreThanOneZone": 93,
+      "mostVaried": [
+        {
+          "batter": 668723,
+          "zones": 5,
+          "pitches": 584,
+          "topRange": [
+            3.189,
+            3.275
+          ],
+          "bottomRange": [
+            1.61,
+            1.653
+          ]
+        },
+        {
+          "batter": 502671,
+          "zones": 4,
+          "pitches": 755,
+          "topRange": [
+            3.138,
+            3.5
+          ],
+          "bottomRange": [
+            1.584,
+            1.766
+          ]
+        },
+        {
+          "batter": 608701,
+          "zones": 4,
+          "pitches": 274,
+          "topRange": [
+            3.128,
+            3.34
+          ],
+          "bottomRange": [
+            1.579,
+            1.686
+          ]
+        },
+        {
+          "batter": 665019,
+          "zones": 4,
+          "pitches": 1074,
+          "topRange": [
+            3.209,
+            3.335
+          ],
+          "bottomRange": [
+            1.619,
+            1.683
+          ]
+        },
+        {
+          "batter": 592626,
+          "zones": 3,
+          "pitches": 885,
+          "topRange": [
+            3.123,
+            3.237
+          ],
+          "bottomRange": [
+            1.576,
+            1.633
+          ]
+        },
+        {
+          "batter": 650333,
+          "zones": 3,
+          "pitches": 1222,
+          "topRange": [
+            3.12,
+            3.251
+          ],
+          "bottomRange": [
+            1.577,
+            1.641
+          ]
+        },
+        {
+          "batter": 666152,
+          "zones": 3,
+          "pitches": 857,
+          "topRange": [
+            3.063,
+            3.14
+          ],
+          "bottomRange": [
+            1.546,
+            1.582
+          ]
+        },
+        {
+          "batter": 666624,
+          "zones": 3,
+          "pitches": 188,
+          "topRange": [
+            3.228,
+            3.328
+          ],
+          "bottomRange": [
+            1.629,
+            1.68
+          ]
+        },
+        {
+          "batter": 670623,
+          "zones": 3,
+          "pitches": 1583,
+          "topRange": [
+            3.181,
+            3.197
+          ],
+          "bottomRange": [
+            1.605,
+            1.614
+          ]
+        },
+        {
+          "batter": 677587,
+          "zones": 3,
+          "pitches": 1140,
+          "topRange": [
+            3.068,
+            3.339
+          ],
+          "bottomRange": [
+            1.548,
+            1.685
+          ]
+        },
+        {
+          "batter": 680574,
+          "zones": 3,
+          "pitches": 1078,
+          "topRange": [
+            3.047,
+            3.287
+          ],
+          "bottomRange": [
+            1.538,
+            1.659
+          ]
+        },
+        {
+          "batter": 682985,
+          "zones": 3,
+          "pitches": 1268,
+          "topRange": [
+            3.087,
+            3.303
+          ],
+          "bottomRange": [
+            1.558,
+            1.667
+          ]
+        },
+        {
+          "batter": 686681,
+          "zones": 3,
+          "pitches": 730,
+          "topRange": [
+            3.013,
+            3.2
+          ],
+          "bottomRange": [
+            1.521,
+            1.615
+          ]
+        },
+        {
+          "batter": 687401,
+          "zones": 3,
+          "pitches": 885,
+          "topRange": [
+            3.087,
+            3.14
+          ],
+          "bottomRange": [
+            1.558,
+            1.583
+          ]
+        },
+        {
+          "batter": 691723,
+          "zones": 3,
+          "pitches": 964,
+          "topRange": [
+            3.19,
+            3.414
+          ],
+          "bottomRange": [
+            1.61,
+            1.723
+          ]
+        },
+        {
+          "batter": 694377,
+          "zones": 3,
+          "pitches": 224,
+          "topRange": [
+            3.051,
+            3.335
+          ],
+          "bottomRange": [
+            1.54,
+            1.683
+          ]
+        },
+        {
+          "batter": 695578,
+          "zones": 3,
+          "pitches": 1562,
+          "topRange": [
+            3.175,
+            3.489
+          ],
+          "bottomRange": [
+            1.602,
+            1.761
+          ]
+        },
+        {
+          "batter": 500743,
+          "zones": 2,
+          "pitches": 437,
+          "topRange": [
+            3.141,
+            3.351
+          ],
+          "bottomRange": [
+            1.585,
+            1.691
+          ]
+        },
+        {
+          "batter": 514888,
+          "zones": 2,
+          "pitches": 999,
+          "topRange": [
+            2.926,
+            3.161
+          ],
+          "bottomRange": [
+            1.477,
+            1.595
+          ]
+        },
+        {
+          "batter": 592885,
+          "zones": 2,
+          "pitches": 1179,
+          "topRange": [
+            3.368,
+            3.37
+          ],
+          "bottomRange": [
+            1.7,
+            1.7
+          ]
+        }
+      ],
+      "topOverRosterHeight": {
+        "n": 660,
+        "min": 0.531,
+        "p01": 0.5314,
+        "p50": 0.5351,
+        "p99": 0.5387,
+        "max": 0.5388,
+        "mean": 0.535
+      },
+      "bottomOverRosterHeight": {
+        "n": 660,
+        "min": 0.2681,
+        "p01": 0.2682,
+        "p50": 0.27,
+        "p99": 0.2718,
+        "max": 0.2719,
+        "mean": 0.27
+      }
+    },
+    "feedPxPzResiduals": {
+      "vsFrontOfPlateIn": {
+        "n": 362177,
+        "min": 0,
+        "p01": 0.0002,
+        "p50": 0.0025,
+        "p99": 0.0097,
+        "max": 0.3939,
+        "mean": 0.0031
+      },
+      "vsMidPlateIn": {
+        "n": 362177,
+        "min": 0.0389,
+        "p01": 0.4158,
+        "p50": 0.9831,
+        "p99": 1.817,
+        "max": 5.7586,
+        "mean": 1.0213
+      }
+    },
+    "releaseSides": {
+      "releaseXFt": {
+        "R": {
+          "n": 253082,
+          "min": -4.889,
+          "p01": -3.827,
+          "p50": -1.858,
+          "p99": -0.204,
+          "max": 4.018,
+          "mean": -1.887
+        },
+        "L": {
+          "n": 108985,
+          "min": -3.181,
+          "p01": 0.126,
+          "p50": 2.069,
+          "p99": 3.926,
+          "max": 5.058,
+          "mean": 2.077
+        }
+      },
+      "acrossTheMiddleByAttribution": {
+        "matchup": 424,
+        "uncertain": 26
+      },
+      "farSideByAttribution": {
+        "beyondFt": 1.2,
+        "uncertain": 23
+      }
+    }
+  },
+  "umpVsAbs": {
+    "overall": {
+      "agree": 337685,
+      "total": 362177,
+      "pct": 93.24
+    },
+    "close": {
+      "withinIn": 1.5,
+      "agree": 40933,
+      "total": 59910,
+      "pct": 68.32
+    },
+    "near": {
+      "withinIn": 4.5,
+      "agree": 145576,
+      "total": 169925,
+      "pct": 85.67
+    },
+    "afterChallenges": {
+      "agree": 343489,
+      "total": 362177,
+      "pct": 94.84
+    },
+    "missed": {
+      "strikesCalledBalls": 11382,
+      "ballsCalledStrikes": 13110
+    }
+  },
+  "dealableRule": {
+    "geometric": 288103,
+    "geometricButNotShowable": 587,
+    "geometricButNotShowableInPoolRange": {
+      "close": 97,
+      "near": 185
+    },
+    "slowPitches": {
+      "maxFlightS": 0.6,
+      "calledPitches": 793,
+      "byPitchType": {
+        "EP": 543,
+        "FA": 150,
+        "KN": 56,
+        "CU": 13,
+        "SL": 10,
+        "CS": 9,
+        "CH": 6,
+        "UN": 6
+      },
+      "keptFromDealingOnlyForSpeed": 455,
+      "keptFromDealingByPitchType": {
+        "EP": 322,
+        "FA": 91,
+        "KN": 19,
+        "CS": 7,
+        "CU": 6,
+        "SL": 5,
+        "CH": 4,
+        "UN": 1
+      },
+      "keptFromDealingByBand": {
+        "clear": 164,
+        "near": 143,
+        "close": 76,
+        "mid": 72
+      },
+      "slowestDealableS": 0.5997,
+      "slowest": [
+        "823798-73-1: EP 30.3 mph, 1.423 s",
+        "823795-68-4: EP 32.2 mph, 1.325 s",
+        "823663-66-4: FA 32.3 mph, 1.304 s",
+        "823035-73-1: EP 32.2 mph, 1.291 s",
+        "823099-83-3: EP 32.8 mph, 1.287 s",
+        "823192-77-2: EP 32.9 mph, 1.262 s",
+        "822686-70-1: FA 32.6 mph, 1.262 s",
+        "823099-78-2: EP 33 mph, 1.261 s",
+        "823663-70-3: FA 33.2 mph, 1.256 s",
+        "824652-62-5: EP 33.3 mph, 1.255 s"
+      ]
+    }
+  },
+  "storedPrecision": {
+    "decimalsUsed": {
+      "4": 74840,
+      "5": 7
+    },
+    "maxMarginDriftIn": 0.0058
+  },
+  "pool": {
+    "pitches": 74847,
+    "dealable": 74842,
+    "closeWithinIn": 1.5,
+    "close": 59810,
+    "nearWithinIn": 4.5,
+    "near": 7476,
+    "mid": 80,
+    "calibratorMinIn": 6,
+    "calibrators": 7476,
+    "challenged": 10749,
+    "challengedDealable": 10744,
+    "sampled": {
+      "near": 3976,
+      "calibrators": 7470
+    },
+    "sampledPerClose": {
+      "near": 0.125,
+      "calibrator": 0.125
+    },
+    "seasonDealable": {
+      "close": 59810,
+      "near": 109828,
+      "mid": 45674,
+      "clear": 72204
+    }
+  },
+  "shards": [
+    {
+      "file": "shards/00.json",
+      "pitches": 3403,
+      "dealable": 3402,
+      "bytes": 809116,
+      "sha256": "e3d1cfcb3bcfaddda8d3cf73e8693d358353329c9ac5477eec65a1bbc13ea46e",
+      "calibrators": 340,
+      "close": 2719,
+      "closeChallenged": 326,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/01.json",
+      "pitches": 3403,
+      "dealable": 3403,
+      "bytes": 809799,
+      "sha256": "54a1c16c6a9323da6f8499cebd03c716c51791b829150ad7ec4b5d75b764c2e3",
+      "calibrators": 340,
+      "close": 2719,
+      "closeChallenged": 326,
+      "near": 341,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/02.json",
+      "pitches": 3403,
+      "dealable": 3403,
+      "bytes": 808900,
+      "sha256": "d0123de2b789f1a8cfa4b17a670598acc7f6e3eb940363169c95db96972b6013",
+      "calibrators": 340,
+      "close": 2719,
+      "closeChallenged": 326,
+      "near": 341,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/03.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 810100,
+      "sha256": "6e7478506591c283503e4a6924f4dc49233d822570536cc7c3763dac5c0e7489",
+      "calibrators": 340,
+      "close": 2720,
+      "closeChallenged": 326,
+      "near": 339,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/04.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 810658,
+      "sha256": "af8d2ecb8eed2b250bbe92a53f582faeabb2b7d3e147441c4af76470a03c3511",
+      "calibrators": 340,
+      "close": 2720,
+      "closeChallenged": 326,
+      "near": 339,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/05.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 809135,
+      "sha256": "ad8e68dca74f7a6d0ed31841ba2b1068ea1db6689cb58943deee847ecf305741",
+      "calibrators": 340,
+      "close": 2720,
+      "closeChallenged": 326,
+      "near": 339,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/06.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 807406,
+      "sha256": "2d9c16af68e2e76fb56dff46b6da545a3f4d2b419af2838c5adc8ea2b2e37ddb",
+      "calibrators": 340,
+      "close": 2720,
+      "closeChallenged": 326,
+      "near": 339,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/07.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 807718,
+      "sha256": "a30f6da0f37ecf9d4c9a859894bb72e2f74c76c67bd07bede2f40af0d523f19e",
+      "calibrators": 340,
+      "close": 2719,
+      "closeChallenged": 325,
+      "near": 339,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/08.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 807372,
+      "sha256": "6fa551559ad6aac9790c6477943b0e72db3020a0f4155fb4bd1de2c329cbeb69",
+      "calibrators": 340,
+      "close": 2719,
+      "closeChallenged": 325,
+      "near": 339,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/09.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 810034,
+      "sha256": "18bcab3ad135edd5a0629e56f17409fd126fe3b3e522adc666c6e376a1dea6cb",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/10.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 809373,
+      "sha256": "0d9dfe28e571ace238f78ac85a5fcfa34c5a42b4fa4b50d4ef4a3481cd7bf9bc",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/11.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 809376,
+      "sha256": "222c9bf1e858667a413349190ffc016cdec17746b536176847c47b8fc0735834",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/12.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 807857,
+      "sha256": "1ac5fe0ae7d7c51b384260e9e370aeb1a5cc4d05e9ac1cfc93dcfd9ff986428c",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/13.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 809366,
+      "sha256": "d4f3d2d0cba8b3a507ebc6c22e1e033c4f2e4ffcfaa53d82a149f382d5102173",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/14.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 808333,
+      "sha256": "f160687c1ebc3c3295a53d4ec24d7c7dfc18657c66ef8b6234f69ba670bf4219",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/15.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 805337,
+      "sha256": "fe3eab232bd7256f6af72ffdac12749cd179f3e7b5b5f69a3fbd33cfe1c4657e",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/16.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 809180,
+      "sha256": "297a544a85b217fdbde92e53fc901673136136873ee80ea8c355c63f633efe00",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/17.json",
+      "pitches": 3402,
+      "dealable": 3402,
+      "bytes": 810421,
+      "sha256": "4f027408fbb108a9bb6db1225e803d0f8d6b57914ad4ce3f7d52dfd0f65882b7",
+      "calibrators": 340,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/18.json",
+      "pitches": 3402,
+      "dealable": 3401,
+      "bytes": 808414,
+      "sha256": "32b8989024ad48d81abd682dc5c9647b7834204c8c681988ab2891ebd42dbc30",
+      "calibrators": 339,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/19.json",
+      "pitches": 3402,
+      "dealable": 3401,
+      "bytes": 809626,
+      "sha256": "c227c4b588ef7dcb45490ff5430c991dc5d4d501c493d6795daa68d299d2e62d",
+      "calibrators": 339,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/20.json",
+      "pitches": 3402,
+      "dealable": 3401,
+      "bytes": 809588,
+      "sha256": "bed3ec5d41cedd7284f13f5a4d88b94b9f8fe6065dc37b2de7460887cbade70d",
+      "calibrators": 339,
+      "close": 2718,
+      "closeChallenged": 325,
+      "near": 340,
+      "dealsChecked": 200
+    },
+    {
+      "file": "shards/21.json",
+      "pitches": 3402,
+      "dealable": 3401,
+      "bytes": 808079,
+      "sha256": "b47e0426cd10b492784f93af99f07aeafc61bebf3891506e241d837e046be96a",
+      "calibrators": 339,
+      "close": 2719,
+      "closeChallenged": 326,
+      "near": 340,
+      "dealsChecked": 200
+    }
+  ]
+}
