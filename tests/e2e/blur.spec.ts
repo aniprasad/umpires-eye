@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { QUERY, frameFoot, helmetStrip, measureEdge, open, readReference, referenceKey, shootCatcher } from './catcher';
+import { QUERY, frameFoot, helmetStrip, measureEdge, open, readReference, referenceKey, servedBuild, shootCatcher } from './catcher';
 import { trackErrors } from './helpers';
 
 // Levels any row of the frame foot may drift from Edge native. Clipping the blur at the frame edge put the worst row
@@ -15,7 +15,7 @@ test('the lens defocuses the catcher whichever way the engine draws it', async (
   const errors = trackErrors(page);
   const { strip: s, edge, foot } = await shootCatcher(page);
   // Edge with its native canvas filter at this page's size and density: the reference every engine is held to.
-  const { edge: ref, foot: refFoot } = readReference(testInfo, await referenceKey(page));
+  const { edge: ref, foot: refFoot } = readReference(testInfo, await referenceKey(page), await servedBuild(page));
   const diff = rms(edge.profile, ref.profile);
   const footGap = worstRow(foot, refFoot);
 

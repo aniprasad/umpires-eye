@@ -13,7 +13,18 @@ export interface PitchSource {
   /** Today's Ten for a local date, or why there isn't one. Rejects with a LoadError. */
   today(dateKey: string, signal?: AbortSignal): Promise<TodayResult>;
 
-  /** The deck for Another ten. The season source loads its first shard on the first call. Rejects with a LoadError. */
+  /**
+   * Starts loading what Another ten deals from, without parsing it, so the first deck() can deal at once. It never
+   * rejects: deck() retries a load that failed, and parses the text it already has. A source with nothing to load
+   * leaves it out. The game calls it once the start screen is ready, when the page is idle, unless Save-Data is on.
+   */
+  prefetch?(): void;
+
+  /**
+   * The deck for Another ten, the same one on every call. The season source loads its first shard on the first call, or
+   * parses the one prefetch() loaded, so the game calls it on the card or on the press, never during a pitch. Rejects
+   * with a LoadError, and the next call tries again.
+   */
   deck(signal?: AbortSignal): Promise<Deck>;
 
   /** The ump figure with its label and definition, or null if it couldn't be loaded. */

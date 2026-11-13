@@ -1,5 +1,5 @@
 // A small synthetic 2026 season in the dataset's own formats (docs/DATA.md), for the tests that load the season source:
-// manifest.json, one shard, the November 2026 month file and stats.json. Names and numbers are made up. Each path is
+// manifest.json, one shard (or two), the November 2026 month file and stats.json. Names and numbers are made up. Each path is
 // solved to cross mid-plate where its pitch is meant to, and its ABS truth, margin and dealable flag are worked out from
 // that path, so the files agree with themselves the way data:build's do. The same calls give the same files.
 import { createHash } from 'node:crypto';
@@ -8,7 +8,7 @@ import { isDailyReserve } from '../../src/core/daily.ts';
 import { dealTen, pilesOf } from '../../src/core/deal.ts';
 import { crossing, quickEnough, tAtY, type Traj } from '../../src/core/kinematics.ts';
 import { mulberry32 } from '../../src/core/rng.ts';
-import { BALL_R, CREDIT, MID_Y, PLATE_HALF, RUBBER_Y, SEASON, TRUTH_NOTE } from '../../src/core/rules.ts';
+import { BALL_R, CLOSE_IN, CREDIT, MID_Y, PLATE_HALF, RUBBER_Y, SEASON, TRUTH_NOTE } from '../../src/core/rules.ts';
 import {
   CHALLENGE_FIELDS,
   DAILY_FORMAT,
@@ -49,10 +49,20 @@ export interface SeasonMini {
   readonly ten: readonly MiniPitch[];
   /** A served date whose ten became unavailable. */
   readonly unavailableDate: string;
-  /** The shard's address, ?v= included. */
+  /** The first shard's address, ?v= included. */
   readonly shardUrl: string;
-  /** The rows Another ten may deal: dealable and not held back for Today's Ten, in played order. */
+  /** The rows Another ten may deal from the first shard: dealable and not held back for Today's Ten, in played order. */
   readonly deckIds: readonly string[];
+  /** Every shard's address and the rows Another ten may deal from it, in the manifest's order. */
+  readonly shards: readonly { readonly url: string; readonly deckIds: readonly string[] }[];
+}
+
+export interface SeasonMiniOptions {
+  /**
+   * Two splits the games between two shards and leaves each exactly eight close calls Another ten may deal, at least one
+   * challenged, so each shard deals one ten and then runs dry. One, the default, keeps every row in a single shard.
+   */
+  readonly shards?: 1 | 2;
 }
 
 /** Games in played order: a doubleheader, another regular-season date, and a World Series game. */
@@ -219,6 +229,30 @@ function pitchRows(): Cells[] {
   return rows;
 }
 
+/** The rows' dealable cards, from the daily reserve or from outside it. */
+const cardsOf = (rows: readonly Cells[], reserved: boolean) =>
+  rows.flatMap((r, seq) => (r.dealable && isDailyReserve(idOf(r)) === reserved ? [{ id: idOf(r), seq, absMarginIn: Math.abs(Number(r.marginIn)), challenged: r.challenge !== null }] : []));
+
+/**
+ * The rows split between two shards by game, the doubleheader in the first. Each keeps exactly eight of the close calls
+ * Another ten may deal, one of them challenged, so it deals one ten and then runs dry.
+ */
+function splitInTwo(rows: readonly Cells[]): Cells[][] {
+  const first = new Set<unknown>([GAMES[0].row[0], GAMES[1].row[0]]);
+
+  return [rows.filter((r) => first.has(r.gamePk)), rows.filter((r) => !first.has(r.gamePk))].map((part, i) => {
+    const close = cardsOf(part, false).filter((c) => c.absMarginIn <= CLOSE_IN);
+    const challenged = close.find((c) => c.challenged);
+    const keep = new Set([challenged?.id, ...close.filter((c) => c !== challenged).slice(0, 7).map((c) => c.id)]);
+    const kept = part.filter((r) => keep.has(idOf(r)) || !close.some((c) => c.id === idOf(r)));
+    const piles = pilesOf(cardsOf(kept, false));
+
+    if (!challenged || piles.close.length !== 8 || !dealTen(piles, mulberry32(1))) throw new Error(`season-mini: shard ${i} can't deal exactly one ten`);
+
+    return kept;
+  });
+}
+
 /** The tables a set of rows names, trimmed to just those, as a month file keeps them. */
 function tablesFor(rows: readonly Cells[]) {
   const gamePks = new Set(rows.map((r) => r.gamePk));
@@ -245,10 +279,11 @@ function tablesFor(rows: readonly Cells[]) {
 
 const head = (format: string, build: string) => ({ format, version: FORMAT_VERSION, season: SEASON, build, credit: CREDIT, truthNote: TRUTH_NOTE });
 
-export function seasonMini(): SeasonMini {
-  const rows = pitchRows();
+export function seasonMini({ shards: count = 1 }: SeasonMiniOptions = {}): SeasonMini {
+  const parts = count === 2 ? splitInTwo(pitchRows()) : [pitchRows()];
+  const rows = parts.flat();
   const byId = new Map(rows.map((r) => [idOf(r), r]));
-  const reserve = rows.flatMap((r, seq) => (r.dealable && isDailyReserve(idOf(r)) ? [{ id: idOf(r), seq, absMarginIn: Math.abs(Number(r.marginIn)), challenged: r.challenge !== null }] : []));
+  const reserve = cardsOf(rows, true);
   const ten = dealTen(pilesOf(reserve), mulberry32(1114));
 
   if (!ten) {
@@ -260,9 +295,13 @@ export function seasonMini(): SeasonMini {
   const otherIds = reserve.map((c) => c.id).filter((id) => !tenIds.includes(id)).slice(0, 10);
   const agree = rows.filter((r) => r.ump === r.abs).length;
   const stats = { umpVsAbs: { overall: { agree, total: rows.length, pct: round((100 * agree) / rows.length, 2) } } };
-  // the build id hashes the shard's and the stats' content before either is stamped with it
-  const build = sha256([tablesFor(rows), stats]).slice(0, 12);
-  const shard = { ...head(SHARD_FORMAT, build), shard: 0, shards: 1, ...tablesFor(rows) };
+  // the build id hashes the shards' and the stats' content before any of them is stamped with it
+  const build = sha256([...parts.map(tablesFor), stats]).slice(0, 12);
+  const shards = parts.map((part, i) => {
+    const body = { ...head(SHARD_FORMAT, build), shard: i, shards: parts.length, ...tablesFor(part) };
+
+    return { file: `shards/${String(i).padStart(2, '0')}.json`, body, sha: sha256(body), part };
+  });
   const date = '2026-11-14';
   const unavailableDate = '2026-11-15';
   const month = {
@@ -274,7 +313,6 @@ export function seasonMini(): SeasonMini {
       [unavailableDate]: { ids: otherIds, available: false, missing: [otherIds[3]] },
     },
   };
-  const shardSha = sha256(shard);
   const manifest = {
     ...head(MANIFEST_FORMAT, build),
     daily: {
@@ -284,14 +322,18 @@ export function seasonMini(): SeasonMini {
       reserve: { share: 0.25, pitches: reserve.length },
       files: [{ month: '2026-11', file: 'daily/2026-11.json', bytes: JSON.stringify(month).length, sha256: sha256(month) }],
     },
-    shards: [{ file: 'shards/00.json', pitches: rows.length, dealable: rows.filter((r) => r.dealable).length, bytes: JSON.stringify(shard).length, sha256: shardSha }],
+    shards: shards.map(({ file, body, sha, part }) => ({ file, pitches: part.length, dealable: part.filter((r) => r.dealable).length, bytes: JSON.stringify(body).length, sha256: sha })),
   };
   const labels = new Map<unknown, string>(GAMES.map((g) => [g.row[0], g.label]));
+  const served = shards.map(({ file, sha, part }) => ({ url: `${file}?v=${sha.slice(0, 12)}`, deckIds: cardsOf(part, false).map((c) => c.id) }));
+  const [first] = served;
+
+  if (!first) throw new Error('season-mini: no shard');
 
   return {
     files: new Map<string, Record<string, unknown>>([
       ['manifest.json', manifest],
-      ['shards/00.json', shard],
+      ...shards.map(({ file, body }): [string, Record<string, unknown>] => [file, body]),
       ['daily/2026-11.json', month],
       ['stats.json', { ...head(STATS_FORMAT, build), ...stats }],
     ]),
@@ -305,7 +347,8 @@ export function seasonMini(): SeasonMini {
       return { id, abs: r.abs as 'S' | 'B', ump: r.ump as 'S' | 'B', label: labels.get(r.gamePk) ?? '', balls: Number(r.balls), strikes: Number(r.strikes) };
     }),
     unavailableDate,
-    shardUrl: `shards/00.json?v=${shardSha.slice(0, 12)}`,
-    deckIds: rows.filter((r) => r.dealable && !isDailyReserve(idOf(r))).map(idOf),
+    shardUrl: first.url,
+    deckIds: first.deckIds,
+    shards: served,
   };
 }

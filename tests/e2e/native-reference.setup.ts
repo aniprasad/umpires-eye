@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { referenceKey, shootCatcher, writeReferences, type CatcherShot } from './catcher';
+import { referenceKey, servedBuild, shootCatcher, writeReferences, type CatcherShot } from './catcher';
 import { trackErrors } from './helpers';
 
 // The catcher test holds every engine to Edge's native canvas filter at the page's size and density. Launched from
@@ -8,6 +8,7 @@ import { trackErrors } from './helpers';
 // before the desktop projects that depend on it start.
 test('Edge draws the native reference the catcher test compares against', async ({ browser, baseURL }, testInfo) => {
   const shots: Record<string, CatcherShot> = {};
+  let build = '';
 
   for (const project of testInfo.config.projects.filter((p) => p.dependencies.includes(testInfo.project.name))) {
     const { viewport, deviceScaleFactor } = project.use;
@@ -21,11 +22,14 @@ test('Edge draws the native reference the catcher test compares against', async 
       const key = await referenceKey(page);
 
       shots[key] = await shootCatcher(page);
+      build = await servedBuild(page);
       expect(shots[key].edge.filter, `${project.name} at ${key}`).toBe('native');
       expect(errors, `${project.name} at ${key}`).toEqual([]);
     } finally {
       await context.close();
     }
   }
-  writeReferences(testInfo, shots);
+  // without a build to name, a reference from any other build would pass for this one's
+  expect(build, 'the entry script the reference was drawn by').not.toBe('');
+  writeReferences(testInfo, { build, shots });
 });

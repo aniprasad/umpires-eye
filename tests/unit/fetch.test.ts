@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FETCH_TIMEOUT_MS, fetchJson, matchBuild, type Net } from '../../src/data/fetch';
+import { FETCH_TIMEOUT_MS, fetchJson, fetchText, matchBuild, parseJson, type Net } from '../../src/data/fetch';
 import { LoadError, type LoadErrorKind } from '../../src/data/source';
 
 /** What one try gets: an answer, a failure, no answer at all, or headers and then a body that never finishes. */
@@ -92,6 +92,18 @@ describe('the fetch helper', () => {
       await vi.advanceTimersByTimeAsync(5000);
       expect(tries).toHaveLength(1);
     }
+  });
+
+  it("gives a body as text without parsing it, so bad JSON fails only when parseJson reads it, but still refuses a web page", async () => {
+    const { net, tries } = fakeNet([
+      new Response('{"pitches": [', { headers: { 'content-type': 'application/json' } }),
+      new Response('<!doctype html><title>Umpire’s Eye</title>', { headers: { 'content-type': 'text/html' } }),
+    ]);
+
+    await expect(fetchText('shard.json', { what, cache: 'force-cache', net })).resolves.toBe('{"pitches": [');
+    expect(() => parseJson('{"pitches": [', what)).toThrow(expect.objectContaining({ kind: 'data', message: expect.stringMatching(/^Could not read the file: it isn't valid JSON/) }));
+    await expect(fetchText('shard.json', { what, net })).rejects.toMatchObject({ kind: 'missing', message: 'Could not load the file: the server sent a web page instead.' });
+    expect(tries.map((t) => t.init.cache)).toEqual(['force-cache', undefined]);
   });
 
   it('is offline without asking the network when the device is offline, and stops retrying when it goes offline', async () => {
