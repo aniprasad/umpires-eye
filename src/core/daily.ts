@@ -23,9 +23,9 @@ export const monthOf = (dateKey: string): string => dateKey.slice(0, 7);
 
 /** One date's ten IDs, in play order with the calibrator first. Only an available day has rows in its file. */
 export type DailyDay =
-  | { ids: string[]; available: true }
+  | { ids: readonly string[]; available: true }
   // A served day where a pitch has left the pool or stopped being dealable. It keeps its IDs, so none is scheduled again.
-  | { ids: string[]; available: false; missing: string[] };
+  | { ids: readonly string[]; available: false; missing: readonly string[] };
 
 /**
  * daily/YYYY-MM.json, in the DAILY_FORMAT. It has a shard's head and tables, trimmed to the rows its available days
