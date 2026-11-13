@@ -177,13 +177,17 @@ test.describe('in Los Angeles', () => {
     const errors = trackErrors(page);
 
     await serveSeason(page, cal);
+    await watchLoads(page);
     await openAt(page, '2026-11-14T23:59:00-08:00');
     await expectTen(page, '2026-11-14');
     await page.clock.setSystemTime(new Date(`${cal.unavailableDate}T00:05:00-08:00`));
     await page.keyboard.press('Enter');
     await expect(page.locator('html')).toHaveAttribute('data-ready', 'none');
-    await expect(page.locator('#app')).toHaveAttribute('data-phase', 'start');
     await expect(page.locator('#btnPlay')).toHaveText('Play another ten');
+    // Another ten's shard is in, and still no round has started from it
+    await expect.poll(() => textsOf(page)).toEqual(['start']);
+    await expect(page.locator('#app')).toHaveAttribute('data-phase', 'start');
+    expect(await parsesOf(page)).toEqual([]);
     expect(errors).toEqual([]);
   });
 
