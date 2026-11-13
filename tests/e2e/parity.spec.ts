@@ -13,7 +13,8 @@ const MAX_MASKED_RATIO = { exact: 0.005, shipped: 0.03 } as const;
 const CHANNEL_TOLERANCE = 8;
 // The port's longer data credit is deliberate, but it is taller, and the card (and the phone start screen) lay out
 // around it. Giving the mockup's footnotes the port's footnote heights stops that from moving everything else.
-const ALIGN_CREDIT = true;
+// UE_PARITY_ALIGN=0 compares the untouched pages instead, so the shift the longer credit causes shows in the numbers.
+const ALIGN_CREDIT = process.env.UE_PARITY_ALIGN !== '0';
 const MODES = ['exact', 'shipped'] as const;
 const VIEWPORTS: readonly Area[] = [
   { width: 1440, height: 900 },

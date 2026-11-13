@@ -31,7 +31,7 @@ npm run dev        # http://localhost:5173
 - Projects:
   - `desktop-edge` and `desktop-webkit`: a keyboard round, screenshots at 1440×900 and 1024×768, the self-test page and the depth-of-field checks.
   - `iphone` (WebKit) and `pixel` (Edge): touch rounds in device emulation.
-  - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`.
+  - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`. By default the mockup's footnotes take the height of the port's longer credit line, so the rest of the screen lines up. Set `UE_PARITY_ALIGN=0` to compare the pages untouched.
 - Run one project with `npx playwright test --project=desktop-webkit`.
 
 ## URL switches
