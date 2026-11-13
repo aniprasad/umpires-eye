@@ -59,15 +59,16 @@ function workCanvas(): HTMLCanvasElement {
 }
 
 /**
- * A work canvas with its top-left w × h (and a 2 px margin) cleared. It only ever grows, in practice once per
- * resize, so filtered draws never reallocate it; all the work happens in that top-left region.
+ * A cleared work canvas of w × h plus a 2 px margin. WebKit copies the whole of a canvas each time it's drawn from,
+ * so a work canvas is kept to the size of the block it holds rather than the biggest block so far. A per-frame block
+ * asks for the same size every frame, so it isn't reallocated.
  */
 function scratch(i: number, w: number, h: number): CanvasRenderingContext2D {
   const c = scratchCanvases[i] || (scratchCanvases[i] = workCanvas());
 
-  if (c.width < w + 2 || c.height < h + 2) {
-    c.width = Math.max(c.width, w + 2);
-    c.height = Math.max(c.height, h + 2);
+  if (c.width !== w + 2 || c.height !== h + 2) {
+    c.width = w + 2;
+    c.height = h + 2;
   }
   const x = ctx2d(c);
 
@@ -302,7 +303,8 @@ function contentBox(draw: (c: CanvasRenderingContext2D) => void, m: DOMMatrix, a
  * draw the same thing every time it's called. Where k is small the work canvas covers only the block's own box,
  * since a full-size pass would cost as much for a few shadows as for the whole field.
  * A per-frame caller passes `memo` (a slot and a key covering everything `draw` depends on): while the key holds,
- * the fallback reuses its last result instead of blurring again.
+ * the fallback reuses its last result instead of blurring again. Such a block always gets its own box, whatever k,
+ * so the copy put down every frame is no bigger than the block.
  */
 export function withFilter(
   g: CanvasRenderingContext2D,
@@ -344,7 +346,7 @@ export function withFilter(
   // The native filter blurs in what's drawn up to 3σ past the canvas edge (the catcher's helmet runs off the bottom),
   // so the work area reaches that far out too.
   const area = { x: -reach, y: -reach, w: W + 2 * reach, h: H + 2 * reach };
-  const box = k <= 4 ? contentBox(draw, m, area, reach) : area;
+  const box = k <= 4 || memo ? contentBox(draw, m, area, reach) : area;
 
   if (!box) return;
   const sw = Math.ceil(box.w / k);
