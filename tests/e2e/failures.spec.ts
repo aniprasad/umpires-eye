@@ -69,6 +69,12 @@ test('a lost connection asks for a reload', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("the server answers a data file it doesn't have with a 404, as GitHub Pages does, not with the app's page", async ({ request }) => {
+  const res = await request.get('data/ws-2026/no-such-file.json');
+
+  expect(res.status()).toBe(404);
+});
+
 test("card art that won't load is reported, and the game still starts", async ({ page }) => {
   const errors = pageErrors(page);
 
