@@ -1,10 +1,10 @@
+import { CLOSE_IN } from '../core/rules.ts';
 import { PLAY } from './constants';
 import type { PlayPoint } from './lens';
 import type { Pitch } from './types';
 import type { Rand } from './rng';
 
-/** A close call: within 1.5 in of flipping. */
-export const CLOSE_IN = 1.5;
+export { CLOSE_IN } from '../core/rules.ts';
 
 /**
  * The game deals only pitches whose crossing is within reach of a call. The rest (bounced, wild, far off the plate)

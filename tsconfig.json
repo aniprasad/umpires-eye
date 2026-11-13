@@ -12,6 +12,7 @@
     "noUnusedParameters": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true

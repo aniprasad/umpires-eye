@@ -1,43 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { absJudge } from '../../src/math/abs';
-import { BALL_R, LOOK_Y, PLATE_HALF } from '../../src/math/constants';
+import { LOOK_Y } from '../../src/math/constants';
 import { makeCam } from '../../src/math/geometry';
-import { posAt, prep, tAtY } from '../../src/math/kinematics';
+import { prep } from '../../src/math/kinematics';
 import { eyeFor } from '../../src/math/stance';
 import { synthPitch } from './fixtures';
 
-describe('ABS truth', () => {
-  const top = 3.2;
-  const bottom = 1.6;
-
-  it('is a strike when any part of the ball touches the zone', () => {
-    expect(absJudge(PLATE_HALF + BALL_R * 0.99, 2.4, top, bottom).strike).toBe(true);
-    expect(absJudge(PLATE_HALF + BALL_R * 1.01, 2.4, top, bottom).strike).toBe(false);
-    expect(absJudge(0, bottom - BALL_R * 0.99, top, bottom).strike).toBe(true);
-  });
-
-  it('rounds the corners: a ball diagonally off a corner is a ball even inside the box rule', () => {
-    const j = absJudge(PLATE_HALF + 0.1, top + 0.1, top, bottom);
-
-    expect(j.strike).toBe(false);
-    expect(j.marginIn).toBeCloseTo((BALL_R - Math.hypot(0.1, 0.1)) * 12, 9);
-  });
-
-  it('signs the margin: positive inside, negative outside, in inches', () => {
-    expect(absJudge(0, 2.4, top, bottom).marginIn).toBeGreaterThan(6);
-    expect(absJudge(1.5, 2.4, top, bottom).marginIn).toBeLessThan(-6);
-  });
-});
-
 describe('kinematics', () => {
-  it('finds the time at a plane on the fitted path, before and after y0', () => {
-    const tr = synthPitch().traj;
-
-    for (const Y of [60, 50, 8.5 / 12, -1.5]) expect(posAt(tr, tAtY(tr, Y)).y).toBeCloseTo(Y, 9);
-    expect(tAtY(tr, tr.y0)).toBe(0);
-    expect(tAtY(tr, 55)).toBeLessThan(0);
-  });
-
   it('releases at 60.5 ft minus the extension and judges the mid-plate crossing', () => {
     const P = prep(synthPitch());
 

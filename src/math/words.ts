@@ -1,14 +1,11 @@
+import { CREDIT as DATA_CREDIT } from '../core/rules.ts';
 import { PLATE_HALF } from './constants';
 import type { PreparedPitch } from './kinematics';
 import type { Call } from './types';
 
-export type CallOrNone = Call | 'none';
+export { DATA_CREDIT };
 
-/**
- * The data credit AGENTS.md requires. The copied result ends with it, and vite.config.ts writes it into
- * index.html's footnotes at build time, so this is the only copy.
- */
-export const DATA_CREDIT = 'MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.';
+export type CallOrNone = Call | 'none';
 
 /** One finished pitch: your call against the ABS truth. */
 export interface Result {
