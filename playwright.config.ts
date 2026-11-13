@@ -42,8 +42,17 @@ export default defineConfig({
     timeout: 180_000,
   },
   projects: [
-    { name: 'desktop-edge', testMatch: desktopSpecs, use: { ...devices['Desktop Chrome'], ...edge, viewport: desktop } },
-    { name: 'desktop-webkit', testMatch: desktopSpecs, use: { ...devices['Desktop Safari'], viewport: desktop, ...lightTrace } },
+    // Draws Edge's native reference for the catcher test (blur.spec.ts) at each size and density of the projects that
+    // depend on it, once per run and in a worker of its own: launched from inside the test, that Edge stalled in
+    // WebKit's worker. Playwright runs it, and the projects without dependencies, before the desktop projects.
+    { name: 'native-reference', testMatch: /native-reference\.setup\.ts/, use: { ...devices['Desktop Chrome'], ...edge } },
+    { name: 'desktop-edge', testMatch: desktopSpecs, dependencies: ['native-reference'], use: { ...devices['Desktop Chrome'], ...edge, viewport: desktop } },
+    { name: 'desktop-webkit', testMatch: desktopSpecs, dependencies: ['native-reference'], use: { ...devices['Desktop Safari'], viewport: desktop, ...lightTrace } },
+    // The speed test times a live pitch's frames against the mockup's in the same engine. Copies of it side by side, as
+    // --repeat-each runs them, loaded each other's windows; the port does more script per frame than the mockup, so it
+    // slowed more and failed the bound. Each engine runs its copies one at a time.
+    { name: 'speed-edge', testMatch: /speed\.spec\.ts/, workers: 1, use: { ...devices['Desktop Chrome'], ...edge, viewport: desktop } },
+    { name: 'speed-webkit', testMatch: /speed\.spec\.ts/, workers: 1, use: { ...devices['Desktop Safari'], viewport: desktop, ...lightTrace } },
     { name: 'iphone', testMatch: /phone\.spec\.ts/, use: { ...devices['iPhone 13'], ...lightTrace } },
     { name: 'pixel', testMatch: /phone\.spec\.ts/, use: { ...devices['Pixel 7'], ...edge } },
     { name: 'parity', testMatch: /parity\.spec\.ts/, use: { ...devices['Desktop Chrome'], ...edge } },
