@@ -129,6 +129,23 @@ test('a served day whose close call drifts past 1.5 in stays as it was, and the 
   assert.notDeepEqual(idsOn(run, '2026-11-25'), idsOn(first, '2026-11-25'));
 });
 
+test('over 400 days, as the reserve runs down, no ID repeats, every day keeps the rules, and a re-run is byte-identical', () => {
+  const big = poolFor(400);
+  const s = synthSeason(big.games, big.pitches);
+  const run = daily(s, { from: '2026-11-01', through: '2027-12-05' });
+  const known = readSeason(JSON.parse(s.manifestText), s.shardTexts);
+  const days = Object.values(daysOf(run));
+
+  assert.equal(days.length, 400);
+  assert.equal(new Set(days.flatMap((d) => d.ids)).size, 4000);
+  for (const d of days) {
+    const cards = d.ids.flatMap((id) => known.pitches.get(id) ?? []);
+
+    assert.deepEqual([...tenProblems(cards), ...varietyProblems(cards)], []);
+  }
+  assert.deepEqual([...daily(s, {}, monthsOf(run), withDaily(s, run)).files], [...run.files]);
+});
+
 test('the nine come in played order across shards: date, then start, then gamePk', () => {
   // A doubleheader on 2 May: its early game has the higher gamePk and sits in the second shard, so neither gamePk nor
   // shard order would put it first. The calibrator, from the last date, still leads.
