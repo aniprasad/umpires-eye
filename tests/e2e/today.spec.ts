@@ -84,12 +84,19 @@ test.describe('in Los Angeles', () => {
     expect(errors).toEqual([]);
   });
 
-  test('a round keeps the date it began on, through midnight to its card', async ({ page }) => {
+  test('a round keeps the date it began on, through midnight to its card and its copied result', async ({ page }) => {
     test.setTimeout(180_000);
 
     const errors = trackErrors(page);
     const app = page.locator('#app');
 
+    await page.addInitScript(() => {
+      const writeText = async (text: string): Promise<void> => {
+        Object.assign(window, { ueCopied: text });
+      };
+
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    });
     await serveSeason(page, cal);
     await openAt(page, '2026-11-13T23:59:30-08:00');
     await expectTen(page, '2026-11-13');
@@ -106,6 +113,9 @@ test.describe('in Los Angeles', () => {
     expect(await page.evaluate(() => new Date().getDate())).toBe(14);
     await expect(page.locator('#ubSet')).toHaveText('2026 season set · November 13, 2026');
     await expect(page.locator('html')).toHaveAttribute('data-date', '2026-11-13');
+    await page.locator('#btnCopy').click();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { ueCopied?: string }).ueCopied?.split('\n')[0]))
+      .toBe("Umpire's Eye · 2026 season · Today's Ten · November 13, 2026");
     expect(errors).toEqual([]);
   });
 
@@ -120,15 +130,61 @@ test.describe('in Los Angeles', () => {
     await expectTen(page, '2026-11-02');
   });
 
-  test("a new month's first midnight reads the new month's file", async ({ page }) => {
-    const asked = await serveSeason(page, cal);
+  test('a page that comes back into view, or back from the back-forward cache, after a midnight it slept through moves to the new date', async ({ page }) => {
+    const errors = trackErrors(page);
 
+    await serveSeason(page, cal);
+    await openAt(page, '2026-11-13T23:59:00-08:00');
+    await expectTen(page, '2026-11-13');
+    // the time moves on, and no timer fires
+    await page.clock.setSystemTime(new Date('2026-11-14T00:05:00-08:00'));
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await expectTen(page, '2026-11-14');
+    await page.clock.setSystemTime(new Date('2026-11-16T00:05:00-08:00'));
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+    await expectTen(page, '2026-11-16');
+    expect(errors).toEqual([]);
+  });
+
+  test("a new month's first midnight reads the new month's file, and Play waits for it, saying so", async ({ page }) => {
+    const play = page.locator('#btnPlay');
+    const asked = await serveSeason(page, cal);
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    // Routes run newest first, so December's file waits here before the season serves it.
+    await page.route((url) => url.pathname.endsWith('/data/season-2026/daily/2026-12.json'), async (route) => {
+      await held;
+      await route.fallback();
+    });
     await openAt(page, '2026-11-30T23:59:00-08:00');
     await expectTen(page, '2026-11-30');
     expect(dailyAsked(asked)).toEqual(['daily/2026-11.json']);
     await page.clock.fastForward(60_000);
+    await expect(play).toBeDisabled();
+    await expect(play).toHaveText("Loading today's pitches");
+    await expect(page.locator('html')).not.toHaveAttribute('data-ready');
+    release();
     await expectTen(page, '2026-12-01');
+    await expect(play).toBeEnabled();
+    await expect(play).toHaveText('Play ball');
     expect(dailyAsked(asked)).toEqual(['daily/2026-11.json', 'daily/2026-12.json']);
+  });
+
+  test('Play after a midnight into a date without a ten shows NoToday, which waits for its own press', async ({ page }) => {
+    const errors = trackErrors(page);
+
+    await serveSeason(page, cal);
+    await openAt(page, '2026-11-14T23:59:00-08:00');
+    await expectTen(page, '2026-11-14');
+    await page.clock.setSystemTime(new Date(`${cal.unavailableDate}T00:05:00-08:00`));
+    await page.keyboard.press('Enter');
+    await expect(page.locator('html')).toHaveAttribute('data-ready', 'none');
+    await expect(page.locator('#app')).toHaveAttribute('data-phase', 'start');
+    await expect(page.locator('#btnPlay')).toHaveText('Play another ten');
+    expect(errors).toEqual([]);
   });
 
   test('at midnight, NoToday gives way to the next date that has a ten', async ({ page }) => {

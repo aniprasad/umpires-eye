@@ -159,15 +159,27 @@ test('?pool=ws plays the World Series pool', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('the default is the 2026 season', async ({ page }) => {
+test('the default is the 2026 season, and says so while it loads', async ({ page }) => {
   const errors = trackErrors(page);
   const asked = await serveSeason(page);
   const pool: string[] = [];
+  let release = (): void => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
 
+  // Routes run newest first, so the manifest waits here before the season serves it.
+  await page.route((url) => url.pathname.endsWith('/data/season-2026/manifest.json'), async (route) => {
+    await held;
+    await route.fallback();
+  });
   page.on('request', (req) => {
     if (req.url().includes('/data/ws-2026/')) pool.push(req.url());
   });
   await page.goto(`./?date=${mini.date}`);
+  // until the pitches are in, there are no numbers to give (§5.1)
+  await expect(page.locator('#startLede')).toHaveText("Today's Ten: real pitches from the 2026 season, at real speed, from the plate umpire's eye.");
+  release();
   await waitReady(page);
   await expect(page.locator('#startLede')).toHaveText(/^Today's Ten for November 14, 2026: real pitches from the 2026 season/);
   await expect(page.locator('.footnote')).toContainText('ABS truth reconstructed from tracking data. Players', { useInnerText: true });
