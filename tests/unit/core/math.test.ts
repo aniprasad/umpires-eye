@@ -19,7 +19,7 @@ describe('the seeded draws', () => {
     expect([r(), r(), r()]).toEqual([0.6011037519201636, 0.44829055899754167, 0.8524657934904099]);
     expect(mulberry32(0)()).toBe(0.26642920868471265);
     expect(draws.every((v) => v >= 0 && v < 1)).toBe(true);
-    expect(draws.reduce((s, v) => s + v, 0) / draws.length).toBeCloseTo(0.5, 1);
+    expect(Math.abs(draws.reduce((s, v) => s + v, 0) / draws.length - 0.5)).toBeLessThanOrEqual(0.02);
     expect(unitHash('umpires-eye-2026')).toBe(3220614827 / 2 ** 32);
   });
 });
@@ -29,6 +29,8 @@ describe('ABS truth', () => {
   const bottom = 1.6;
 
   it('is a strike when any part of the ball touches the zone', () => {
+    expect(absJudge(PLATE_HALF + BALL_R - 1e-12, 2.4, top, bottom).strike).toBe(true);
+    expect(absJudge(PLATE_HALF + BALL_R + 0.01 / 12, 2.4, top, bottom).strike).toBe(false);
     expect(absJudge(PLATE_HALF + BALL_R * 0.99, 2.4, top, bottom).strike).toBe(true);
     expect(absJudge(PLATE_HALF + BALL_R * 1.01, 2.4, top, bottom).strike).toBe(false);
     expect(absJudge(0, bottom - BALL_R * 0.99, top, bottom).strike).toBe(true);
@@ -47,6 +49,7 @@ describe('ABS truth', () => {
 
     expect(absJudge(0, 2.4, top, bottom).marginIn).toBeCloseTo(1.45 + 8.5, 9);
     expect(absJudge(PLATE_HALF + BALL_R - 1e-12, 2.4, top, bottom).marginIn).toBeCloseTo(0, 9);
+    expect(absJudge(PLATE_HALF + BALL_R + 0.01 / 12, 2.4, top, bottom).marginIn).toBeCloseTo(-0.01, 9);
     expect(justOut.strike).toBe(false);
     expect(justOut.marginIn).toBeCloseTo(-0.01, 9);
     expect(absJudge(1.5, 2.4, top, bottom).marginIn).toBeLessThan(-6);
