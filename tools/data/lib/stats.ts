@@ -4,6 +4,7 @@ import type { Judged } from './judge.ts';
 import type { Person } from './people.ts';
 import { absJudge, boxStrike, crossing, posAt, releaseT } from './physics.ts';
 import type { Role } from './plays.ts';
+import { storedAbsMargin } from './pool.ts';
 import type { Game } from './schedule.ts';
 
 export interface Tally {
@@ -22,7 +23,8 @@ export interface Spread {
   mean: number;
 }
 
-export const pct = (agree: number, total: number): number => (total ? round((100 * agree) / total, 1) : 0);
+// Two decimals, so 10,748 of 10,749 reads 99.99 rather than 100.
+export const pct = (agree: number, total: number): number => (total ? round((100 * agree) / total, 2) : 0);
 export const tally = (agree: number, total: number): Tally => ({ agree, total, pct: pct(agree, total) });
 
 export function spread(values: readonly number[], decimals = 4): Spread {
@@ -45,7 +47,8 @@ export function umpVsAbs(all: readonly Judged[]) {
 
   for (const j of all) {
     const ok = j.p.umpCall === j.truth;
-    const m = Math.abs(j.marginIn);
+    // Bands use the stored margin, as the pool and the app do, so the season's close calls include the pool's.
+    const m = storedAbsMargin(j);
 
     if (ok) agree++;
     else if (j.truth === 'S') strikesCalledBalls++;
@@ -265,17 +268,22 @@ export function pxpzResiduals(all: readonly Judged[]) {
 export function releaseSides(all: readonly Judged[]) {
   const xs: Record<'L' | 'R', number[]> = { L: [], R: [] };
   const crossed: Record<string, number> = {};
+  const far: Record<string, number> = {};
 
   for (const j of all) {
     if (j.p.extension === null) continue;
 
     const x = posAt(j.p.traj, releaseT(j.p.traj, j.p.extension)).x;
+    const across = j.p.throws === 'R' ? x : -x;
 
     xs[j.p.throws].push(x);
-    if ((j.p.throws === 'R' && x > 0.5) || (j.p.throws === 'L' && x < -0.5)) {
-      crossed[j.p.attribution] = (crossed[j.p.attribution] ?? 0) + 1;
-    }
+    if (across > 0.5) crossed[j.p.attribution] = (crossed[j.p.attribution] ?? 0) + 1;
+    if (across > 1.2) far[j.p.attribution] = (far[j.p.attribution] ?? 0) + 1;
   }
 
-  return { releaseXFt: { R: spread(xs.R, 3), L: spread(xs.L, 3) }, acrossTheMiddleByAttribution: crossed };
+  return {
+    releaseXFt: { R: spread(xs.R, 3), L: spread(xs.L, 3) },
+    acrossTheMiddleByAttribution: crossed,
+    farSideByAttribution: { beyondFt: 1.2, ...far },
+  };
 }
