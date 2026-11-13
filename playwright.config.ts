@@ -48,6 +48,11 @@ export default defineConfig({
     { name: 'native-reference', testMatch: /native-reference\.setup\.ts/, use: { ...devices['Desktop Chrome'], ...edge } },
     { name: 'desktop-edge', testMatch: desktopSpecs, dependencies: ['native-reference'], use: { ...devices['Desktop Chrome'], ...edge, viewport: desktop } },
     { name: 'desktop-webkit', testMatch: desktopSpecs, dependencies: ['native-reference'], use: { ...devices['Desktop Safari'], viewport: desktop, ...lightTrace } },
+    // The speed test times a live pitch's frames against the mockup's in the same engine. Copies of it side by side, as
+    // --repeat-each runs them, loaded each other's windows; the port does more script per frame than the mockup, so it
+    // slowed more and failed the bound. Each engine runs its copies one at a time.
+    { name: 'speed-edge', testMatch: /speed\.spec\.ts/, workers: 1, use: { ...devices['Desktop Chrome'], ...edge, viewport: desktop } },
+    { name: 'speed-webkit', testMatch: /speed\.spec\.ts/, workers: 1, use: { ...devices['Desktop Safari'], viewport: desktop, ...lightTrace } },
     { name: 'iphone', testMatch: /phone\.spec\.ts/, use: { ...devices['iPhone 13'], ...lightTrace } },
     { name: 'pixel', testMatch: /phone\.spec\.ts/, use: { ...devices['Pixel 7'], ...edge } },
     { name: 'parity', testMatch: /parity\.spec\.ts/, use: { ...devices['Desktop Chrome'], ...edge } },
