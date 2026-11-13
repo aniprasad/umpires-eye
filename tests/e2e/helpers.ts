@@ -123,21 +123,47 @@ export function callOf(key: CallKey): Call {
   return STRIKE_KEYS.includes(key) ? 'strike' : 'ball';
 }
 
-export async function callUntilAccepted(page: Page, input: CallKey | Locator, options: { tap?: boolean; timeout?: number } = {}): Promise<void> {
-  const button = typeof input === 'string' ? page.locator(callOf(input) === 'strike' ? '#btnStrike' : '#btnBall') : input;
-  const timeout = options.timeout ?? 10_000;
-  const deadline = Date.now() + timeout;
+/**
+ * Opens the app with its time on Playwright's clock, stopped once the page is ready. The app keeps all its time on what
+ * the clock fakes (performance.now, requestAnimationFrame, timers and Date), so from then on a pitch moves only when the
+ * test steps the clock (callPitch), and no delay on a loaded machine can make a call miss its window.
+ */
+export async function openPaused(page: Page, path: string): Promise<void> {
+  await page.clock.install();
+  await page.goto(path);
+  await waitReady(page);
+  // The page's clock starts at the test's wall time and keeps its pace, so a minute from now is still to come.
+  await page.clock.pauseAt(Date.now() + 60_000);
+}
 
-  // A press before the release only raises the "Wait for the pitch" toast, so keep pressing until one counts.
-  while (Date.now() < deadline) {
-    if (typeof input === 'string') await page.keyboard.press(input);
-    else if (options.tap) await input.tap({ timeout: 5_000 });
-    else await input.click({ timeout: 5_000 });
-    if (await button.evaluate((el) => el.classList.contains('is-called'))) return;
-    await page.waitForTimeout(120);
+// The call window runs 1.5 s past the catch, so the first step past the release still lands early in it.
+const CLOCK_STEP_MS = 500;
+// More page time than a pitch needs from the start of the windup to its settled verdict.
+const CLOCK_STEPS_MAX = 20;
+
+async function stepClockUntil(page: Page, done: () => Promise<boolean>, what: string): Promise<void> {
+  for (let k = 0; k < CLOCK_STEPS_MAX; k++) {
+    if (await done()) return;
+    await page.clock.fastForward(CLOCK_STEP_MS);
   }
 
-  throw new Error(`${typeof input === 'string' ? `Key ${input}` : 'The call button'} was not taken as a call within ${timeout} ms`);
+  throw new Error(`${what} didn't come within ${(CLOCK_STEPS_MAX * CLOCK_STEP_MS) / 1000} s of page time`);
+}
+
+/**
+ * Calls the pitch in play on a page opened with openPaused. It steps the clock through the windup to the release, presses
+ * the key or the button once, checks the call was taken, then steps on until the verdict has settled.
+ */
+export async function callPitch(page: Page, input: CallKey | Locator, options: { tap?: boolean } = {}): Promise<void> {
+  const button = typeof input === 'string' ? page.locator(callOf(input) === 'strike' ? '#btnStrike' : '#btnBall') : input;
+
+  // The call clock's bar stays full until the release, then drains.
+  await stepClockUntil(page, async () => (await page.locator('#indClock').evaluate((el) => (el as HTMLElement).style.transform)) !== 'scaleX(1)', 'The release');
+  if (typeof input === 'string') await page.keyboard.press(input);
+  else if (options.tap) await input.tap({ timeout: 5_000 });
+  else await input.click({ timeout: 5_000 });
+  await expect(button, 'the call was taken').toHaveClass(/\bis-called\b/);
+  await stepClockUntil(page, () => page.locator('#verdict').evaluate((el) => el.classList.contains('show-body')), 'The verdict');
 }
 
 export async function activeId(page: Page): Promise<string> {
