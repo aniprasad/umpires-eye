@@ -128,12 +128,18 @@ function cellsOf(where: string, row: unknown, at: ReadonlyMap<string, number>) {
 export function decodeGames(doc: object): StoredGame[] {
   const d = asDoc(doc);
   const at = columns(d, 'games', GAME_FIELDS);
+  const seen = new Set<number>();
 
   return rowsOf(d, 'games').map((row, i) => {
-    const c = cellsOf(`games row ${i}`, row, at);
+    const where = `games row ${i}`;
+    const c = cellsOf(where, row, at);
+    const gamePk = c.int('gamePk');
+
+    if (seen.has(gamePk)) throw new DecodeError(`${where}: gamePk ${gamePk} appears twice`);
+    seen.add(gamePk);
 
     return {
-      gamePk: c.int('gamePk'),
+      gamePk,
       date: c.str('date'),
       start: c.str('start'),
       gameType: c.str('gameType'),
@@ -146,31 +152,42 @@ export function decodeGames(doc: object): StoredGame[] {
   });
 }
 
+/** A table's rows by id. An id that comes twice is refused: a reference to it would quietly get the later row. */
+function byId<T>(table: string, rows: readonly unknown[], read: (where: string, row: unknown) => [number, T]): Map<number, T> {
+  const out = new Map<number, T>();
+
+  for (const [i, row] of rows.entries()) {
+    const where = `${table} row ${i}`;
+    const [id, value] = read(where, row);
+
+    if (out.has(id)) throw new DecodeError(`${where}: id ${id} appears twice`);
+    out.set(id, value);
+  }
+
+  return out;
+}
+
 /** Venue or plate umpire names by id. */
 export function decodeNames(doc: object, table: 'venues' | 'umpires'): Map<number, string> {
   const d = asDoc(doc);
   const at = columns(d, table, NAME_FIELDS);
 
-  return new Map(
-    rowsOf(d, table).map((row, i) => {
-      const c = cellsOf(`${table} row ${i}`, row, at);
+  return byId(table, rowsOf(d, table), (where, row) => {
+    const c = cellsOf(where, row, at);
 
-      return [c.int('id'), c.str('name')];
-    }),
-  );
+    return [c.int('id'), c.str('name')];
+  });
 }
 
 export function decodePlayers(doc: object): Map<number, StoredPlayer> {
   const d = asDoc(doc);
   const at = columns(d, 'players', PLAYER_FIELDS);
 
-  return new Map(
-    rowsOf(d, 'players').map((row, i) => {
-      const c = cellsOf(`players row ${i}`, row, at);
+  return byId('players', rowsOf(d, 'players'), (where, row) => {
+    const c = cellsOf(where, row, at);
 
-      return [c.int('id'), { name: c.str('name'), heightIn: c.numOrNull('heightIn') }];
-    }),
-  );
+    return [c.int('id'), { name: c.str('name'), heightIn: c.numOrNull('heightIn') }];
+  });
 }
 
 export function decodePitches(doc: object): StoredPitch[] {
@@ -259,7 +276,8 @@ export function decodePitchTypes(doc: object): Map<string, { name: string; famil
 
 /**
  * A whole shard or month file: its format and version, every table, and every reference between them. Each pitch's
- * game, players, plate umpire and pitch type, and each game's venue, are in their tables, and no pitch appears twice.
+ * game, players, plate umpire and pitch type, and each game's venue, are in their tables, and no game, venue, umpire,
+ * player or pitch appears twice.
  */
 export function decodeTables(doc: unknown, format: string): DecodedTables {
   const d = asDoc(doc);

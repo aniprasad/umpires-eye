@@ -128,9 +128,25 @@ describe('the decoder', () => {
     expect(refusal(asFile(shardDoc([pitchCells({ batter: 12, umpire: 72 })])))).toBe(
       "pitch 900001-1-1: batter 12 isn't in the players table; plate umpire 72 isn't in the umpires table",
     );
+    expect(refusal(asFile(shardDoc([pitchCells({ pitcher: 21 })])))).toBe("pitch 900001-1-1: pitcher 21 isn't in the players table");
     expect(refusal(asFile(shardDoc([pitchCells({ type: 'KN', challenge: [31, 'HOM', 'C', 0] })])))).toBe(
       "pitch 900001-1-1: challenger 31 isn't in the players table; pitch type KN isn't in pitchTypes",
     );
     expect(refusal(asFile(shardDoc([pitchCells(), pitchCells()])))).toBe('pitch 900001-1-1: it appears twice');
+  });
+
+  it("refuses a game whose venue isn't in the venues table", () => {
+    expect(refusal(asFile({ ...shardDoc(rows), venues: [] }))).toBe("game 900001: venue 32 isn't in the venues table");
+  });
+
+  it('refuses an id that appears twice in the games, venues, umpires or players table, so no reference is ambiguous', () => {
+    const doc = shardDoc(rows);
+
+    expect(refusal(asFile({ ...doc, games: [...doc.games, [900001, '2026-05-02', '2026-05-02T17:05:00Z', 'R', 'AWY', 'HOM', null, null, 32]] }))).toBe(
+      'games row 2: gamePk 900001 appears twice',
+    );
+    expect(refusal(asFile({ ...doc, venues: [[32, 'A Park'], [32, 'Another Park']] }))).toBe('venues row 1: id 32 appears twice');
+    expect(refusal(asFile({ ...doc, umpires: [...doc.umpires, [70, 'Another Ump']] }))).toBe('umpires row 2: id 70 appears twice');
+    expect(refusal(asFile({ ...doc, players: [...doc.players, [11, 'Sam Other', 74]] }))).toBe('players row 3: id 11 appears twice');
   });
 });

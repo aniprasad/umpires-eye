@@ -300,7 +300,7 @@ Besides the common head, a shard has:
 
 Each shard is self-contained: its tables hold every game, venue, plate umpire and player its pitches mention.
 
-Read columns by name from `fields`, not by position, so readers survive a later version that adds fields. `src/core/decode.ts`, which the app and the tools share, does this (`decodeGames`, `decodeNames`, `decodePlayers`, `decodePitches`). `decodeTables` reads a whole file: it checks the format and version, every cell against the field's type, and that each pitch's game, players, plate umpire and pitch type, and each game's venue, are in their tables. It throws a `DecodeError` naming the table, row and field. `data:validate` reads every shard with it.
+Read columns by name from `fields`, not by position, so readers survive a later version that adds fields. `src/core/decode.ts`, which the app and the tools share, does this (`decodeGames`, `decodeNames`, `decodePlayers`, `decodePitches`). `decodeTables` reads a whole file: it checks the format and version, every cell against the field's type, that each pitch's game, players, plate umpire and pitch type, and each game's venue, are in their tables, and that no game, venue, umpire, player or pitch appears twice. It throws a `DecodeError` naming the table, row and field. `data:validate` reads every shard with it.
 
 | Table | Fields |
 |---|---|
