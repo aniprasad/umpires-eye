@@ -77,13 +77,13 @@ function readRows(body: unknown, format: string, what: string): Rows & { readonl
   try {
     tables = decodeTables(body, format);
   } catch (e) {
-    if (e instanceof DecodeError) throw broken(what, `doesn't add up: ${e.message}`);
+    if (e instanceof DecodeError) throw broken(what, `didn't add up: ${e.message}`);
     throw e;
   }
   // decodeTables has checked that the body is an object
   const doc = body as Doc;
 
-  if (typeof doc.build !== 'string' || typeof doc.season !== 'number') throw broken(what, 'has no build id or no season');
+  if (typeof doc.build !== 'string' || typeof doc.season !== 'number') throw broken(what, 'came without a build id or a season');
 
   return { doc, build: doc.build, tables, reader: rowReader(tables, doc.season) };
 }
@@ -91,7 +91,7 @@ function readRows(body: unknown, format: string, what: string): Rows & { readonl
 function readMonth(body: unknown, what: string): MonthFile {
   const rows = readRows(body, DAILY_FORMAT, what);
 
-  if (!isRecord(rows.doc.days)) throw broken(what, 'has no days');
+  if (!isRecord(rows.doc.days)) throw broken(what, 'came without their days');
 
   return { ...rows, days: rows.doc.days, byId: new Map(rows.tables.pitches.map((p) => [p.id, p])) };
 }
@@ -113,7 +113,7 @@ function dayOf(month: MonthFile, dateKey: string, what: string): DailyDay | unde
 
   if (day === undefined) return undefined;
   if (!isRecord(day) || typeof day.available !== 'boolean' || !Array.isArray(day.ids) || !day.ids.every((id) => typeof id === 'string')) {
-    throw broken(what, `has a malformed entry for ${dateKey}`);
+    throw broken(what, `came with a malformed entry for ${dateKey}`);
   }
 
   return day as DailyDay;
@@ -217,7 +217,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
 
   const deck = shared(async (signal): Promise<Deck> => {
     const { shards } = await theManifest(signal);
-    // T10 makes this one shard per page, and adds the next when a deck runs dry
+    // any shard will do for now; which ones a page has used, and the next when a deck runs dry, are §3's to settle
     const at = Math.floor(rand() * shards.length);
     const read = async (meta: ShardMeta): Promise<Rows> => readRows(await get(versioned(meta.file, meta.sha256.slice(0, 12)), MORE, 'force-cache', signal), SHARD_FORMAT, MORE);
     const rows = await sameBuild(await read(shards[at]), (fresh) => {
