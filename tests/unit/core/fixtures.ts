@@ -57,6 +57,7 @@ export function shardDoc(pitches: readonly PitchCells[], order: readonly PitchFi
     format: SHARD_FORMAT,
     version: FORMAT_VERSION,
     season: 2026,
+    build: 'b1',
     shard: 0,
     shards: 1,
     credit: 'credit',

@@ -57,7 +57,12 @@ export interface ManifestDaily {
   last: string;
   /** The last date that may have been served anywhere. That day's ten and every earlier one never change. */
   servedThrough: string;
-  /** The reserve the schedule draws from: its share of the pool, and the dealable pitches it held for this schedule. */
+  /**
+   * The reserve the schedule draws from. `share` is DAILY_RESERVE, the rule's cut-off. `pitches` counts the dealable
+   * pool pitches whose IDs are reserved, on the shards whose build id the month files carry: data:daily counts it on
+   * every run, and data:validate recounts it, so a rebuild that changes the pool fails validation until data:daily
+   * runs again.
+   */
   reserve: { share: number; pitches: number };
   files: DailyFileMeta[];
 }
