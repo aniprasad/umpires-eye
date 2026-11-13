@@ -1,4 +1,4 @@
-import { BALL_R, DEALABLE, MID_Y, PLATE_HALF, RUBBER_Y } from './constants.ts';
+import { BALL_R, DEAL_BOX, MID_Y, PLATE_HALF, RUBBER_Y } from './constants.ts';
 
 export interface Traj {
   x0: number;
@@ -64,6 +64,6 @@ export function boxStrike(x: number, z: number, top: number, bottom: number, rad
   return Math.abs(x) <= PLATE_HALF + radius && z >= bottom - radius && z <= top + radius;
 }
 
-export function isDealable(mid: { x: number; z: number }): boolean {
-  return mid.z > DEALABLE.zMin && mid.z < DEALABLE.zMax && Math.abs(mid.x) < DEALABLE.xMax;
+export function inDealBox(mid: { x: number; z: number }): boolean {
+  return mid.z > DEAL_BOX.zMin && mid.z < DEAL_BOX.zMax && Math.abs(mid.x) < DEAL_BOX.xMax;
 }

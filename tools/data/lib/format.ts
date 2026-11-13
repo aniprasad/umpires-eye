@@ -1,4 +1,4 @@
-import { absJudge, crossing, isDealable, TRAJ_KEYS, type Traj } from './physics.ts';
+import { absJudge, crossing, inDealBox, TRAJ_KEYS, type Traj } from './physics.ts';
 import type { Judged } from './judge.ts';
 import type { Role } from './plays.ts';
 import type { Game } from './schedule.ts';
@@ -103,7 +103,7 @@ export function quantize(j: Judged): Quantized {
     const mid = crossing(traj);
     const k = absJudge(mid.x, mid.z, zoneTop, zoneBottom);
 
-    if (k.strike === (j.truth === 'S') && isDealable(mid) === j.dealable) return { traj, zoneTop, zoneBottom, decimals: d };
+    if (k.strike === (j.truth === 'S') && inDealBox(mid) === j.inBox) return { traj, zoneTop, zoneBottom, decimals: d };
   }
 
   return { traj: { ...j.p.traj }, zoneTop: j.p.zoneTop, zoneBottom: j.p.zoneBottom, decimals: null };

@@ -23,7 +23,7 @@ export const MID_Y = 8.5 / 12;
 export const RUBBER_Y = 60.5;
 
 // The app's lens is fitted to every crossing inside this box, so dealing anything outside it would widen the lens.
-export const DEALABLE = { zMin: 0.9, zMax: 4.5, xMax: 1.5 } as const;
+export const DEAL_BOX = { zMin: 0.9, zMax: 4.5, xMax: 1.5 } as const;
 
 export const CLOSE_IN = 1.5;
 export const NEAR_IN = 4.5;

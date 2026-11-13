@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { absJudge, crossing, isDealable, type Traj } from '../lib/physics.ts';
+import { absJudge, crossing, inDealBox, type Traj } from '../lib/physics.ts';
 
 // The mockup's self-test guarantees, kept as a test: the same math must reproduce its validated World Series pool
 // (742 called pitches, 29 of 29 challenges, the ump right on 683). The pool is our own derived file, not an MLB response.
@@ -26,10 +26,10 @@ test('reproduces the mockup World Series pool', { skip: !existsSync(file) && 'mo
     const mid = crossing(p.traj);
     const j = absJudge(mid.x, mid.z, p.zone.top, p.zone.bottom);
 
-    return { p, truth: j.strike ? 'strike' : 'ball', marginIn: j.marginIn, dealable: isDealable(mid) };
+    return { p, truth: j.strike ? 'strike' : 'ball', marginIn: j.marginIn, inBox: inDealBox(mid) };
   });
   const challenged = judged.filter((j) => j.p.challenge);
-  const undealt = judged.filter((j) => !j.dealable);
+  const undealt = judged.filter((j) => !j.inBox);
 
   assert.equal(pitches.length, 742);
   assert.deepEqual(

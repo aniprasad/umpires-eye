@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BALL_R, MID_Y, PLATE_FRONT_Y, PLATE_HALF } from '../lib/constants.ts';
-import { absJudge, boxStrike, crossing, isDealable, posAt, tAtY } from '../lib/physics.ts';
+import { absJudge, boxStrike, crossing, inDealBox, posAt, tAtY } from '../lib/physics.ts';
 import { hash32, mulberry32 } from '../lib/rng.ts';
 import { trajThrough, ZONE } from './fixtures.ts';
 
@@ -41,12 +41,12 @@ test('ignoring the ball radius turns edge strikes into balls', () => {
   assert.equal(absJudge(PLATE_HALF + BALL_R / 2, 2.5, ZONE.top, ZONE.bottom, 0).strike, false);
 });
 
-test('isDealable is the mockup crossing box, bounds excluded', () => {
-  assert.equal(isDealable({ x: 0, z: 0.9 }), false);
-  assert.equal(isDealable({ x: 0, z: 0.9001 }), true);
-  assert.equal(isDealable({ x: 0, z: 4.5 }), false);
-  assert.equal(isDealable({ x: -1.5, z: 2 }), false);
-  assert.equal(isDealable({ x: 1.4999, z: 2 }), true);
+test('inDealBox is the mockup crossing box, bounds excluded', () => {
+  assert.equal(inDealBox({ x: 0, z: 0.9 }), false);
+  assert.equal(inDealBox({ x: 0, z: 0.9001 }), true);
+  assert.equal(inDealBox({ x: 0, z: 4.5 }), false);
+  assert.equal(inDealBox({ x: -1.5, z: 2 }), false);
+  assert.equal(inDealBox({ x: 1.4999, z: 2 }), true);
 });
 
 test('the fixture trajectory crosses mid-plate where it is asked to', () => {

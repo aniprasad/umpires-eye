@@ -147,7 +147,7 @@ export interface JudgedSpec {
   marginIn: number;
   bats?: Side;
   challenged?: boolean;
-  dealable?: boolean;
+  inBox?: boolean;
   showable?: boolean;
   pitchType?: string;
   team?: number;
@@ -197,7 +197,7 @@ export function judged(s: JudgedSpec): Judged {
     mid: { x: xForMargin(s.marginIn), y: MID_Y, z: 2.5 },
     truth,
     marginIn: s.marginIn,
-    dealable: s.dealable ?? true,
+    inBox: s.inBox ?? true,
     showable: s.showable ?? true,
   };
 }

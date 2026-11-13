@@ -5,7 +5,7 @@ import {
   CALIBRATOR_MIN_IN,
   CLOSE_IN,
   CREDIT,
-  DEALABLE,
+  DEAL_BOX,
   GAME_TYPE_NAMES,
   GAME_TYPES,
   MID_Y,
@@ -325,7 +325,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
       judgePlaneYFt: MID_Y,
       frontOfPlateYFt: PLATE_FRONT_Y,
       rubberYFt: RUBBER_Y,
-      dealable: DEALABLE,
+      dealBox: DEAL_BOX,
       closeIn: CLOSE_IN,
       nearIn: NEAR_IN,
       calibratorMinIn: CALIBRATOR_MIN_IN,
@@ -393,7 +393,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
   }
 
   const mismatches = challengeMismatches(all, inputs.people, games);
-  const geometricOnly = all.filter((j) => j.dealable && !j.showable);
+  const geometricOnly = all.filter((j) => j.inBox && !j.showable);
   const impossible = all.filter((j) => !countPossible(j.p)).map((j) => `${j.p.id}: ${j.p.balls}-${j.p.strikes} before the pitch`);
   const report = {
     note: 'Written by npm run data:build from the cached MLB Stats API responses. Deterministic: rebuilding gives the same file.',
@@ -447,7 +447,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     },
     umpVsAbs: ump,
     dealableRule: {
-      geometric: all.filter((j) => j.dealable).length,
+      geometric: all.filter((j) => j.inBox).length,
       geometricButNotShowable: geometricOnly.length,
       geometricButNotShowableInPoolRange: pool.notShowable,
     },

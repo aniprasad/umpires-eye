@@ -21,9 +21,9 @@ describe('selectPool', () => {
   const all = [
     judged({ seq: 0, marginIn: -3, challenged: true }),
     judged({ seq: 1, marginIn: 5 }),
-    judged({ seq: 2, marginIn: 0.2, dealable: false }),
+    judged({ seq: 2, marginIn: 0.2, inBox: false }),
     judged({ seq: 3, marginIn: -0.3, showable: false }),
-    judged({ seq: 4, marginIn: -20, dealable: false, challenged: true }),
+    judged({ seq: 4, marginIn: -20, inBox: false, challenged: true }),
     ...Array.from({ length: 40 }, (_, k) => judged({ seq: 10 + k, marginIn: k % 2 ? 1 : -1 })),
     ...Array.from({ length: 30 }, (_, k) => judged({ seq: 100 + k, marginIn: 3 })),
     ...Array.from({ length: 50 }, (_, k) => judged({ seq: 200 + k, marginIn: 8 })),

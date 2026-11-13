@@ -10,7 +10,7 @@ import type { Card } from './lib/deal.ts';
 import { decodeGames, decodeNames, decodePitches, type ShardDoc, type StoredPitch } from './lib/decode.ts';
 import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
 import { loadInputs } from './lib/inputs.ts';
-import { absJudge, crossing, isDealable, TRAJ_KEYS } from './lib/physics.ts';
+import { absJudge, crossing, inDealBox, TRAJ_KEYS } from './lib/physics.ts';
 import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, SEED, sessionSizes, sha256 } from './lib/pipeline.ts';
 import type { Tally } from './lib/stats.ts';
 
@@ -156,7 +156,7 @@ for (const meta of manifest.shards) {
     const where = `${meta.file} ${p.id}`;
     const mid = crossing(p.traj);
     const judged = absJudge(mid.x, mid.z, p.zoneTop, p.zoneBottom);
-    const drawable = isDealable(mid) && p.extension !== null && p.mph !== null;
+    const drawable = inDealBox(mid) && p.extension !== null && p.mph !== null;
     const m = Math.abs(p.marginIn);
     const key: [number, number, number] = [gameOrder.get(p.gamePk) ?? -1, p.atBat, p.pitch];
 

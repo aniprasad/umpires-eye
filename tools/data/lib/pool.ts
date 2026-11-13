@@ -72,7 +72,7 @@ export function selectPool(all: readonly Judged[], seed: string, rates: Rates = 
 
   for (const j of all) {
     const b = band(j);
-    const dealable = j.dealable && j.showable;
+    const dealable = j.inBox && j.showable;
 
     if (dealable && b !== 'mid') season[b]++;
     if (j.p.challenge) {
@@ -82,7 +82,7 @@ export function selectPool(all: readonly Judged[], seed: string, rates: Rates = 
       if (b === 'close') entries.push({ j, bucket: 'close', dealable });
       else if (b === 'near') near.push(j);
       else if (b === 'clear') clear.push(j);
-    } else if (j.dealable && (b === 'close' || b === 'near')) {
+    } else if (j.inBox && (b === 'close' || b === 'near')) {
       notShowable[b]++;
     }
   }
