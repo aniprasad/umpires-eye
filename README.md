@@ -35,6 +35,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
   - `iphone` (WebKit) and `pixel` (Edge): touch rounds in device emulation.
   - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`. By default the mockup's footnotes take the height of the port's longer credit line, so the rest of the screen lines up. Set `UE_PARITY_ALIGN=0` to compare the pages untouched.
 - Run one project with `npx playwright test --project=desktop-webkit`.
+- Each run builds and serves its own copy on port 4173 and stops at once if that port is taken, so it never tests another checkout's server. Set `UE_E2E_PORT` (for example `UE_E2E_PORT=4191`) to run on another port, such as beside a running `npm run preview`; ports that browsers block, such as 4190, are refused.
 
 ## URL switches
 
