@@ -99,6 +99,11 @@ test('a month file, the boot fetch or a session over its budget fails', () => {
   assert.match(checkDaily(files, { ...tight, session: tight.session - 1 }).failures.join('\n'), /a session is \d+ gzipped bytes/);
 });
 
+test('a malformed day fails rather than crashing the checks', () => {
+  fails(withNovember(onDay('2026-11-09', (line) => line.replace(/"ids":\[[^\]]*\]/, '"ids":"none"'))), /2026-11-09: not a day/);
+  fails(withNovember(onDay('2026-11-10', (line) => line.replace('"available":true', '"available":false'))), /2026-11-10: not a day/);
+});
+
 test('a served day that no longer keeps the rules is reported, not failed', () => {
   // servedThrough moves past a day whose calibrator no longer comes first: as if the data changed after it was served.
   const [a, b] = ids('2026-11-20');

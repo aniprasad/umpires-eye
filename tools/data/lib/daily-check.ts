@@ -52,8 +52,13 @@ function tableProblems(file: string, doc: DailyDoc, tables: DecodedTables, seaso
   const umpires = new Set(pitches.flatMap((p) => (p.umpire === null ? [] : [p.umpire])));
   const players = new Set(pitches.flatMap((p) => [p.batter, p.pitcher, ...(p.challenge ? [p.challenge.by] : [])]));
   const types = new Set(pitches.flatMap((p) => (p.type === null ? [] : [p.type])));
-  const check = (table: string, rows: readonly unknown[][], wanted: ReadonlySet<number>, shardRow: (id: number) => unknown): void => {
-    const at = doc.fields[table as 'games']?.indexOf(table === 'games' ? 'gamePk' : 'id') ?? -1;
+  const check = (
+    table: 'games' | 'venues' | 'umpires' | 'players',
+    rows: readonly unknown[][],
+    wanted: ReadonlySet<number>,
+    shardRow: (id: number) => unknown,
+  ): void => {
+    const at = doc.fields[table].indexOf(table === 'games' ? 'gamePk' : 'id');
     const ids = rows.map((r) => Number(r[at]));
 
     if (ids.length !== wanted.size || ids.some((id) => !wanted.has(id))) problems.push(`${file}: its ${table} table holds more or other rows than its pitches reference`);
@@ -147,6 +152,14 @@ export function checkDaily(files: DailyFiles, budgets: Budgets = { month: MONTH_
 
     for (const [date, day] of Object.entries(doc.days)) {
       const where = `${meta.file} ${date}`;
+      const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every((s) => typeof s === 'string');
+
+      // The decoder reads the tables, not the days, so a malformed day is caught here rather than crashing the checks.
+      if (!strings(day.ids) || (day.available !== true && !(day.available === false && strings(day.missing)))) {
+        fail(`${where}: not a day: it needs a list of ids, and either "available": true or "available": false with a list of missing ids`);
+        continue;
+      }
+
       const gone = day.ids.filter((id) => !season.pitches.get(id)?.dealable);
 
       if (!inHorizon.has(date) || monthOf(date) !== meta.month) fail(`${where}: outside the horizon, or in another month's file`);
