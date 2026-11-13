@@ -120,13 +120,32 @@ function dayOf(month: MonthFile, dateKey: string, what: string): DailyDay | unde
   return day as DailyDay;
 }
 
-/** One load for everyone who asks while it runs. A failed one is dropped, so the next ask tries again. */
-function shared<T>(load: (signal?: AbortSignal) => Promise<T>): (signal?: AbortSignal) => Promise<T> {
+/**
+ * Waits for a load the page shares, or rejects with the signal's reason once this caller stops waiting. The load runs on
+ * for anyone else waiting, and for the next caller.
+ */
+function abortable<T>(load: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return load;
+  if (signal.aborted) return Promise.reject(signal.reason as unknown);
+
+  return new Promise<T>((resolve, reject) => {
+    const stop = (): void => reject(signal.reason as unknown);
+
+    signal.addEventListener('abort', stop, { once: true });
+    void load.then(resolve, reject).finally(() => signal.removeEventListener('abort', stop));
+  });
+}
+
+/**
+ * One load for everyone who asks while it runs. No caller's signal reaches it, so one caller giving up can't fail the
+ * others. A failed load is dropped, so the next ask tries again.
+ */
+function shared<T>(load: () => Promise<T>): (signal?: AbortSignal) => Promise<T> {
   let running: Promise<T> | null = null;
 
   return (signal) => {
     if (!running) {
-      const p = load(signal);
+      const p = load();
 
       running = p;
       p.catch(() => {
@@ -134,7 +153,7 @@ function shared<T>(load: (signal?: AbortSignal) => Promise<T>): (signal?: AbortS
       });
     }
 
-    return running;
+    return abortable(running, signal);
   };
 }
 
@@ -153,43 +172,44 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   // The shards this page has dealt from, or is about to. Another ten never goes back to one (§3).
   const used = new Set<number>();
   const texts = new Map<number, (signal?: AbortSignal) => Promise<string>>();
-  const get = (file: string, what: string, cache: RequestCache, signal?: AbortSignal): Promise<unknown> => fetchJson(root + file, { what, cache, signal, net });
-  const fetchManifest = async (cache: RequestCache, signal?: AbortSignal): Promise<Manifest> => readManifest(await get('manifest.json', MANIFEST, cache, signal));
+  // Loads are shared, so none takes a caller's signal (shared() above).
+  const get = (file: string, what: string, cache: RequestCache): Promise<unknown> => fetchJson(root + file, { what, cache, net });
+  const fetchManifest = async (cache: RequestCache): Promise<Manifest> => readManifest(await get('manifest.json', MANIFEST, cache));
   // The manifest the page goes by, until a build check brings a newer one.
   const theManifest = (signal?: AbortSignal): Promise<Manifest> => {
-    manifest ??= fetchManifest('no-cache', signal).catch((e: unknown) => {
+    manifest ??= fetchManifest('no-cache').catch((e: unknown) => {
       manifest = null;
       throw e;
     });
 
-    return manifest;
+    return abortable(manifest, signal);
   };
 
   /** A file, paired with the manifest of its build (§4.3). */
-  async function sameBuild<F extends Built>(file: F, refetch: (fresh: Manifest) => Promise<F>, what: string, signal?: AbortSignal): Promise<F> {
-    const known = await theManifest(signal);
-    const got = await matchBuild(known, file, { manifest: () => fetchManifest('reload', signal), file: refetch }, what);
+  async function sameBuild<F extends Built>(file: F, refetch: (fresh: Manifest) => Promise<F>, what: string): Promise<F> {
+    const known = await theManifest();
+    const got = await matchBuild(known, file, { manifest: () => fetchManifest('reload'), file: refetch }, what);
 
     if (got.manifest !== known) manifest = Promise.resolve(got.manifest);
 
     return got.file;
   }
 
-  async function loadMonth(month: string, signal?: AbortSignal): Promise<MonthFile> {
-    const meta = (await theManifest(signal)).daily.files.find((f) => f.month === month);
+  async function loadMonth(month: string): Promise<MonthFile> {
+    const meta = (await theManifest()).daily.files.find((f) => f.month === month);
     const what = `the pitches for ${monthLabel(month)}`;
-    const read = async (file: string): Promise<MonthFile> => readMonth(await get(file, what, 'no-cache', signal), what);
+    const read = async (file: string): Promise<MonthFile> => readMonth(await get(file, what, 'no-cache'), what);
 
     if (!meta) throw broken(MANIFEST, `lists no month file for ${month}, though its schedule covers it`);
 
-    return sameBuild(await read(meta.file), (fresh) => read(versioned(meta.file, fresh.build)), what, signal);
+    return sameBuild(await read(meta.file), (fresh) => read(versioned(meta.file, fresh.build)), what);
   }
 
   function monthFile(month: string, signal?: AbortSignal): Promise<MonthFile> {
     let load = months.get(month);
 
     if (!load) {
-      load = shared((s) => loadMonth(month, s));
+      load = shared(() => loadMonth(month));
       months.set(month, load);
     }
 
@@ -220,8 +240,8 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   }
 
   /** A shard this page hasn't used, at random, now marked used; null once every one has been. */
-  async function unusedShard(signal?: AbortSignal): Promise<number | null> {
-    const free = (await theManifest(signal)).shards.map((_, at) => at).filter((at) => !used.has(at));
+  async function unusedShard(): Promise<number | null> {
+    const free = (await theManifest()).shards.map((_, at) => at).filter((at) => !used.has(at));
     const at = free[Math.floor(rand() * free.length)];
 
     if (at === undefined) return null;
@@ -231,8 +251,8 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   }
 
   // Picked once, by prefetch() or the first deck(), whichever asks first.
-  const firstShard = shared(async (signal): Promise<number> => {
-    const at = await unusedShard(signal);
+  const firstShard = shared(async (): Promise<number> => {
+    const at = await unusedShard();
 
     // readManifest refuses a manifest without shards, and nothing is used before this pick
     if (at === null) throw broken(MANIFEST, 'lists no shards');
@@ -247,15 +267,15 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
 
     return meta;
   };
-  const shardText = (meta: ShardMeta, signal?: AbortSignal): Promise<string> =>
-    fetchText(root + versioned(meta.file, meta.sha256.slice(0, 12)), { what: MORE, cache: 'force-cache', signal, net });
+  const shardText = (meta: ShardMeta): Promise<string> =>
+    fetchText(root + versioned(meta.file, meta.sha256.slice(0, 12)), { what: MORE, cache: 'force-cache', net });
 
   /** A shard's text, loaded once for prefetch() and deck() both. A failed load is dropped, so the next ask tries again. */
   function textOf(at: number): (signal?: AbortSignal) => Promise<string> {
     let load = texts.get(at);
 
     if (!load) {
-      load = shared(async (signal) => shardText(metaOf(await theManifest(signal), at), signal));
+      load = shared(async () => shardText(metaOf(await theManifest(), at)));
       texts.set(at, load);
     }
 
@@ -263,23 +283,23 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   }
 
   /** The deck from one shard: its text parsed, matched to the manifest's build, and cut to what Another ten may deal. */
-  async function shardDeck(at: number, signal?: AbortSignal): Promise<Deck> {
+  async function shardDeck(at: number): Promise<Deck> {
     const read = (text: string): Rows => readRows(parseJson(text, MORE), SHARD_FORMAT, MORE);
-    const rows = await sameBuild(read(await textOf(at)(signal)), async (fresh) => read(await shardText(metaOf(fresh, at), signal)), MORE, signal);
+    const rows = await sameBuild(read(await textOf(at)()), async (fresh) => read(await shardText(metaOf(fresh, at))), MORE);
     // dealable rows only, in the file's played order, and none held back for Today's Ten
     const pitches = rows.tables.pitches.flatMap((row, i) => (row.dealable && !isDailyReserve(row.id) ? [rows.reader.pitch(row, i)] : []));
     // chosen once, so a next deck that fails to load is tried again from the same shard
     let nextAt: number | null | undefined;
-    const next = shared(async (signal): Promise<Deck | null> => {
-      nextAt ??= await unusedShard(signal);
+    const next = shared(async (): Promise<Deck | null> => {
+      nextAt ??= await unusedShard();
 
-      return nextAt === null ? null : shardDeck(nextAt, signal);
+      return nextAt === null ? null : shardDeck(nextAt);
     });
 
     return { pitches, next };
   }
 
-  const deck = shared(async (signal): Promise<Deck> => shardDeck(await firstShard(signal), signal));
+  const deck = shared(async (): Promise<Deck> => shardDeck(await firstShard()));
 
   // A failed load is only dropped here: deck() asks for it again.
   const prefetch = (): void => void firstShard().then((at) => textOf(at)()).catch(() => undefined);
