@@ -7,5 +7,10 @@
   "engines": {
     "node": ">=22.18"
   },
-  "scripts": {}
+  "scripts": {
+    "data:fetch": "node tools/data/fetch.ts",
+    "data:build": "node tools/data/build.ts",
+    "data:validate": "node tools/data/validate.ts",
+    "data:test": "node --test \"tools/data/test/*.test.ts\""
+  }
 }
