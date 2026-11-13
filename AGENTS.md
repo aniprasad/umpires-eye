@@ -31,6 +31,8 @@ These are the owner's preferences. Lint should enforce the first two.
 
 - Every behaviour change comes with a test. The mockup's self-test guarantees stay as tests.
 - Browser tests use Playwright. This machine is Windows 11 ARM64: if the bundled Chromium won't run, use the installed Edge (`channel: 'msedge'`). Test phones with device emulation, and use WebKit to stand in for Safari.
+- Run browser tests on your own port: set `UE_E2E_PORT` to the port the lead gave you. Ports that browsers block, such as 4045 and 4190, are refused.
+- Run one full e2e suite at a time on this machine: two at once overload it, and WebKit times out. Before a full run, check that no other session's test server is listening on ports 4173–4299, and wait if one is. While you work, run only the specs you touched.
 - Data tests use small synthetic fixtures, not recorded MLB responses.
 
 ## Environment

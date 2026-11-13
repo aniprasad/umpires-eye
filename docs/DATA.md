@@ -238,7 +238,7 @@ How to read the table:
 - Near calls and calibrators are each picked by seeded systematic sampling. The candidates are ordered by pitch type, then pitching team, then the order they were played. Every k-th one is taken from a seeded start.
 - So every pitch type, and every team within it, keeps its share to within one pitch, and each one's picks are spread evenly through the season.
 
-**Played order** is by date, then the game's scheduled start, then gamePk, then plate appearance and pitch. Doubleheaders and same-day games therefore come in the order they were played, and the suspended game 824912 sorts by its original start.
+**Played order** is by date, then the game's scheduled start, then gamePk, then plate appearance and pitch. Doubleheaders therefore come in the order they were played. Other games on the same day follow their scheduled start, which can differ from the first pitch after a delay: 822839 was scheduled before 823893 but started after it. The suspended game 824912 sorts by its original start.
 
 **Shards.** The pool is split into 22 shards of 3,402 or 3,403 pitches. Each shard is a fair sample of the season:
 - Pitches are grouped by kind (close, near, calibrator, challenged by band), ABS call and batter side.
