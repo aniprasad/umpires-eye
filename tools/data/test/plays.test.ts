@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import type { PlayByPlay } from '../lib/mlb.ts';
 import { extractGame, peopleIdsIn, type CalledPitch } from '../lib/plays.ts';
-import { action, AWAY, challenge, GAME, HOME, person, peopleOf, pitch, play, runner } from './fixtures.ts';
+import { action, AWAY, challenge, GAME, HOME, noPitch, person, peopleOf, pitch, play, runner } from './fixtures.ts';
 
 const extract = (plays: PlayByPlay['allPlays'], people = peopleOf()) => extractGame({ allPlays: plays }, GAME, people);
 const state = (p: CalledPitch) => [p.outs, p.balls, p.strikes, p.bases, p.awayScore, p.homeScore];
@@ -22,18 +22,23 @@ describe('called pitches', () => {
           pitch(6, 7, { code: 'B', after: [4, 2], tracked: false }),
         ],
       }),
+      play({
+        atBat: 1,
+        events: [noPitch(0, 'VB', 'Automatic Ball - Intentional', [1, 0]), pitch(1, 1, { code: 'B', after: [2, 0] })],
+      }),
     ]);
 
     assert.deepEqual(
-      pitches.map((p) => [p.id, p.umpCall, p.finalCall]),
+      pitches.map((p) => [p.id, p.umpCall, p.finalCall, p.balls]),
       [
-        ['900001-0-1', 'B', 'B'],
-        ['900001-0-2', 'S', 'S'],
+        ['900001-0-1', 'B', 'B', 0],
+        ['900001-0-2', 'S', 'S', 1],
+        ['900001-1-1', 'B', 'B', 1],
       ],
     );
-    assert.equal(checks.pitchEvents, 7);
-    assert.equal(checks.calledCodes, 4);
-    assert.deepEqual([checks.ballInDirt, checks.automatic, checks.noTracking], [1, 1, 1]);
+    assert.equal(checks.pitchEvents, 8);
+    assert.equal(checks.calledCodes, 5);
+    assert.deepEqual([checks.ballInDirt, checks.automatic, checks.noTracking], [1, 2, 1]);
     assert.deepEqual(checks.countMismatches, []);
   });
 
@@ -105,19 +110,66 @@ describe('game state before each pitch', () => {
     assert.equal(checks.runnersChecked, 4);
   });
 
-  test('puts the extra-innings runner on second before the first pitch', () => {
-    const { pitches } = extract([
+  test('puts the extra-innings runner on second before the first pitch, whether or not he moves', () => {
+    const placed = action(0, 'runner_placed', {
+      player: { id: 55 },
+      details: { eventType: 'runner_placed', description: 'Runner 55 starts inning at 2nd base.' },
+    });
+    const { pitches, checks } = extract([
       play({ atBat: 70, inning: 9, top: false, events: [pitch(0, 1, { code: 'B', after: [1, 0] })], outs: 3 }),
       play({
         atBat: 71,
         inning: 10,
-        events: [pitch(0, 1, { code: 'C', after: [0, 1] })],
-        runners: [runner(55, null, '2B', 0)],
+        batter: 12,
+        outs: 1,
+        events: [placed, pitch(1, 1, { code: 'C', after: [0, 1] }), pitch(2, 2, { code: 'X', after: [0, 1] })],
+        runners: [runner(12, null, null, 2, true)],
         post: { second: 55 },
+      }),
+      play({
+        atBat: 72,
+        inning: 10,
+        batter: 13,
+        outs: 1,
+        events: [
+          pitch(0, 1, { code: 'B', after: [1, 0], outs: 1 }),
+          action(1, 'wild_pitch'),
+          pitch(2, 2, { code: 'C', after: [1, 1], outs: 1 }),
+        ],
+        runners: [runner(55, '2B', '3B', 1)],
+        post: { third: 55 },
       }),
     ]);
 
-    assert.equal(pitches[1]?.bases, 2);
+    assert.deepEqual(
+      pitches.map((p) => p.bases),
+      [0, 2, 2, 4],
+    );
+    assert.deepEqual(checks.runnersMismatches, []);
+  });
+
+  test('hands the base to a pinch runner who comes in between plate appearances and stays put', () => {
+    const { pitches, checks } = extract([
+      play({ atBat: 0, batter: 11, events: [pitch(0, 1, { code: 'X', after: [0, 0] })], runners: [runner(11, null, '2B', 0)], post: { second: 11 } }),
+      play({
+        atBat: 1,
+        batter: 12,
+        outs: 1,
+        events: [
+          action(0, 'offensive_substitution', { player: { id: 77 }, replacedPlayer: { id: 11 }, position: { abbreviation: 'PR' } }),
+          pitch(1, 1, { code: 'B', after: [1, 0] }),
+          pitch(2, 2, { code: 'X', after: [1, 0] }),
+        ],
+        runners: [runner(12, null, null, 2, true)],
+        post: { second: 77 },
+      }),
+    ]);
+
+    assert.deepEqual(
+      pitches.map((p) => p.bases),
+      [2],
+    );
+    assert.deepEqual(checks.runnersMismatches, []);
   });
 
   test('lets a pinch runner take over the base', () => {
@@ -172,6 +224,29 @@ describe('ABS challenges', () => {
       ['B', 'S', 'catcher', 'play'],
     ]);
     assert.deepEqual([checks.roleAnomalies, checks.orphanReviews], [[], []]);
+  });
+
+  test('take a fielding-team challenger who is not the pitcher as the catcher, whatever his listed position', () => {
+    const { pitches, checks } = extract(
+      [
+        play({
+          atBat: 0,
+          batter: 12,
+          events: [
+            pitch(0, 1, { code: 'B', after: [1, 0], review: challenge(31, HOME, false) }),
+            pitch(1, 2, { code: 'C', after: [1, 1], review: challenge(30, HOME, true) }),
+          ],
+        }),
+      ],
+      peopleOf(person(30, { position: 'C' }), person(31, { position: 'DH' }), person(12)),
+    );
+
+    assert.deepEqual(
+      pitches.map((p) => p.challenge?.role),
+      ['catcher', 'catcher'],
+    );
+    assert.deepEqual(checks.roleAnomalies, []);
+    assert.deepEqual(checks.catcherListedAs, { DH: 1, C: 1 });
   });
 
   test('flag challenges that break the rules or cannot be placed', () => {

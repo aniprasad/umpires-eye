@@ -10,6 +10,10 @@ export type Role = 'batter' | 'pitcher' | 'catcher';
 export type Attribution = 'matchup' | 'replaced' | 'uncertain';
 
 type Base = '1B' | '2B' | '3B';
+type BaseOp =
+  | { kind: 'place'; at: number; id: number; base: Base }
+  | { kind: 'swap'; at: number; from: number; to: number }
+  | { kind: 'move'; at: number; runner: Runner };
 
 export interface Challenge {
   byId: number;
@@ -70,6 +74,7 @@ export interface Checks {
   orphanReviews: string[];
   roleAnomalies: string[];
   midPaSubstitutions: string[];
+  catcherListedAs: Record<string, number>;
 }
 
 export interface GameExtract {
@@ -120,6 +125,7 @@ const LISTS = [
   'midPaSubstitutions',
 ] as const;
 const BASE_BIT: Record<Base, number> = { '1B': 1, '2B': 2, '3B': 4 };
+const BASE_NAMED: Record<string, Base> = { '1st': '1B', '2nd': '2B', '3rd': '3B' };
 const UNKNOWN: Who = { id: 0, name: 'Unknown' };
 const UNKNOWN_ATTR: Attr = { batter: UNKNOWN, bats: 'R', pitcher: UNKNOWN, throws: 'R', attribution: 'uncertain' };
 
@@ -136,6 +142,9 @@ const isPitchingChange = (e: PlayEvent): boolean => e.details?.eventType === 'pi
 const isPinchHitter = (e: PlayEvent): boolean =>
   e.details?.eventType === 'offensive_substitution' &&
   (e.position?.abbreviation === 'PH' || /pinch[-\s]?hitter/i.test(e.details?.description ?? ''));
+const isPinchRunner = (e: PlayEvent): boolean =>
+  e.details?.eventType === 'offensive_substitution' &&
+  (e.position?.abbreviation === 'PR' || /pinch[-\s]?runner/i.test(e.details?.description ?? ''));
 
 export function emptyChecks(): Checks {
   return {
@@ -154,6 +163,7 @@ export function emptyChecks(): Checks {
     orphanReviews: [],
     roleAnomalies: [],
     midPaSubstitutions: [],
+    catcherListedAs: {},
   };
 }
 
@@ -163,6 +173,9 @@ export function addChecks(into: Checks, more: Checks): void {
   }
   for (const k of LISTS) {
     for (const s of more[k]) into[k].push(s);
+  }
+  for (const [position, n] of Object.entries(more.catcherListedAs)) {
+    into.catcherListedAs[position] = (into.catcherListedAs[position] ?? 0) + n;
   }
 }
 
@@ -215,7 +228,7 @@ function trackingOf(e: PlayEvent): Tracking | null {
   return reaches ? { traj, top, bottom } : null;
 }
 
-// A runner we have not seen leave a base (a pinch runner) replaces whoever is there and has not moved yet this play.
+// Fallback for a runner the feed never put on base: he replaces whoever is there and has not moved yet this play.
 function stepRunner(bases: Map<number, Base>, touched: Set<number>, r: Runner): void {
   const id = r.details?.runner?.id;
   const start = r.movement?.start ?? null;
@@ -230,6 +243,45 @@ function stepRunner(bases: Map<number, Base>, touched: Set<number>, r: Runner): 
   if (r.movement?.isOut || !isBase(end)) bases.delete(id);
   else bases.set(id, end);
   touched.add(id);
+}
+
+// Everything that changes who is on base during a play, in feed order. The extra-innings runner and pinch runners are
+// action events, and they appear in runners[] only if they later move.
+function baseOps(play: Play): BaseOp[] {
+  const ops: BaseOp[] = [];
+
+  for (const [pos, e] of (play.playEvents ?? []).entries()) {
+    const at = e.index ?? pos;
+
+    if (e.details?.eventType === 'runner_placed' && e.player) {
+      const named = /at (1st|2nd|3rd) base/i.exec(e.details.description ?? '')?.[1]?.toLowerCase() ?? '';
+
+      ops.push({ kind: 'place', at, id: e.player.id, base: BASE_NAMED[named] ?? '2B' });
+    } else if (isPinchRunner(e) && e.player && e.replacedPlayer) {
+      ops.push({ kind: 'swap', at, from: e.replacedPlayer.id, to: e.player.id });
+    }
+  }
+  for (const runner of play.runners ?? []) {
+    ops.push({ kind: 'move', at: runner.details?.playIndex ?? Number.POSITIVE_INFINITY, runner });
+  }
+
+  // The sort is stable, so one runner's successive moves within an event keep their feed order.
+  return ops.sort((a, b) => a.at - b.at || Number(a.kind === 'move') - Number(b.kind === 'move'));
+}
+
+function applyOp(bases: Map<number, Base>, touched: Set<number>, op: BaseOp): void {
+  if (op.kind === 'move') {
+    stepRunner(bases, touched, op.runner);
+  } else if (op.kind === 'place') {
+    bases.set(op.id, op.base);
+  } else {
+    const base = bases.get(op.from);
+
+    if (base) {
+      bases.delete(op.from);
+      bases.set(op.to, base);
+    }
+  }
 }
 
 function bitsOf(bases: Map<number, Base>): number {
@@ -353,28 +405,27 @@ function assignReviews(play: Play, events: PlayEvent[], checks: Checks, paId: st
   return out;
 }
 
-function roleOf(
-  byId: number | undefined,
-  teamId: number,
-  s: Sides,
-  people: Map<number, Person>,
-  anomalies: string[],
-  pid: string,
-): Role {
+// Only the batter, the pitcher and the catcher may challenge, so anyone else on the fielding team is the catcher. Some
+// catchers' roster entries list another primary position (often DH), which the report tallies rather than flags.
+function roleOf(byId: number | undefined, teamId: number, s: Sides, people: Map<number, Person>, checks: Checks, pid: string): Role {
   if (teamId === s.battingId) {
-    if (byId !== s.batterId) anomalies.push(`${pid}: batting-team challenge by ${byId ?? 'unknown'}, not the batter`);
+    if (byId !== s.batterId) checks.roleAnomalies.push(`${pid}: batting-team challenge by ${byId ?? 'unknown'}, not the batter`);
 
     return 'batter';
   }
   if (teamId === s.fieldingId) {
     if (byId === s.pitcherId) return 'pitcher';
-    if (byId === undefined || people.get(byId)?.position !== 'C') {
-      anomalies.push(`${pid}: fielding-team challenge by ${byId ?? 'unknown'}, not the pitcher or a listed catcher`);
+    if (byId === undefined) {
+      checks.roleAnomalies.push(`${pid}: fielding-team challenge with no challenger named`);
+    } else {
+      const listed = people.get(byId)?.position ?? 'unknown';
+
+      checks.catcherListedAs[listed] = (checks.catcherListedAs[listed] ?? 0) + 1;
     }
 
     return 'catcher';
   }
-  anomalies.push(`${pid}: challenge team ${teamId} is neither side`);
+  checks.roleAnomalies.push(`${pid}: challenge team ${teamId} is neither side`);
 
   return byId === s.batterId ? 'batter' : byId === s.pitcherId ? 'pitcher' : 'catcher';
 }
@@ -398,12 +449,7 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
     const battingId = top ? game.awayId : game.homeId;
     const fieldingId = top ? game.homeId : game.awayId;
     const events = play.playEvents ?? [];
-    const batterId = play.matchup?.batter?.id;
-    const placed = (r: Runner): boolean =>
-      (r.movement?.start ?? null) === null && isBase(r.movement?.end) && r.details?.runner?.id !== batterId;
-    // The extra-innings runner is placed from nowhere before the first pitch, whatever playIndex the feed gives it.
-    const when = (r: Runner): number => (placed(r) ? -1 : (r.details?.playIndex ?? Number.POSITIVE_INFINITY));
-    const runners = [...(play.runners ?? [])].sort((a, b) => when(a) - when(b));
+    const ops = baseOps(play);
     const attrs = attribute(play, events, people, checks, paId);
     const reviews = assignReviews(play, events, checks, paId);
     const startScore = { ...score };
@@ -448,10 +494,10 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
           let outs = outsStart;
           let challenge: Challenge | null = null;
 
-          for (const r of runners) {
-            if (when(r) >= index) break;
-            if (r.movement?.isOut) outs++;
-            stepRunner(before, touched, r);
+          for (const op of ops) {
+            if (op.at >= index) break;
+            if (op.kind === 'move' && op.runner.movement?.isOut) outs++;
+            applyOp(before, touched, op);
           }
 
           const expectBalls = count.balls + (code === 'B' ? 1 : 0);
@@ -473,7 +519,7 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
             const by = review.review.player;
             const teamId = review.review.challengeTeamId ?? (by?.id === attr.batter.id ? battingId : fieldingId);
             const sides = { battingId, fieldingId, batterId: attr.batter.id, pitcherId: attr.pitcher.id };
-            const role = roleOf(by?.id, teamId, sides, people, checks.roleAnomalies, pid);
+            const role = roleOf(by?.id, teamId, sides, people, checks, pid);
             const challengeable: Call = teamId === battingId ? 'S' : 'B';
 
             if (umpCall !== challengeable) {
@@ -527,6 +573,9 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
 
           checks.challengesOnExcluded.push(`${pid} (${code || 'no call'}${why})`);
         }
+      } else if (isAutomatic(ev)) {
+        // Automatic balls and strikes arrive as no_pitch events. They still move the count, which the next line keeps.
+        checks.automatic++;
       }
 
       if (ev.count) count = { balls: ev.count.balls ?? count.balls, strikes: ev.count.strikes ?? count.strikes };
@@ -535,7 +584,7 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
 
     const touched = new Set<number>();
 
-    for (const r of runners) stepRunner(bases, touched, r);
+    for (const op of ops) applyOp(bases, touched, op);
     if ((play.count?.outs ?? 0) < 3) {
       const feed = postBases(play);
 

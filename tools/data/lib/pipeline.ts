@@ -395,6 +395,9 @@ export function buildDataset(inputs: Inputs): BuildResult {
       challengesOnExcludedPitches: sample(checks.challengesOnExcluded),
       orphanChallenges: sample(checks.orphanReviews),
       challengeRoleAnomalies: sample(checks.roleAnomalies),
+      catcherChallengesByListedPosition: Object.fromEntries(
+        Object.entries(checks.catcherListedAs).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
+      ),
       midPlateAppearanceSubstitutions: sample(checks.midPaSubstitutions),
       attribution: {
         matchup: all.filter((j) => j.p.attribution === 'matchup').length,
@@ -446,7 +449,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
   const kb = (n: number): string => `${(n / 1000).toFixed(0)} KB`;
   const summary = [
     `games ${games.length} (${GAME_TYPES.map((t) => `${t} ${stats.games.byType[t]}`).join(', ')})`,
-    `called pitches ${all.length} (excluded: ${checks.ballInDirt} in the dirt, ${checks.automatic} automatic, ${checks.noTracking} untracked)`,
+    `called pitches ${all.length} (left out: ${checks.ballInDirt} in the dirt, ${checks.noTracking} untracked; ${checks.automatic} automatic balls and strikes are not pitches)`,
     `challenges ${ch.total}, overturned ${ch.overturned}; ABS truth = final call on ${ch.absAgreesWithFinalCall.agree}/${ch.absAgreesWithFinalCall.total} (${ch.absAgreesWithFinalCall.pct}%)`,
     `ump vs ABS: overall ${ump.overall.agree}/${ump.overall.total} (${ump.overall.pct}%), within ${CLOSE_IN} in ${ump.close.agree}/${ump.close.total} (${ump.close.pct}%)`,
     `pool ${composition.pitches}: close ${composition.close}, near ${composition.near}, calibrators ${composition.calibrators}, challenged ${composition.challenged}`,

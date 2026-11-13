@@ -65,6 +65,17 @@ export function action(index: number, eventType: string, extra: Partial<PlayEven
   return { index, isPitch: false, type: 'action', details: { eventType, description: eventType }, ...extra };
 }
 
+// Automatic balls and strikes are no_pitch events that move the count.
+export function noPitch(index: number, code: string, description: string, after: [number, number]): PlayEvent {
+  return {
+    index,
+    isPitch: false,
+    type: 'no_pitch',
+    details: { call: { code, description }, code, description },
+    count: { balls: after[0], strikes: after[1], outs: 0 },
+  };
+}
+
 export function runner(id: number, start: string | null, end: string | null, playIndex: number, isOut = false): Runner {
   return { movement: { start, end, isOut }, details: { runner: { id }, playIndex } };
 }
