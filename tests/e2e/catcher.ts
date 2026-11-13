@@ -66,7 +66,7 @@ export function helmetStrip(W: number, H: number): Strip {
 
 export async function open(page: Page, query: string): Promise<void> {
   await seedRandom(page);
-  await page.goto(`./?${query}`);
+  await page.goto(`./?pool=ws&${query}`);
   await waitReady(page);
 }
 

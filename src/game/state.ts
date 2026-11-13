@@ -1,8 +1,7 @@
-import type { PitchSource } from '../data/source';
+import type { PitchSource, TodayResult } from '../data/source';
 import type { PreparedPitch } from '../math/kinematics';
 import { prep } from '../math/kinematics';
 import { createLens, type Lens } from '../math/lens';
-import type { Pitch } from '../math/types';
 import type { CallOrNone, Result } from '../math/words';
 import { anotherTen, type AnotherTen } from './another';
 
@@ -11,7 +10,12 @@ export type Phase = 'boot' | 'start' | 'pitch' | 'reveal' | 'replay' | 'card';
 /** The loaded dataset and everything derived from it once. */
 export interface World {
   source: PitchSource;
-  /** Today's Ten, prepared once, so per-pitch caches (stance, framing, path dots) live for the session. */
+  /** The date whose Today's Ten the start screen offers, as YYYY-MM-DD. */
+  dateKey: string;
+  /**
+   * Today's Ten, prepared once, so per-pitch caches (stance, framing, path dots) live for the session. Empty when the date
+   * has none.
+   */
   today: PreparedPitch[];
   /** Fitted once, to the source's lens points, so it never shifts with what's loaded. */
   lens: Lens;
@@ -21,13 +25,23 @@ export interface World {
 
 let current: World | null = null;
 
-export function createWorld(source: PitchSource, today: readonly Pitch[]): World {
+export function createWorld(source: PitchSource, today: TodayResult): World {
+  const pitches = today.kind === 'ten' ? today.pitches : [];
+
   return {
     source,
-    today: today.map(prep),
+    dateKey: today.dateKey,
+    today: pitches.map(prep),
     lens: createLens(source.lensPoints),
-    another: anotherTen(source, today),
+    // The season's decks hold none of the daily reserve, so a later date's Ten is left out too.
+    another: anotherTen(source, pitches),
   };
+}
+
+/** Puts a date's Today's Ten, or its lack of one, in place of the World's. */
+export function setToday(w: World, today: TodayResult): void {
+  w.dateKey = today.dateKey;
+  w.today = today.kind === 'ten' ? today.pitches.map(prep) : [];
 }
 
 export function setWorld(w: World): void {

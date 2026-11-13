@@ -16,6 +16,14 @@ export function dateLabel(dateKey: string): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
+/**
+ * When the local date after `now`'s begins: at midnight, or where a clock change skips midnight, at the first moment the
+ * date has (01:00 in Santiago on 2026-09-06). Its length from `now` isn't fixed, since a day can last 23 or 25 hours.
+ */
+export function nextDayStart(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+}
+
 /** "November 2026", from YYYY-MM. */
 export function monthLabel(month: string): string {
   const [y, m] = month.split('-').map(Number);

@@ -77,9 +77,9 @@ test('a live pitch with the fallback filter runs about as fast as the mockup in 
   test.setTimeout(120_000);
   // The mockup sets canvas filters and, where the engine ignores them (WebKit), simply goes without its blurs:
   // the frame time of the same scene with no defocus at all.
-  const runs: [string, string][] = [['mockup', mockupUrl('')], ['port, fallback filter', new URL('./?canvasFilter=fallback', baseURL).href]];
+  const runs: [string, string][] = [['mockup', mockupUrl('')], ['port, fallback filter', new URL('./?pool=ws&canvasFilter=fallback', baseURL).href]];
 
-  if (browserName === 'chromium') runs.push(['port, native filter', new URL('./', baseURL).href]);
+  if (browserName === 'chromium') runs.push(['port, native filter', new URL('./?pool=ws', baseURL).href]);
   await timeFrames(page);
   const rounds: Record<string, FrameStats>[] = [];
 

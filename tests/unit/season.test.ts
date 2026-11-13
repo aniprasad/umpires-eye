@@ -28,23 +28,44 @@ function read(rows: readonly PitchCells[], over: Record<string, unknown> = {}) {
 
 /**
  * Serves the season's files under ROOT, the query ignored, unless `answer` has something else to say for an address.
- * It records what each request asked for and how. `rand` picks the shards.
+ * It records what each request asked for and how. `rand` picks the shards. A request waits for `hold`, as long as its
+ * signal lets it.
  */
-function serve(files: ReadonlyMap<string, unknown> = mini.files, answer: (path: string) => Response | undefined = () => undefined, rand: () => number = () => 0) {
+function serve(
+  files: ReadonlyMap<string, unknown> = mini.files,
+  answer: (path: string) => Response | undefined = () => undefined,
+  rand: () => number = () => 0,
+  hold: (path: string) => Promise<void> = () => Promise.resolve(),
+) {
   const asked: string[] = [];
   const net: Net = {
     onLine: () => true,
-    fetch: (url, init) => {
+    fetch: async (url, init) => {
       const path = url.slice(ROOT.length);
       const body = files.get(path.split('?')[0]);
+      const { signal } = init;
 
       asked.push(`${path} ${init.cache}`);
+      await new Promise<void>((resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(signal.reason as unknown), { once: true });
+        void hold(path).then(resolve);
+      });
 
-      return Promise.resolve(answer(path) ?? (body === undefined ? new Response('Not Found', { status: 404 }) : Response.json(body)));
+      return answer(path) ?? (body === undefined ? new Response('Not Found', { status: 404 }) : Response.json(body));
     },
   };
 
   return { source: seasonSource({ root: ROOT, net, rand }), asked };
+}
+
+/** A gate that holds requests until it opens. */
+function gate(): { readonly held: () => Promise<void>; readonly open: () => void } {
+  let open = (): void => undefined;
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+
+  return { held: () => opened, open: () => open() };
 }
 
 /** The fixture's files with one replaced. */
@@ -171,13 +192,38 @@ describe('the season source', () => {
     expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache']);
   });
 
-  it('has no ten past either end of the schedule, without asking for a month file, and none on an unavailable day', async () => {
+  it('has no ten past either end of the schedule, whatever its month file says, and none on an unavailable day', async () => {
     const { source, asked } = serve();
 
     expect(await source.today('2026-11-13')).toEqual({ kind: 'none', dateKey: '2026-11-13', reason: 'outside-horizon' });
     expect(await source.today('2026-11-16')).toEqual({ kind: 'none', dateKey: '2026-11-16', reason: 'outside-horizon' });
-    expect(asked).toEqual(['manifest.json no-cache']);
+    // there's no December file, and past the schedule that's no error
+    expect(await source.today('2026-12-01')).toEqual({ kind: 'none', dateKey: '2026-12-01', reason: 'outside-horizon' });
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'daily/2026-12.json no-cache']);
     expect(await source.today(mini.unavailableDate)).toEqual({ kind: 'none', dateKey: mini.unavailableDate, reason: 'unavailable' });
+  });
+
+  it("asks for the date's month file alongside the manifest, not after it (§4.1)", async () => {
+    const { held, open } = gate();
+    const { source, asked } = serve(mini.files, undefined, undefined, (path) => (path === 'manifest.json' ? held() : Promise.resolve()));
+    const today = source.today(mini.date);
+
+    await vi.waitFor(() => expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache']));
+    open();
+    expect((await today).kind).toBe('ten');
+    expect(asked).toHaveLength(2);
+  });
+
+  it('reads the month file the manifest lists, when it has another name', async () => {
+    const daily = manifest.daily as { files: Record<string, unknown>[] };
+    const renamed = { ...manifest, daily: { ...daily, files: daily.files.map((f) => ({ ...f, file: 'daily/november.json' })) } };
+    const files = new Map([...withFile('manifest.json', renamed), ['daily/november.json', mini.files.get('daily/2026-11.json')]]);
+
+    files.delete('daily/2026-11.json');
+    const { source, asked } = serve(files);
+
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'daily/november.json no-cache']);
   });
 
   it('calls a month file missing inside the schedule missing, and a manifest without a schedule, or of another version, broken', async () => {
@@ -285,6 +331,51 @@ describe('the season source', () => {
     expect(shardsAsked(asked).map((a) => a.split('?')[0])).toEqual(['shards/00.json', 'shards/01.json', 'shards/01.json']);
   });
 
+  it("lets a caller stop waiting for a load it shares: only that caller rejects, with its signal's reason", async () => {
+    const { held, open } = gate();
+    const { source, asked } = serve(mini.files, undefined, undefined, held);
+    const stale = new AbortController();
+    const reason = new Error('the date changed');
+    const first = source.today(mini.date, stale.signal);
+    const second = source.today(mini.date);
+
+    stale.abort(reason);
+    await expect(first).rejects.toBe(reason);
+    open();
+    expect((await second).kind).toBe('ten');
+    expect([...asked].sort()).toEqual(['daily/2026-11.json no-cache', 'manifest.json no-cache']);
+  });
+
+  it('keeps a load whose only caller stopped waiting, for the next caller, without asking again', async () => {
+    const { held, open } = gate();
+    const { source, asked } = serve(mini.files, undefined, undefined, held);
+    const gone = new AbortController();
+    const first = source.deck(gone.signal);
+
+    gone.abort(new Error('left the page'));
+    await expect(first).rejects.toThrow('left the page');
+    open();
+    expect((await source.deck()).pitches.map((p) => p.id)).toEqual(mini.deckIds);
+    expect(asked).toEqual(['manifest.json no-cache', `${mini.shardUrl} force-cache`]);
+  });
+
+  it('keeps a deck loading for the callers still waiting when the first one stops', async () => {
+    const { held, open } = gate();
+    const { source, asked } = serve(mini.files, undefined, undefined, held);
+    const gone = new AbortController();
+    const first = source.deck(gone.signal);
+    const second = source.deck();
+
+    gone.abort(new Error('left the page'));
+    await expect(first).rejects.toThrow('left the page');
+    open();
+    const deck = await second;
+
+    expect(deck.pitches.map((p) => p.id)).toEqual(mini.deckIds);
+    expect(await source.deck()).toBe(deck);
+    expect(asked).toEqual(['manifest.json no-cache', `${mini.shardUrl} force-cache`]);
+  });
+
   it('gives the ump figure from the stats, to one decimal and labelled season overall, or null without them', async () => {
     const stats = mini.files.get('stats.json') as { umpVsAbs: { overall: { pct: number } } };
 
@@ -305,7 +396,7 @@ describe('the season source', () => {
 
     expect(source).toMatchObject({ id: 'season-2026', label: '2026 season', lensPoints: boxLensPoints() });
     expect(fetched).not.toHaveBeenCalled();
-    expect(sourceIdOf(null)).toBe('ws-2026');
+    expect(sourceIdOf(null)).toBe('season-2026');
   });
 });
 

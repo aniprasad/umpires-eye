@@ -1,8 +1,10 @@
+import { dateKeyOf } from '../core/daily.ts';
 import { prep } from '../math/kinematics';
-import { LoadError } from '../data/source';
+import { dateLabel } from '../data/dates';
+import { LoadError, type TodayResult } from '../data/source';
 import { isWorldSeries } from '../data/ws2026';
 import { BEAT, FIRST_BEAT, REPLAY_RATE, WINDUP } from '../math/constants';
-import { seasonLede, todayLede } from '../math/deal';
+import { noTodayLede, seasonLede, todayLede } from '../math/deal';
 import { callWindowEnd, clockLeft, countAfter, judged, replayLength, revealAt, urlStateResult } from '../math/flow';
 import { PT } from '../math/pitcher';
 import type { Call, Pitch } from '../math/types';
@@ -18,8 +20,9 @@ import { bootCard, copyResult, showCards } from '../ui/card';
 import { CARD, fail, UI } from '../ui/dom';
 import { announce, fillMatchup, setIndicator, setPhase, toast, updateScore } from '../ui/hud';
 import { fillVerdict, placeVerdict } from '../ui/verdict';
-import { Q, REDUCED, SELFTEST, STATE } from './params';
-import { curP, G, world } from './state';
+import { DATE, Q, REDUCED, SELFTEST, STATE } from './params';
+import { curP, G, setToday, world, type World } from './state';
+import { latestToday, watchMidnight } from './today';
 
 const sNow = (now: number): number => (G.frozenS !== null ? G.frozenS : (now - G.trel) / 1000);
 
@@ -194,19 +197,50 @@ export function nextPitch(): void {
   if (G.i + 1 < G.set.length) beginPitch(G.i + 1);
   else {
     showCards();
-    // The season's shard is parsed here if it isn't yet, while the card is up and nothing moves. A failure waits for the
-    // press, which tries again and says what went wrong.
-    if (!saveData()) world().another.ready().catch(() => undefined);
+    // The season's shard is parsed once the card has painted and the page is idle: a parse takes tens of milliseconds,
+    // more on a phone. A press that comes sooner parses it at once. A failure waits for the press, which tries again and
+    // says what went wrong.
+    if (!saveData()) {
+      whenIdle(() => {
+        if (G.phase === 'card') world().another.ready().catch(() => undefined);
+      });
+    }
   }
 }
 
-export function startGame(): void {
-  if (G.phase !== 'start') return;
+/** The start panel fades out as a round begins. */
+function hideStart(): void {
   UI.start.classList.add('leaving');
   window.setTimeout(() => {
     UI.start.hidden = true;
     UI.start.classList.remove('leaving');
   }, REDUCED ? 0 : 380);
+}
+
+const todayLoads = latestToday((dateKey, signal) => world().source.today(dateKey, signal));
+// A press of Play while a date's Ten loads starts the round once it has.
+let playWhenLoaded = false;
+
+export function startGame(): void {
+  if (G.phase !== 'start') return;
+  if (todayLoads.busy()) {
+    playWhenLoaded = true;
+
+    return;
+  }
+  // NoToday's button deals Another ten, whatever the date
+  if (!G.set.length) {
+    void playAnother();
+
+    return;
+  }
+  // a Ten from a date the clock has left gives way to the new date's, and the round starts on that (§2.2)
+  if (checkDate()) {
+    playWhenLoaded = true;
+
+    return;
+  }
+  hideStart();
   G.results = [];
   beginPitch(0, { first: true });
 }
@@ -214,8 +248,8 @@ export function startGame(): void {
 let dealing = false;
 
 /**
- * "Play another ten": the next ten from the source's decks, with none of Today's Ten and no pitch dealt earlier on this
- * page (§3). Under Save-Data, this is when the season's shard loads.
+ * "Play another ten", on the card or in NoToday: the next ten from the source's decks, with none of Today's Ten and no
+ * pitch dealt earlier on this page (§3). Under Save-Data, this is when the season's shard loads.
  */
 export async function playAnother(): Promise<void> {
   const w = world();
@@ -238,6 +272,7 @@ export async function playAnother(): Promise<void> {
   G.results = [];
   G.i = 0;
   invalidateStatic();
+  if (G.phase === 'start') hideStart();
   CARD.root.hidden = true;
   CARD.root.classList.remove('enter');
   beginPitch(0, { first: true });
@@ -273,7 +308,8 @@ let lastIdleKey = '';
 function frame(now: number): void {
   requestAnimationFrame(frame);
   tick(now);
-  if (G.phase === 'card') return;
+  // NoToday has no pitch to show, and leaves the night empty, as it is while the page loads
+  if (G.phase === 'card' || !G.set.length) return;
   // the start scene is still: paint it once per layout instead of every frame
   if (G.phase === 'start') {
     const k = `${scene.key}|${G.i}`;
@@ -339,19 +375,81 @@ export function wireInput(): void {
   window.addEventListener('resize', onResize);
 }
 
-/** Today's Ten on the start screen, or the frozen state a ?state= URL asks for; then the frame loop. */
-export function bootFlow(): void {
+const messageOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/** Without the pitches there is nothing to call: say so on the start screen rather than leave it loading. */
+export function dataFailed(e: unknown): void {
+  fail(`The pitch data didn't load: ${messageOf(e)}`);
+  // Only a failed connection is worth a reload; for a missing or broken file, the error box says what's wrong.
+  UI.startLede.textContent = e instanceof LoadError && (e.kind === 'network' || e.kind === 'offline')
+    ? "The pitches didn't load, so there's nothing to call yet. Check your connection, then reload the page."
+    : "The pitches didn't load, so there's nothing to call yet. The note at the bottom of the screen says what went wrong.";
+  UI.btnPlay.disabled = true;
+  UI.btnPlay.textContent = "Couldn't load the pitches";
+  document.documentElement.dataset.ready = 'error';
+}
+
+/** The start lede for Today's Ten: the World Series names its games, and the season its date. */
+function todayLedeOf(w: World): string {
+  return isWorldSeries(w.source) ? todayLede(w.today, w.source.label) : seasonLede(w.today, w.source.label, dateLabel(w.dateKey));
+}
+
+/** The World's date and its ten's IDs, for tests: "none" when the date has no Ten. */
+function markToday(w: World): void {
+  document.documentElement.dataset.date = w.dateKey;
+  UI.app.dataset.ten = w.today.length ? w.today.map((p) => p.id).join(' ') : 'none';
+}
+
+/**
+ * The start screen for the World's date: Today's Ten, ready to play, or NoToday, which offers Another ten instead (§5.1).
+ * Then the page says it's ready.
+ */
+function showStart(): void {
   const w = world();
 
   G.set = w.today;
   G.mode = 'today';
   G.results = [];
-  UI.startLede.textContent = isWorldSeries(w.source) ? todayLede(w.today, w.source.label) : seasonLede(w.today, w.source.label);
+  G.i = 0;
+  setPhase('start');
+  markToday(w);
+  UI.btnPlay.disabled = false;
+  if (w.today.length) {
+    const P = curP();
+
+    UI.startLede.textContent = todayLedeOf(w);
+    UI.btnPlay.textContent = 'Play ball';
+    fillMatchup(P, false);
+    setIndicator(P.countBefore.balls, P.countBefore.strikes, P.outs);
+    UI.indPitch.textContent = `1/${G.set.length}`;
+    updateScore(false);
+    invalidateStatic();
+    render(performance.now());
+  } else {
+    UI.startLede.textContent = noTodayLede(dateLabel(w.dateKey), w.source.label);
+    UI.btnPlay.textContent = 'Play another ten';
+    // Another ten is all there is to play, so its shard loads at once (§4.1). The press parses it, so the parse never
+    // holds up this screen's first paint.
+    if (!saveData()) w.source.prefetch?.();
+  }
+  if (!SELFTEST) UI.btnPlay.focus({ preventScroll: true });
+  document.documentElement.dataset.ready = w.today.length ? '1' : 'none';
+}
+
+/** The frozen state a ?state= URL asks for, on Today's Ten. */
+function bootState(): void {
+  const w = world();
+  const idx = clamp(parseInt(Q.get('i') || '1', 10) || 1, 1, w.today.length) - 1;
+
+  G.set = w.today;
+  G.mode = 'today';
+  G.results = [];
+  markToday(w);
+  UI.startLede.textContent = todayLedeOf(w);
   UI.btnPlay.disabled = false;
   UI.btnPlay.textContent = 'Play ball';
-  const idx = clamp(parseInt(Q.get('i') || '1', 10) || 1, 1, G.set.length) - 1;
-
-  if (STATE === 'pitch' || STATE === 'reveal') {
+  if (STATE === 'card') bootCard(clamp(parseInt(Q.get('correct') || '8', 10) || 0, 0, G.set.length));
+  else {
     UI.start.hidden = true;
     for (let k = 0; k < idx; k++) G.results[k] = urlStateResult(G.set[k]);
     beginPitch(idx, { first: true });
@@ -364,26 +462,72 @@ export function bootFlow(): void {
       G.call = Q.get('call') === 'ball' ? 'ball' : 'strike';
       startReveal(performance.now(), true);
     }
-  } else if (STATE === 'card') {
-    bootCard(clamp(parseInt(Q.get('correct') || '8', 10) || 0, 0, G.set.length));
-  } else {
-    G.i = 0;
-    setPhase('start');
-    const P = curP();
-
-    fillMatchup(P, false);
-    setIndicator(P.countBefore.balls, P.countBefore.strikes, P.outs);
-    UI.indPitch.textContent = `1/${G.set.length}`;
-    updateScore(false);
-    if (!SELFTEST) UI.btnPlay.focus({ preventScroll: true });
-    // Another ten's shard loads while the player reads the start screen, unless the device asks for less data (§4.1).
-    if (!saveData()) whenIdle(() => w.source.prefetch?.());
   }
   render(performance.now());
+  document.documentElement.dataset.ready = '1';
+}
+
+/** The date the clock says, unless ?date= sets it or the source's Ten doesn't depend on it, as the World Series' doesn't. */
+const clockDate = (): string | null => (DATE === null && !isWorldSeries(world().source) ? dateKeyOf(new Date()) : null);
+
+/**
+ * Puts the clock's date's Ten on the start screen if the date has moved on from the screen's (§2.2). Only the start screen
+ * follows the clock: a round keeps the date it began on. Says whether the date had moved on.
+ */
+function checkDate(): boolean {
+  const dateKey = clockDate();
+
+  if (dateKey === null || G.phase !== 'start' || dateKey === world().dateKey) return false;
+  void switchDate(dateKey);
+
+  return true;
+}
+
+/** Loads a date's Ten in place of the start screen's, with Play waiting meanwhile. The latest date asked for wins. */
+async function switchDate(dateKey: string): Promise<void> {
+  let today: TodayResult | null;
+
+  UI.btnPlay.disabled = true;
+  UI.btnPlay.textContent = "Loading today's pitches";
+  delete document.documentElement.dataset.ready;
+  try {
+    today = await todayLoads.load(dateKey);
+  } catch (e) {
+    playWhenLoaded = false;
+    dataFailed(e);
+
+    return;
+  }
+  if (!today) return;
+  setToday(world(), today);
+  showStart();
+  if (playWhenLoaded) {
+    playWhenLoaded = false;
+    // a date without a Ten shows NoToday, and waits for its own press
+    if (G.set.length) startGame();
+  }
+}
+
+/** Today's Ten or NoToday on the start screen, or the frozen state a ?state= URL asks for; then the frame loop. */
+export function bootFlow(): void {
+  const w = world();
   const de = document.documentElement;
 
-  de.dataset.ready = '1';
+  // only the World Series' footnotes count its real challenges
+  for (const el of document.querySelectorAll<HTMLElement>('.ws-only')) el.hidden = !isWorldSeries(w.source);
   de.dataset.viewport = `${view.w}x${view.h}@${view.dpr}`;
   de.dataset.canvasFilter = nativeFilter() ? 'native' : 'fallback';
+  if (w.today.length && (STATE === 'pitch' || STATE === 'reveal' || STATE === 'card')) bootState();
+  else {
+    showStart();
+    // Another ten's shard loads while the player reads the start screen, unless the device asks for less data (§4.1).
+    // Safari's stand-in can come after Play; the card loads it then.
+    if (w.today.length && !saveData()) {
+      whenIdle(() => {
+        if (G.phase === 'start') w.source.prefetch?.();
+      });
+    }
+    if (clockDate() !== null) watchMidnight(() => void checkDate());
+  }
   requestAnimationFrame(frame);
 }

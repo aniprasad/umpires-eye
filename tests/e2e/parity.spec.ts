@@ -204,7 +204,7 @@ function diffShots(mockShot: Buffer, portShot: Buffer, mask: Box[], cssWidth: nu
 }
 
 async function compare(mode: Mode, area: Area, state: string, mockup: Page, port: Page, dir: string): Promise<Row> {
-  await Promise.all([mockup.goto(mockupUrl(state)), port.goto(`./?${state}`)]);
+  await Promise.all([mockup.goto(mockupUrl(state)), port.goto(`./?pool=ws&${state}`)]);
   await Promise.all([waitReady(mockup), waitReady(port)]);
   if (ALIGN_CREDIT) await alignCredit(port, mockup);
 

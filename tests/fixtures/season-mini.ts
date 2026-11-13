@@ -47,6 +47,8 @@ export interface SeasonMini {
   /** The date with a ten, and the ten in play order. */
   readonly date: string;
   readonly ten: readonly MiniPitch[];
+  /** Each available date's ten, by ID in play order. */
+  readonly days: ReadonlyMap<string, readonly string[]>;
   /** A served date whose ten became unavailable. */
   readonly unavailableDate: string;
   /** The first shard's address, ?v= included. */
@@ -63,6 +65,12 @@ export interface SeasonMiniOptions {
    * challenged, so each shard deals one ten and then runs dry. One, the default, keeps every row in a single shard.
    */
   readonly shards?: 1 | 2;
+  /**
+   * A schedule from 2026-11-01 to 2026-12-01, over a November and a December month file. Each date has a ten of its own,
+   * dealt from the same reserve, so two dates' tens may share pitches; the unavailable date has none. Without it, the
+   * schedule is just the date and the unavailable date.
+   */
+  readonly calendar?: boolean;
 }
 
 /** Games in played order: a doubleheader, another regular-season date, and a World Series game. */
@@ -279,7 +287,19 @@ function tablesFor(rows: readonly Cells[]) {
 
 const head = (format: string, build: string) => ({ format, version: FORMAT_VERSION, season: SEASON, build, credit: CREDIT, truthNote: TRUTH_NOTE });
 
-export function seasonMini({ shards: count = 1 }: SeasonMiniOptions = {}): SeasonMini {
+/** Every date from the first to the last, both included, counted in UTC so the machine's time zone can't move them. */
+function datesBetween(first: string, last: string): string[] {
+  const dates: string[] = [];
+
+  for (const day = new Date(`${first}T12:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
+    const key = day.toISOString().slice(0, 10);
+
+    dates.push(key);
+    if (key === last) return dates;
+  }
+}
+
+export function seasonMini({ shards: count = 1, calendar = false }: SeasonMiniOptions = {}): SeasonMini {
   const parts = count === 2 ? splitInTwo(pitchRows()) : [pitchRows()];
   const rows = parts.flat();
   const byId = new Map(rows.map((r) => [idOf(r), r]));
@@ -304,23 +324,37 @@ export function seasonMini({ shards: count = 1 }: SeasonMiniOptions = {}): Seaso
   });
   const date = '2026-11-14';
   const unavailableDate = '2026-11-15';
-  const month = {
-    ...head(DAILY_FORMAT, build),
-    month: '2026-11',
-    ...tablesFor(tenIds.map((id) => byId.get(id) as Cells)),
-    days: {
-      [date]: { ids: tenIds, available: true },
-      [unavailableDate]: { ids: otherIds, available: false, missing: [otherIds[3]] },
-    },
-  };
+  const dates = calendar ? datesBetween('2026-11-01', '2026-12-01') : [date, unavailableDate];
+  // A date's ten is dealt with its month and day as the seed, 1114 for the date, so it keeps the ten it has without the
+  // calendar.
+  const days = new Map(dates.filter((d) => d !== unavailableDate).map((d): [string, string[]] => {
+    const dealt = d === date ? ten : dealTen(pilesOf(reserve), mulberry32(Number(d.slice(5).replace('-', ''))));
+
+    if (!dealt) throw new Error(`season-mini: the reserve can't deal a ten for ${d}`);
+
+    return [d, dealt.map((c) => c.id)];
+  }));
+  const monthFiles = [...new Set(dates.map((d) => d.slice(0, 7)))].map((month) => {
+    const inMonth = dates.filter((d) => d.startsWith(month));
+    const ids = [...new Set(inMonth.flatMap((d) => days.get(d) ?? []))];
+    const body = {
+      ...head(DAILY_FORMAT, build),
+      month,
+      ...tablesFor(ids.map((id) => byId.get(id) as Cells)),
+      days: Object.fromEntries(inMonth.map((d) => [d, d === unavailableDate ? { ids: otherIds, available: false, missing: [otherIds[3]] } : { ids: days.get(d), available: true }])),
+    };
+
+    return { month, file: `daily/${month}.json`, body };
+  });
+  const last = dates[dates.length - 1] ?? unavailableDate;
   const manifest = {
     ...head(MANIFEST_FORMAT, build),
     daily: {
-      first: date,
-      last: unavailableDate,
-      servedThrough: unavailableDate,
+      first: dates[0],
+      last,
+      servedThrough: last,
       reserve: { share: 0.25, pitches: reserve.length },
-      files: [{ month: '2026-11', file: 'daily/2026-11.json', bytes: JSON.stringify(month).length, sha256: sha256(month) }],
+      files: monthFiles.map(({ month, file, body }) => ({ month, file, bytes: JSON.stringify(body).length, sha256: sha256(body) })),
     },
     shards: shards.map(({ file, body, sha, part }) => ({ file, pitches: part.length, dealable: part.filter((r) => r.dealable).length, bytes: JSON.stringify(body).length, sha256: sha })),
   };
@@ -334,18 +368,19 @@ export function seasonMini({ shards: count = 1 }: SeasonMiniOptions = {}): Seaso
     files: new Map<string, Record<string, unknown>>([
       ['manifest.json', manifest],
       ...shards.map(({ file, body }): [string, Record<string, unknown>] => [file, body]),
-      ['daily/2026-11.json', month],
+      ...monthFiles.map(({ file, body }): [string, Record<string, unknown>] => [file, body]),
       ['stats.json', { ...head(STATS_FORMAT, build), ...stats }],
     ]),
     build,
-    first: date,
-    last: unavailableDate,
+    first: dates[0] ?? date,
+    last,
     date,
     ten: tenIds.map((id) => {
       const r = byId.get(id) as Cells;
 
       return { id, abs: r.abs as 'S' | 'B', ump: r.ump as 'S' | 'B', label: labels.get(r.gamePk) ?? '', balls: Number(r.balls), strikes: Number(r.strikes) };
     }),
+    days,
     unavailableDate,
     shardUrl: first.url,
     deckIds: first.deckIds,

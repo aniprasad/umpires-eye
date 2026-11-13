@@ -16,6 +16,10 @@ import {
   viewportOf,
   waitReady,
 } from './helpers';
+import { dateLabel } from '../../src/data/dates';
+import { SEASON_LABEL } from '../../src/data/season2026';
+import { setLine } from '../../src/math/words';
+import { mini, serveSeason } from './season-data';
 
 const LAYOUTS = [
   { state: 'state=pitch&i=3&t=0.2', left: '#btnBall', right: '#btnStrike' },
@@ -39,7 +43,7 @@ test('a round by touch ends on a card that scrolls to Play another ten', async (
   const ten = todaysTen();
   const strikes = ten.filter((pitch) => pitch.absTruth === 'strike').length;
 
-  await openPaused(page, './');
+  await openPaused(page, './?pool=ws');
   await noteCanvasFilter(page, testInfo);
   await page.locator('#btnPlay').tap();
 
@@ -74,7 +78,7 @@ for (const { state, left, right } of LAYOUTS) {
     const errors = trackErrors(page);
     const phase = new URLSearchParams(state).get('state');
 
-    await page.goto(`./?${state}`);
+    await page.goto(`./?pool=ws&${state}`);
     await waitReady(page);
     await noteCanvasFilter(page, testInfo);
     await attachShot(page, testInfo, slugOf(state));
@@ -112,3 +116,32 @@ for (const { state, left, right } of LAYOUTS) {
     expect(errors).toEqual([]);
   });
 }
+
+test("the season card's set line stays on two lines, for any date and for Another ten", async ({ page }) => {
+  const errors = trackErrors(page);
+  const set = page.locator('#ubSet');
+  // each month's longest date, as the card writes it, and Another ten's line
+  const lines = [
+    ...Array.from({ length: 12 }, (_, m) => setLine(SEASON_LABEL, "Today's Ten", dateLabel(`2026-${String(m + 1).padStart(2, '0')}-28`))),
+    setLine(SEASON_LABEL, 'Another ten'),
+  ];
+
+  await serveSeason(page);
+  await page.goto(`./?date=${mini.date}&state=card&correct=7`);
+  await waitReady(page);
+  await expect(set).toHaveText('2026 season set · November 14, 2026');
+  const counts = await set.evaluate((el: HTMLElement, all) => {
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+    const count = (): number => Math.round(el.offsetHeight / lineHeight);
+    const shown = count();
+
+    return [shown, ...all.map((line) => {
+      el.textContent = line;
+
+      return count();
+    })];
+  }, lines);
+
+  expect(counts).toEqual(Array.from({ length: lines.length + 1 }, () => 2));
+  expect(errors).toEqual([]);
+});

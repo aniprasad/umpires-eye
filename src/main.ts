@@ -2,9 +2,8 @@ import backdropWideUrl from './assets/img/backdrop-wide.webp';
 import backdropUrl from './assets/img/backdrop.webp';
 import batterUrl from './assets/img/batter.webp';
 import { dateKeyOf } from './core/daily.ts';
-import { LoadError } from './data/source';
 import { openSource, sourceIdOf } from './data/sources';
-import { bootFlow, wireInput } from './game/flow';
+import { bootFlow, dataFailed, wireInput } from './game/flow';
 import { DATE, POOL, SELFTEST } from './game/params';
 import { createWorld, setWorld } from './game/state';
 import { BACKDROPS } from './render/backdrop';
@@ -22,17 +21,6 @@ const loadImg = (img: HTMLImageElement, src: string): Promise<HTMLImageElement> 
   img.onerror = () => reject(new Error(`Could not load ${src}`));
   img.src = src;
 });
-
-/** Without the pitches there is nothing to call: say so on the start screen rather than leave it loading. */
-function dataFailed(e: unknown): void {
-  fail(`The pitch data didn't load: ${message(e)}`);
-  // Only a failed connection is worth a reload; for a missing or broken file, the error box says what's wrong.
-  UI.startLede.textContent = e instanceof LoadError && (e.kind === 'network' || e.kind === 'offline')
-    ? "The pitches didn't load, so there's nothing to call yet. Check your connection, then reload the page."
-    : "The pitches didn't load, so there's nothing to call yet. The note at the bottom of the screen says what went wrong.";
-  UI.btnPlay.textContent = "Couldn't load the pitches";
-  document.documentElement.dataset.ready = 'error';
-}
 
 async function boot(): Promise<void> {
   sizeCanvases(UI.scene);
@@ -54,11 +42,12 @@ async function boot(): Promise<void> {
   ]).then((results) => results.flatMap((r) => (r.status === 'rejected' ? [message(r.reason)] : [])).join('\n'));
 
   try {
-    const source = await openSource(sourceIdOf(POOL), import.meta.env.BASE_URL);
-    const today = await source.today(DATE ?? dateKeyOf(new Date()));
+    const source = await openSource(sourceIdOf(POOL, SELFTEST), import.meta.env.BASE_URL);
 
-    if (today.kind === 'none') throw new LoadError('data', `There's no Today's Ten for ${today.dateKey}.`);
-    setWorld(createWorld(source, today.pitches));
+    // The stats load alongside today's files (§4.1). Play never waits for them; T11 shows the figure.
+    void source.umpFigure();
+    // a date without a Ten is no failure: the start screen offers Another ten (NoToday)
+    setWorld(createWorld(source, await source.today(DATE ?? dateKeyOf(new Date()))));
   } catch (e) {
     dataFailed(e);
 

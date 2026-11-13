@@ -54,6 +54,7 @@ export const CARD = {
   sum: $('#cardsSum'),
   num: $('#ucNum'),
   art: $<HTMLImageElement>('#ucArt'),
+  caption: $('#ucSet'),
   set: $('#ubSet'),
   pitches: $('#ubPitches'),
   correct: $('#ubCorrect'),
