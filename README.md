@@ -22,7 +22,7 @@ npm run dev        # http://localhost:5173
 | `npm run check:lockfile` | Fails if `package-lock.json` resolves any package outside registry.npmjs.org. |
 | `npm run typecheck` | `tsc` in strict mode over the app, the tests and the configs, then `data:typecheck` over the data tools. |
 | `npm test` | Vitest unit tests, including every check of the mockup's `?selftest=1`, then `data:test`, the data tools' tests. |
-| `npm run e2e` | Playwright browser tests. It builds and serves the app itself. |
+| `npm run e2e` | Playwright browser tests, one run at a time per machine (see below). It builds and serves the app itself. |
 | `npm run assets` | Rebuilds the shipped images, fonts and pitch pool from the masters in `mockup/`. The output is committed, so you only need this when a master changes. |
 | `npm run data:*` | The season dataset's tools: `fetch`, `build`, `validate`, `test` and `typecheck`. See `docs/DATA.md`. |
 
@@ -37,6 +37,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
   - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`. By default the mockup's footnotes take the height of the port's longer credit line, so the rest of the screen lines up. Set `UE_PARITY_ALIGN=0` to compare the pages untouched.
 - Run one project with `npx playwright test --project=desktop-webkit`.
 - Each run builds and serves its own copy on port 4173 and stops at once if that port is taken, so it never tests another checkout's server. Set `UE_E2E_PORT` (for example `UE_E2E_PORT=4191`) to run on another port, such as beside a running `npm run preview`; ports that browsers block, such as 4190, are refused.
+- `npm run e2e` runs take turns on a machine, from any checkout, because two at once overload it. Each takes a lock file in the OS temp folder (`umpires-eye-e2e.lock`, with its pid, port and start time), waits while another live run holds it, logging every 30 s, and gives up after 20 minutes. A lock left by a run that died is taken over. The lock is skipped when `CI` is set, and `npx playwright test` doesn't take it.
 
 ## URL switches
 

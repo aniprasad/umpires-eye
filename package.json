@@ -15,7 +15,7 @@
     "check:lockfile": "node scripts/check-lockfile.mjs",
     "typecheck": "tsc --noEmit && npm run data:typecheck",
     "test": "vitest run && npm run data:test",
-    "e2e": "playwright test",
+    "e2e": "node scripts/e2e.ts",
     "assets": "node scripts/build-assets.mjs",
     "data:fetch": "node tools/data/fetch.ts",
     "data:build": "node tools/data/build.ts",
