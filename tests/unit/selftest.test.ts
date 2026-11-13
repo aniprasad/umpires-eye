@@ -1,9 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { fromPoolFile, type PoolFile } from '../../src/data/ws2026';
+import { fromPoolFile, WS_TODAY_IDS, type PoolFile } from '../../src/data/ws2026';
 import { CHECKS, runSelfTest, selfTestContext, type CheckResult } from '../../src/selftest/checks';
 
 const file = JSON.parse(readFileSync(new URL('../../public/data/ws-2026/pool.json', import.meta.url), 'utf8')) as PoolFile;
+
+describe('the shipped pool', () => {
+  it("holds every one of Today's Ten", () => {
+    const ids = new Set(file.pitches.map((p) => p.id));
+
+    expect(WS_TODAY_IDS.filter((id) => !ids.has(id))).toEqual([]);
+  });
+});
+
 const ctx = selfTestContext(fromPoolFile(file));
 const cache = new Map<string, CheckResult>();
 
