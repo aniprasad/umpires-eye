@@ -134,6 +134,8 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
 
 /* ---------- phases ---------- */
 .app[data-phase="card"] .hud, .app[data-phase="card"] .indicator, .app[data-phase="card"] .ctl, .app[data-phase="card"] .verdict { display: none; }
+/* NoToday: no pitch to show behind the start panel */
+.app[data-phase="start"][data-ten="none"] .hud, .app[data-phase="start"][data-ten="none"] .indicator, .app[data-phase="start"][data-ten="none"] .ctl { display: none; }
 
 @media (max-width: 1180px) and (min-width: 641px) {
   .verdict { left: var(--edge); transform: none; width: min(640px, calc(100% - 2 * var(--edge))); }

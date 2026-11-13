@@ -1,11 +1,12 @@
 import { PLATE_HALF } from '../core/rules.ts';
+import { dateLabel } from '../data/dates';
 import { isWorldSeries } from '../data/ws2026';
 import { REDUCED } from '../game/params';
 import { G, world } from '../game/state';
 import { seriesGames } from '../math/deal';
 import { cardStateResults } from '../math/flow';
 import { clamp } from '../math/util';
-import { resultText, toughest, type Result } from '../math/words';
+import { resultText, setLine, toughest, type Result } from '../math/words';
 import { CARD, UI } from './dom';
 import { announce, setPhase } from './hud';
 
@@ -20,6 +21,8 @@ function svgEl(tag: string, attrs: Record<string, string | number>): SVGElement 
 }
 
 const roundLabel = (): string => (G.mode === 'today' ? "Today's Ten" : 'Another ten');
+// A season's Today's Ten is the date's; the World Series' is the same every day.
+const roundDate = (): string | null => (G.mode === 'today' && !isWorldSeries(world().source) ? dateLabel(world().dateKey) : null);
 
 /** The card back's miss map, in the catcher's view: an X for each miss, a dot for each right call, per batter's zone. */
 export function drawMissMap(results: readonly (Result | undefined)[]): void {
@@ -76,7 +79,8 @@ export function showCards(instant = false): void {
   CARD.ump.textContent = `${ump}/${n}`;
   CARD.tough.textContent = tough;
   CARD.tough.classList.toggle('long', tough.length > 14);
-  CARD.set.textContent = `${label} set · ${roundLabel()}`;
+  CARD.set.textContent = setLine(label, roundLabel(), roundDate());
+  CARD.caption.textContent = label;
   CARD.sum.innerHTML = `Round complete. You called <b>${right} of ${n}</b> right. On these same pitches the real ump got <b>${ump} of ${n}</b> on the field${after !== ump ? `, ${after} after ABS challenges` : ''}.`;
   if (games.length) CARD.sum.title = games.length > 1 ? `Games ${games.join(', ')}` : `Game ${games[0]}`;
   else CARD.sum.removeAttribute('title');
@@ -98,7 +102,7 @@ export function bootCard(correct: number): void {
 }
 
 export async function copyResult(): Promise<void> {
-  const text = resultText({ label: world().source.label, roundLabel: roundLabel(), set: G.set, results: G.results });
+  const text = resultText({ label: world().source.label, roundLabel: roundLabel(), date: roundDate(), set: G.set, results: G.results });
   let ok = false;
 
   try {

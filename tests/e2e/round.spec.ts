@@ -150,6 +150,7 @@ test('?pool=ws plays the World Series pool', async ({ page }) => {
   await page.goto('./?pool=ws');
   await waitReady(page);
   await expect(page.locator('#startLede')).toContainText('from Games 1, 2 and 5 of the 2026 World Series');
+  await expect(page.locator('.footnote')).toContainText('ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series.', { useInnerText: true });
   await page.keyboard.press('Enter');
   await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
   await expect(page.locator('#muGame')).toHaveText(/^2026 World Series · Game 5 · \d–\d count$/);
@@ -168,7 +169,8 @@ test('the default is the 2026 season', async ({ page }) => {
   });
   await page.goto(`./?date=${mini.date}`);
   await waitReady(page);
-  await expect(page.locator('#startLede')).toHaveText(/^Today's Ten.*: real pitches from the 2026 season/);
+  await expect(page.locator('#startLede')).toHaveText(/^Today's Ten for November 14, 2026: real pitches from the 2026 season/);
+  await expect(page.locator('.footnote')).toContainText('ABS truth reconstructed from tracking data. Players', { useInnerText: true });
   await page.keyboard.press('Enter');
   await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
   await expect(page.locator('#app')).toHaveAttribute('data-pitch', mini.ten[0].id);

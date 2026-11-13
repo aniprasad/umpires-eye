@@ -26,7 +26,7 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await watchLoads(page);
   await openPaused(page, `./?pool=season&date=${mini.date}`);
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
-  await expect(page.locator('#startLede')).toHaveText(/^Today's Ten: real pitches from the 2026 season, \d+ of them close calls/);
+  await expect(page.locator('#startLede')).toHaveText(/^Today's Ten for November 14, 2026: real pitches from the 2026 season, \d+ of them close calls/);
   // the manifest, the month file and the stats while the page boots, and no shard before Play (§4.1, §4.2); then the
   // shard's text, once the start screen is ready and idle
   await expect.poll(async () => (await loadsOf(page)).length).toBe(4);
@@ -56,7 +56,10 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await expect(app).toHaveAttribute('data-phase', 'card');
   await expect(page.locator('#ubCorrect')).toHaveText(String(expected));
   await expect(page.locator('#ubUmp')).toHaveText(`${umpRight}/10`);
-  await expect(page.locator('#ubSet')).toHaveText("2026 season set · Today's Ten");
+  await expect(page.locator('#ubSet')).toHaveText('2026 season set · November 14, 2026');
+  await expect(page.locator('#ucSet')).toHaveText('2026 season');
+  // the World Series' footnote counts its real challenges; the season's has no such count
+  await expect(page.locator('.cards-foot')).toContainText('ABS truth reconstructed from tracking data. Players', { useInnerText: true });
   // The card paints before the text the start screen fetched is parsed: the parse waits until the page is idle, and the
   // paused clock keeps it from being idle until the test runs it. It's never parsed during a pitch.
   expect(await parsesOf(page)).toEqual([]);

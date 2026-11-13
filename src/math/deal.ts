@@ -26,17 +26,20 @@ export const seriesGames = (pitches: readonly Pitch[]): number[] =>
   [...new Set(pitches.flatMap((p) => (p.game.seriesGame === null ? [] : [p.game.seriesGame])))].sort((a, b) => a - b);
 
 const closeCalls = (today: readonly Pitch[]): number => today.filter((p) => Math.abs(p.edgeMarginIn) <= CLOSE_IN).length;
-const lede = (from: string, today: readonly Pitch[]): string =>
-  `Today's Ten: real pitches from ${from}, ${closeCalls(today)} of them close calls within ${CLOSE_IN} in of the zone, at real speed, from the plate umpire's eye.`;
+const lede = (title: string, from: string, today: readonly Pitch[]): string =>
+  `${title}: real pitches from ${from}, ${closeCalls(today)} of them close calls within ${CLOSE_IN} in of the zone, at real speed, from the plate umpire's eye.`;
 
 export function todayLede(today: readonly Pitch[], label: string): string {
   const games = seriesGames(today);
 
-  return lede(`Game${games.length > 1 ? 's' : ''} ${listJoin(games)} of the ${label}`, today);
+  return lede("Today's Ten", `Game${games.length > 1 ? 's' : ''} ${listJoin(games)} of the ${label}`, today);
 }
 
-/** A season ten comes from games all over the season, so its lede names none of them. */
-export const seasonLede = (today: readonly Pitch[], label: string): string => lede(`the ${label}`, today);
+/** A season ten comes from games all over the season, so its lede names none of them. It names its date instead. */
+export const seasonLede = (today: readonly Pitch[], label: string, date: string): string => lede(`Today's Ten for ${date}`, `the ${label}`, today);
+
+/** The start screen for a date without a Ten (§2.7): Another ten is what there is to play. */
+export const noTodayLede = (date: string, label: string): string => `There's no Today's Ten for ${date}. Another ten deals fresh pitches from the ${label}.`;
 
 interface PitchCard extends Card {
   p: Pitch;

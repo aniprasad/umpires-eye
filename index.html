@@ -69,14 +69,14 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
         <span>Umpire's Eye</span>
       </h1>
       <h2 class="hook">MLB umpires get about 94% of calls right. Can you?</h2>
-      <p class="lede" id="startLede">Today's Ten: real pitches from Games 1, 2 and 5 of the 2026 World Series, 8 of them close calls within 1.5 in of the zone, at real speed, from the plate umpire's eye.</p>
+      <p class="lede" id="startLede">Today's Ten: real pitches from the 2026 season, at real speed, from the plate umpire's eye.</p>
       <ul class="keys" aria-label="Controls">
         <li><kbd>S</kbd><kbd>→</kbd><span>Strike</span></li>
         <li><kbd>B</kbd><kbd>←</kbd><span>Ball</span></li>
       </ul>
       <button class="btn-play" id="btnPlay" type="button" disabled>Loading the ballpark</button>
     </div>
-    <p class="footnote">Real pitches: %DATA_CREDIT% ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series. Players, field and catch are illustrations.</p>
+    <p class="footnote">Real pitches: %DATA_CREDIT% ABS truth reconstructed from tracking data<span class="ws-only" hidden> and matches all 29 real challenges in the Series</span>. Players, field and catch are illustrations.</p>
   </section>
   <section class="cards" id="cards" aria-labelledby="cardsTitle" hidden>
     <div class="cards-inner">
@@ -89,7 +89,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
             <div class="uc-badge" aria-label="Accuracy"><span id="ucNum">0</span><small>%</small></div>
             <div class="uc-plate">You</div>
           </div>
-          <figcaption class="uc-set"><span>Umpire's Eye</span><span>2026 World Series</span></figcaption>
+          <figcaption class="uc-set"><span>Umpire's Eye</span><span id="ucSet">2026 World Series</span></figcaption>
         </figure>
         <section class="ucard ucard-back" aria-label="Your umpire card, back">
           <header class="ub-head"><span>Umpire's Eye</span><span id="ubSet">2026 World Series Set</span></header>
@@ -112,7 +112,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
         <button class="card-btn card-btn-solid" id="btnCopy" type="button">Copy result</button>
         <button class="card-btn" id="btnAgain" type="button">Play another ten</button>
       </div>
-      <p class="cards-foot">Real pitches: %DATA_CREDIT% ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series. Players, field and catch are illustrations.</p>
+      <p class="cards-foot">Real pitches: %DATA_CREDIT% ABS truth reconstructed from tracking data<span class="ws-only" hidden> and matches all 29 real challenges in the Series</span>. Players, field and catch are illustrations.</p>
     </div>
   </section>
   <p id="live" class="sr-only" aria-live="polite"></p>

@@ -96,18 +96,26 @@ export function toughest(results: readonly (Result | undefined)[]): string {
   return tn > 1 ? `${type} (${tn} missed)` : `${type}, ${loc}`;
 }
 
-/** The text "Copy result" puts on the clipboard. */
-export function resultText(opts: { label: string; roundLabel: string; set: readonly PreparedPitch[]; results: readonly (Result | undefined)[] }): string {
-  const { label, roundLabel, set, results } = opts;
+/**
+ * The text "Copy result" puts on the clipboard. A round with a date, a season's Today's Ten, names it after the round.
+ */
+export function resultText(opts: { label: string; roundLabel: string; date?: string | null; set: readonly PreparedPitch[]; results: readonly (Result | undefined)[] }): string {
+  const { label, roundLabel, date, set, results } = opts;
   const n = set.length;
   const right = results.filter((r) => r && r.correct).length;
   const ump = set.filter((P) => P.umpCorrect).length;
 
   return [
-    `Umpire's Eye · ${label} · ${roundLabel}`,
+    `Umpire's Eye · ${label} · ${roundLabel}${date ? ` · ${date}` : ''}`,
     `I called ${right} of ${n} right (${Math.round((right / n) * 100)}%). The real ump: ${ump}/${n}. MLB umps ≈ 94%.`,
     `Toughest: ${toughest(results)}`,
     set.map((_P, k) => (results[k]?.correct ? '✓' : '✗')).join(''),
     `Real pitches: ${CREDIT}`,
   ].join('\n');
 }
+
+/**
+ * The card's set line. A dated round names its date in place of the round, since only Today's Ten has one: the slot
+ * holds two lines, and "Today's Ten" with a date would need three.
+ */
+export const setLine = (label: string, roundLabel: string, date?: string | null): string => `${label} set · ${date ?? roundLabel}`;
