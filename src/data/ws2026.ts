@@ -1,5 +1,5 @@
 import type { Game, Pitch } from '../math/types';
-import type { PitchData, PitchSource } from './source';
+import { SourceUnreachable, type PitchData, type PitchSource } from './source';
 
 /**
  * Today's Ten for the World Series pool: one easy calibrator first, then eight close calls within 1.5 in of the ABS
@@ -39,7 +39,9 @@ export function worldSeriesSource(url: string): PitchSource {
   return {
     id: 'ws-2026',
     async load(): Promise<PitchData> {
-      const res = await fetch(url);
+      const res = await fetch(url).catch((e: unknown) => {
+        throw new SourceUnreachable(`Could not reach the pitch data (${e instanceof Error ? e.message : String(e)}).`);
+      });
 
       if (!res.ok) throw new Error(`Could not load the pitch data (${res.status} ${res.statusText}).`);
 

@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
 // CI runs on Linux x64 and uses the bundled Chromium.
 const edge = process.env.CI ? {} : { channel: 'msedge' as const };
 const desktop = { width: 1440, height: 900 };
-const desktopSpecs = /(round|shots|selftest|blur)\.spec\.ts/;
+const desktopSpecs = /(round|shots|selftest|blur|failures)\.spec\.ts/;
 // Browsers refuse the Fetch standard's "bad ports" (https://fetch.spec.whatwg.org/#port-blocking), and WebKit doesn't
 // even fail the load, so every test would sit out its timeout. These are the ones from 1024 up.
 const BAD_PORTS = [1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080];

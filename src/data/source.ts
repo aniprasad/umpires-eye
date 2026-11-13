@@ -15,3 +15,6 @@ export interface PitchSource {
   readonly id: string;
   load(): Promise<PitchData>;
 }
+
+/** The source couldn't reach its data at all: the one failure that a better connection and a reload can fix. */
+export class SourceUnreachable extends Error {}

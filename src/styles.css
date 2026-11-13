@@ -129,6 +129,7 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
 .btn-play { display: inline-flex; align-items: center; gap: 12px; margin-top: 32px; padding: 19px 42px 18px; border: 0; border-radius: 14px; background: var(--chalk); color: var(--navy-ink); font: 900 30px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; box-shadow: 0 16px 36px rgba(0, 0, 0, .5), inset 0 -3px 0 rgba(0, 0, 0, .12); transition: transform .15s var(--ease-out), box-shadow .15s; }
 .btn-play:hover { transform: translateY(-1px); box-shadow: 0 20px 40px rgba(0, 0, 0, .55), inset 0 -3px 0 rgba(0, 0, 0, .12); }
 .btn-play:disabled { opacity: .6; cursor: progress; transform: none; }
+[data-ready="error"] .btn-play:disabled { cursor: not-allowed; }
 .footnote { position: absolute; left: 50%; bottom: 22px; width: min(520px, calc(100% - 48px)); margin: 0; transform: translateX(-50%); font: 12.5px/1.5 var(--body); color: var(--chalk-3); text-align: center; text-wrap: balance; }
 
 /* ---------- phases ---------- */
