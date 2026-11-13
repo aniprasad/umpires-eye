@@ -40,4 +40,5 @@ These are the owner's preferences. Lint should enforce the first two.
   - Git 2.56 at `C:\Program Files\Git\cmd\git.exe`.
   - Python 3.14 (arm64) and Edge are also installed.
 - Windows PowerShell 5.1 has a Restricted execution policy, so run scripts with `-ExecutionPolicy Bypass`.
+- npm here may resolve packages through a private registry mirror. The repo `.npmrc` keeps registry URLs out of `package-lock.json`. Never commit a lockfile whose `resolved` URLs point anywhere other than registry.npmjs.org.
 - The MLB Stats API sometimes fails DNS for a moment. Retry.
