@@ -1,0 +1,125 @@
+<!--
+THESIS: You are the plate umpire. A real World Series pitch arrives at real speed along its tracked path, seen from the umpire's slot, and you call it before the truth appears. Refuses the stats-chart dot, the TV K-Zone 3x3 grid, and neon betting-app chrome.
+OWN-WORLD: Night game under the lights. Batter's-eye green-black, floodlit clay and grass, chalk white, umpire navy, and one magenta signal (#E20074) reserved for ABS truth. The UI lives in the ump's own tools: the palm indicator, chalk lines, and a late-80s umpire card.
+STORY: Feel how fast and hard the call is. Learn that the zone moves with the batter. See that real umps miss. Want one more pitch, then copy your result.
+FIRST VIEWPORT: Full-bleed ump's-eye scene: pitcher small on the mound, batter at true height beside the plate, catcher low and soft, matchup card top-left, indicator bottom-right, Ball/Strike controls at the bottom corners, Start overlay with "Play ball".
+FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geometry canvas foreground. No seed key (impeccable scripts are unavailable on this machine).
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Umpire's Eye: call real World Series pitches</title>
+<meta name="description" content="Be the plate umpire. Real 2026 World Series pitches at real speed from the umpire's slot. Call ball or strike, then see the ABS zone and the real call.">
+<meta name="theme-color" content="#07100c">
+<link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+<div class="app" id="app" tabindex="-1" data-phase="boot">
+  <canvas id="scene" role="img" aria-label="Umpire's view from behind home plate"></canvas>
+
+  <header class="hud">
+    <section class="matchup" id="matchup" aria-label="Matchup">
+      <div class="mu-sit">
+        <span class="mu-inning" id="muInning">Top 1</span>
+        <span class="mu-outs" id="muOuts"><i></i><i></i></span>
+        <svg class="mu-bases" id="muBases" viewBox="0 0 34 22" aria-hidden="true"><rect x="22" y="9" width="7" height="7" transform="rotate(45 25.5 12.5)"/><rect x="13.5" y="1" width="7" height="7" transform="rotate(45 17 4.5)"/><rect x="5" y="9" width="7" height="7" transform="rotate(45 8.5 12.5)"/></svg>
+        <span class="mu-score" id="muScore">MIL 0 · TB 0</span>
+      </div>
+      <p class="mu-bat"><span id="muBatter">Batter</span> <small id="muBatterMeta">Bats R</small></p>
+      <p class="mu-pit"><span class="vs">vs</span> <span id="muPitcher">Pitcher</span> <small id="muPitcherMeta">RHP</small></p>
+      <p class="mu-game" id="muGame">2026 World Series</p>
+    </section>
+    <p class="score-chip" id="scoreChip"><span class="sc-main" id="scMain">Today's Ten</span><span class="sc-sub" id="scSub"><span class="sc-long">Close calls · MLB umps ≈ 94%</span><span class="sc-short"><span class="sc-ph">Close calls</span><span class="sc-ph">MLB ≈ 94%</span></span></span></p>
+  </header>
+
+  <div class="indicator" id="indicator" role="group" aria-label="Umpire indicator">
+    <div class="ind-wheels">
+      <div class="wheel"><span class="lbl">B</span><span class="win"><span class="digits" id="wB"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
+      <div class="wheel"><span class="lbl">S</span><span class="win"><span class="digits" id="wS"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
+      <div class="wheel"><span class="lbl">O</span><span class="win"><span class="digits" id="wO"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
+    </div>
+    <div class="ind-foot"><span>Pitch</span><b id="indPitch">1/10</b></div>
+    <div class="ind-clock" aria-hidden="true"><i id="indClock"></i></div>
+    <span class="sr-only" id="indText">Count 0 and 0, 0 outs</span>
+  </div>
+
+  <button class="ctl ctl-l" id="btnBall" type="button" aria-keyshortcuts="B ArrowLeft" aria-label="Call ball (B or left arrow)"><span>Ball</span><kbd>B</kbd></button>
+  <button class="ctl ctl-r" id="btnStrike" type="button" aria-keyshortcuts="S ArrowRight" aria-label="Call strike (S or right arrow)"><span>Strike</span><kbd>S</kbd></button>
+  <button class="ctl ctl-l ctl-quiet" id="btnReplay" type="button" aria-keyshortcuts="R" hidden><span>Watch it slow</span><kbd>R</kbd></button>
+  <button class="ctl ctl-r" id="btnNext" type="button" aria-keyshortcuts="Space" hidden><span id="nextLabel">Next pitch</span><kbd>Space</kbd></button>
+
+  <section class="verdict" id="verdict" aria-label="Verdict" hidden>
+    <p class="v-chip">Ump called it <b id="vUmp">Ball</b></p>
+    <div class="v-body">
+      <p class="v-line" id="vLine"></p>
+      <p class="v-ctx" id="vCtx"></p>
+      <p class="v-meta" id="vMeta"></p>
+      <p class="v-score" id="vScore"></p>
+    </div>
+  </section>
+
+  <p class="toast" id="toast" role="status"></p>
+
+  <section class="start" id="start" aria-labelledby="startTitle">
+    <div class="start-card">
+      <h1 class="wordmark" id="startTitle">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 15c0-6 7-10 15-10s15 4 15 10v11c0 10-7 17-15 18-8-1-15-8-15-18z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M9.5 21h29M10 30h28M14 38h20M24 5v39" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        <span>Umpire's Eye</span>
+      </h1>
+      <h2 class="hook">MLB umpires get about 94% of calls right. Can you?</h2>
+      <p class="lede" id="startLede">Today's Ten: real pitches from Games 1, 2 and 5 of the 2026 World Series, 8 of them close calls within 1.5 in of the zone, at real speed, from the plate umpire's eye.</p>
+      <ul class="keys" aria-label="Controls">
+        <li><kbd>S</kbd><kbd>→</kbd><span>Strike</span></li>
+        <li><kbd>B</kbd><kbd>←</kbd><span>Ball</span></li>
+      </ul>
+      <button class="btn-play" id="btnPlay" type="button" disabled>Loading the ballpark</button>
+    </div>
+    <p class="footnote">Real pitches: MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB. ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series. Players, field and catch are illustrations.</p>
+  </section>
+  <section class="cards" id="cards" aria-labelledby="cardsTitle" hidden>
+    <div class="cards-inner">
+      <h2 class="cards-title" id="cardsTitle"><span>Umpire's Eye</span></h2>
+      <p class="cards-sum" id="cardsSum">Round complete.</p>
+      <div class="cards-row">
+        <figure class="ucard ucard-front" aria-label="Your umpire card, front">
+          <div class="uc-frame">
+            <img id="ucArt" src="./src/assets/img/card-art-1024.webp" srcset="./src/assets/img/card-art-600.webp 600w, ./src/assets/img/card-art-1024.webp 1024w" sizes="286px" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
+            <div class="uc-badge" aria-label="Accuracy"><span id="ucNum">0</span><small>%</small></div>
+            <div class="uc-plate">You</div>
+          </div>
+          <figcaption class="uc-set"><span>Umpire's Eye</span><span>2026 World Series</span></figcaption>
+        </figure>
+        <section class="ucard ucard-back" aria-label="Your umpire card, back">
+          <header class="ub-head"><span>Umpire's Eye</span><span id="ubSet">2026 World Series Set</span></header>
+          <dl class="ub-stats">
+            <div><dt>Pitches</dt><i></i><dd id="ubPitches">10</dd></div>
+            <div><dt>Correct</dt><i></i><dd id="ubCorrect">0</dd></div>
+            <div><dt>The real ump</dt><i></i><dd id="ubUmp">6/10</dd></div>
+            <div><dt>MLB umps</dt><i></i><dd>≈ 94%</dd></div>
+            <div><dt>Toughest</dt><i></i><dd id="ubTough">None</dd></div>
+          </dl>
+          <figure class="ub-map">
+            <p class="ub-map-title">Miss map</p>
+            <svg id="ubMap" viewBox="0 6 240 140" role="img" aria-label="Miss map"></svg>
+            <figcaption class="ub-legend"><span class="lx">×</span> missed &nbsp;<span class="ld">●</span> right &nbsp;· catcher's view</figcaption>
+          </figure>
+          <footer class="ub-foot">MLB umps ≈ 94%: UmpScorecards via mlb.com. The real ump: original calls vs ABS on these pitches.</footer>
+        </section>
+      </div>
+      <div class="cards-actions">
+        <button class="card-btn card-btn-solid" id="btnCopy" type="button">Copy result</button>
+        <button class="card-btn" id="btnAgain" type="button">Play another ten</button>
+      </div>
+      <p class="cards-foot">Real pitches: MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB. ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series. Players, field and catch are illustrations.</p>
+    </div>
+  </section>
+  <p id="live" class="sr-only" aria-live="polite"></p>
+</div>
+<pre id="err" hidden></pre>
+<pre id="selftest" hidden></pre>
+<noscript><p style="padding:24px">Umpire's Eye needs JavaScript to replay the pitches.</p></noscript>
+<script type="module" src="./src/main.ts"></script>
+</body>
+</html>
