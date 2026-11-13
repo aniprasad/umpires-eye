@@ -1,6 +1,6 @@
 // The run lock behind npm run e2e. Two full Playwright runs at once overload this machine and WebKit then misses its
 // timeouts, whatever ports they use, so runs from every checkout take turns through one file in the OS temp folder.
-import { linkSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -136,8 +136,21 @@ export async function acquireLock(o: LockOptions): Promise<() => void> {
 
     if (!holder || !alive(holder.pid)) {
       log(holder ? `e2e: ${who(holder)} is no longer running; taking over its lock.` : `e2e: ${file} isn't a lock this script wrote; replacing it.`);
-      // Re-read first, so a run that lost the race to take over doesn't remove the winner's fresh lock.
-      if (readText(file) === text) rmSync(file, { force: true });
+      // Two waiters can find the same dead holder. Each moves the file aside under its own name and then reads what it
+      // moved, so the slower one can't delete the lock the faster one has just taken: it puts that lock back instead.
+      const aside = `${file}.${pid}.stale`;
+
+      try {
+        renameSync(file, aside);
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') continue;
+        throw e;
+      }
+
+      const moved = readText(aside);
+
+      if (moved !== null && moved !== text) tryCreate(file, moved, pid);
+      rmSync(aside, { force: true });
       continue;
     }
 

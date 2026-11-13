@@ -1,6 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { acquireLock, shouldLock, type Holder } from '../../scripts/e2e-lock.ts';
 
@@ -75,6 +75,31 @@ describe('the e2e run lock', () => {
 
     expect(s.holder().pid).toBe(222);
     expect(s.lines).toEqual([expect.stringMatching(/pid 333.* is no longer running; taking over its lock/)]);
+    expect(readdirSync(dir).filter((f) => f.startsWith(`${basename(s.file)}.`))).toEqual([]);
+  });
+
+  it('puts back a lock another run took after this one found the old holder dead, and waits for it', async () => {
+    const s = setup();
+    const alive = (pid: number): boolean => {
+      // A faster waiter takes over the same dead lock just before this run moves it aside.
+      if (pid === 333) s.hold({ pid: 555, port: 4202, started: '2026-11-13T09:00:00Z' });
+
+      return pid !== 333;
+    };
+
+    s.hold({ pid: 333 });
+    s.at(1000, () => {
+      expect(s.holder().pid).toBe(555);
+      rmSync(s.file);
+    });
+    await acquireLock({ ...s.opts, alive });
+
+    expect(s.holder().pid).toBe(222);
+    expect(s.lines).toEqual([
+      expect.stringMatching(/pid 333.* is no longer running; taking over its lock/),
+      expect.stringMatching(/^e2e: waiting for the e2e run on port 4202 \(pid 555, /),
+    ]);
+    expect(readdirSync(dir).filter((f) => f.startsWith(`${basename(s.file)}.`))).toEqual([]);
   });
 
   it('replaces a file that isn\'t a lock', async () => {
