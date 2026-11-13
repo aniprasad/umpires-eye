@@ -6,6 +6,7 @@ export const FORMAT_VERSION = 1;
 export const SHARD_FORMAT = 'umpires-eye.season-shard';
 export const MANIFEST_FORMAT = 'umpires-eye.season-manifest';
 export const STATS_FORMAT = 'umpires-eye.season-stats';
+export const DAILY_FORMAT = 'umpires-eye.season-daily';
 
 // Each table's columns, in the order they're written. Readers find columns by name, so a later version can add or
 // reorder fields.
