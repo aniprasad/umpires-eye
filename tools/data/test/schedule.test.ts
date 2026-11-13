@@ -95,7 +95,7 @@ test('parseSchedule takes the venue and the home-plate umpire when the schedule 
     { official: { id: 71, fullName: 'First Base Ump' }, officialType: 'First Base' },
     { official: { id: 70, fullName: 'Plate Ump' }, officialType: 'Home Plate' },
   ];
-  const { games } = parseSchedule([
+  const { games, officials } = parseSchedule([
     {
       dates: [
         {
@@ -109,12 +109,16 @@ test('parseSchedule takes the venue and the home-plate umpire when the schedule 
   ]);
 
   assert.deepEqual(
-    games.map((g) => [g.venue, g.umpire]),
+    games.map((g) => [g.venue, g.scheduledUmpire]),
     [
       [{ id: 32, name: 'A Park' }, { id: 70, name: 'Plate Ump' }],
       [null, null],
     ],
   );
+  assert.deepEqual([...officials], [
+    [71, 'First Base Ump'],
+    [70, 'Plate Ump'],
+  ]);
 });
 
 test('parseTeams maps ids to abbreviations', () => {

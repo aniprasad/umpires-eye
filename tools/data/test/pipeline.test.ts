@@ -74,9 +74,10 @@ test('a synthetic season builds into a manifest, stats, one dealable shard and a
   assert.ok(pitches.every((p) => p.dealable));
   assert.deepEqual(shard.players.map((r) => r[0]).sort(), [11, 20, 30]);
   assert.deepEqual(
-    decodeGames(shard).map((g) => [g.start, g.venue, g.umpire]),
-    [['2026-05-01T23:05:00Z', 32, 70]],
+    decodeGames(shard).map((g) => [g.start, g.venue]),
+    [['2026-05-01T23:05:00Z', 32]],
   );
+  assert.ok(pitches.every((p) => p.umpire === 70));
   assert.deepEqual([shard.venues, shard.umpires], [[[32, 'A Park']], [[70, 'Plate Ump']]]);
   assert.match(shard.credit, /Not affiliated with MLB/);
 });

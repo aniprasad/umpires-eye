@@ -44,7 +44,7 @@ import { absJudge, crossing } from './physics.ts';
 import { addChecks, emptyChecks, extractGame, type Checks } from './plays.ts';
 import { makeShards, PER_CLOSE, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
 import { hash32, mulberry32 } from './rng.ts';
-import { parseSchedule, parseTeams, type Named } from './schedule.ts';
+import { parseSchedule, parseTeams, type Game, type Named } from './schedule.ts';
 import {
   byGameType,
   challengeMismatches,
@@ -55,6 +55,7 @@ import {
   variants,
   zoneChecks,
 } from './stats.ts';
+import { plateChanged, plateRuns, type PlateTrack, type Reading } from './umpires.ts';
 
 export const OUT_DIR = 'public/data/season-2026';
 export const REPORT_PATH = 'tools/data/reports/season-2026.json';
@@ -136,13 +137,46 @@ function sample(list: readonly string[]): { count: number; first: string[] } {
   return { count: list.length, first: list.slice(0, SAMPLE) };
 }
 
+const READINGS: Record<Reading, string> = {
+  'takes-plate': 'moves to the plate',
+  'leaves-plate': 'the plate umpire moves to a base, so no one is named until someone takes the plate',
+  'replaces-plate': 'replaces the plate umpire',
+  'vacates-plate': 'the plate umpire leaves, so no one is named until someone takes the plate',
+  'former-slot': 'names an umpire who took the plate earlier in the play, so it fills his former slot and the plate is unchanged',
+  conflict: 'contradicts the plate umpire on record, so no one is named for the game up to here',
+  base: 'a change among the base umpires; the plate is unchanged',
+  unreadable: 'not a form the build reads; the build fails',
+};
+
+const paAt = (atBat: number, afterPitch: number): string =>
+  atBat < 0 ? 'start' : `PA ${atBat}${afterPitch ? ` after pitch ${afterPitch}` : ''}`;
+
+function plateReport(tracks: ReadonlyArray<{ game: Game; track: PlateTrack }>, nameOf: (id: number | null) => string | null) {
+  const describe = ({ game, track }: { game: Game; track: PlateTrack }) => ({
+    gamePk: game.gamePk,
+    date: game.date,
+    scheduled: nameOf(track.scheduledId),
+    plate: plateRuns(track).map((r) => `${paAt(r.atBat, r.afterPitch)}: ${nameOf(r.umpireId) ?? 'no one named'}, ${r.called} called`),
+    events: track.events.map((e) => `${paAt(e.atBat, e.afterPitch)}: [${e.reading}] ${e.text}`),
+  });
+
+  return {
+    readings: READINGS,
+    gamesWithUmpireChanges: tracks.length,
+    umpireChanges: tracks.reduce((n, t) => n + t.track.events.length, 0),
+    plateChanged: tracks.filter((t) => plateChanged(t.track)).map(describe),
+    plateUnchanged: tracks.filter((t) => !plateChanged(t.track)).map(describe),
+  };
+}
+
 export function buildDataset(inputs: Inputs): BuildResult {
   const log = inputs.log ?? ((): void => undefined);
   const teams = parseTeams(inputs.teams);
-  const { games, skipped } = parseSchedule(inputs.schedules);
+  const { games, skipped, officials } = parseSchedule(inputs.schedules);
   const checks: Checks = emptyChecks();
   const all: Judged[] = [];
   const missing: number[] = [];
+  const plateTracks: Array<{ game: Game; track: PlateTrack }> = [];
   const unknownTeams = games.filter((g) => !teams.has(g.awayId) || !teams.has(g.homeId)).map((g) => g.gamePk);
 
   if (!games.length) throw new Error('The cached schedule has no completed games. Run npm run data:fetch.');
@@ -156,9 +190,10 @@ export function buildDataset(inputs: Inputs): BuildResult {
       continue;
     }
 
-    const extract = extractGame(pbp, game, inputs.people);
+    const extract = extractGame(pbp, game, inputs.people, officials);
 
     addChecks(checks, extract.checks);
+    if (extract.plate.events.length) plateTracks.push({ game, track: extract.plate });
     for (const p of extract.pitches) all.push(judge(p, all.length));
     if ((k + 1) % 250 === 0) log(`  ${k + 1}/${games.length} games, ${all.length} called pitches`);
   }
@@ -167,6 +202,8 @@ export function buildDataset(inputs: Inputs): BuildResult {
   }
 
   const teamAbbr = (id: number): string => teams.get(id)?.abbr ?? String(id);
+  const umpireName = (id: number | null): string | null => (id === null ? null : (officials.get(id) ?? null));
+  const umpireNamed = (id: number | null): Named | null => (id === null ? null : { id, name: umpireName(id) ?? `#${id}` });
   const pool = selectPool(all, SEED);
   const quantized = new Map<string, Quantized>(pool.entries.map((e) => [e.j.p.id, quantize(e.j)]));
   const players = new Map<number, { name: string; heightIn: number | null }>();
@@ -246,7 +283,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     return rowsJson(head, [
       ['games', shardGames.map((g) => gameRow(g, teamAbbr))],
       ['venues', nameRows(shardGames.map((g) => g.venue))],
-      ['umpires', nameRows(shardGames.map((g) => g.umpire))],
+      ['umpires', nameRows(entries.map((e) => umpireNamed(e.j.p.umpireId)))],
       ['players', playerRows],
       ['pitches', pitchRows],
     ]);
@@ -303,7 +340,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
       lastDate: games.at(-1)?.date ?? null,
       games: games.length,
       gamesWithVenue: games.filter((g) => g.venue).length,
-      gamesWithPlateUmpire: games.filter((g) => g.umpire).length,
+      calledPitchesWithPlateUmpire: all.filter((j) => j.p.umpireId !== null).length,
       calledPitches: all.length,
       challenges: challenged.length,
     },
@@ -316,7 +353,9 @@ export function buildDataset(inputs: Inputs): BuildResult {
       marginIn: 'how far the ball would have to move to flip abs, rounded to 0.01 in; positive for strikes; abs is authoritative when it rounds to 0',
       bases: 'bitmask of occupied bases before the pitch: 1 = first, 2 = second, 4 = third',
       games:
-        'played order is date, then start, then gamePk; start is the scheduled start in ISO UTC (the schedule\'s gameDate); venue and umpire are ids into the venues and umpires tables; umpire is the plate umpire the schedule lists',
+        "played order is date, then start, then gamePk; start is the scheduled start in ISO UTC (the schedule's gameDate); venue is an id into the venues table",
+      umpire:
+        "a pitch's plate umpire, an id into the umpires table: the one the schedule lists, followed through the play log's umpire changes; null where the log leaves it unknown",
       flags: 'top, dealable and challenge.overturned are 1 or 0; challenge.role is B (batter), P (pitcher) or C (catcher)',
       id: 'a pitch is gamePk-atBat-pitch',
     },
@@ -404,9 +443,14 @@ export function buildDataset(inputs: Inputs): BuildResult {
       byType: stats.games.byType,
       skippedListings: skipped,
       venues: new Set(games.flatMap((g) => (g.venue ? [g.venue.id] : []))).size,
-      plateUmpires: new Set(games.flatMap((g) => (g.umpire ? [g.umpire.id] : []))).size,
+      scheduledPlateUmpires: new Set(games.flatMap((g) => (g.scheduledUmpire ? [g.scheduledUmpire.id] : []))).size,
       gamesWithoutVenue: sample(games.filter((g) => !g.venue).map((g) => String(g.gamePk))),
-      gamesWithoutPlateUmpire: sample(games.filter((g) => !g.umpire).map((g) => String(g.gamePk))),
+      gamesWithoutScheduledPlateUmpire: sample(games.filter((g) => !g.scheduledUmpire).map((g) => String(g.gamePk))),
+    },
+    plateUmpire: {
+      onPitches: new Set(all.flatMap((j) => (j.p.umpireId === null ? [] : [j.p.umpireId]))).size,
+      calledPitchesWithoutOne: all.filter((j) => j.p.umpireId === null).length,
+      ...plateReport(plateTracks, umpireName),
     },
     integrity: {
       plays: checks.plays,
@@ -427,6 +471,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
         Object.entries(checks.catcherListedAs).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
       ),
       midPlateAppearanceSubstitutions: sample(checks.midPaSubstitutions),
+      umpireProblems: sample(checks.umpireProblems),
       attribution: {
         matchup: all.filter((j) => j.p.attribution === 'matchup').length,
         replaced: all.filter((j) => j.p.attribution === 'replaced').length,
@@ -483,6 +528,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `pool ${composition.pitches}: close ${composition.close} of ${pool.season.close}, near ${composition.near} of ${pool.season.near}, calibrators ${composition.calibrators} of ${pool.season.clear} clear calls, challenged ${composition.challenged}`,
     `shards ${count}: ${kb(Math.min(...sizes.shardBytes))}-${kb(Math.max(...sizes.shardBytes))} raw, ${kb(Math.min(...sizes.shardGzipBytes))}-${kb(Math.max(...sizes.shardGzipBytes))} gzipped; largest session ${kb(sizes.largestSessionGzipBytes)} of ${kb(SESSION_BUDGET_GZIP)}`,
     `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${impossible.length} called pitches with an impossible count (not dealable)`,
+    `plate umpire: changed or unknown in ${report.plateUmpire.plateChanged.length} games (${report.plateUmpire.plateChanged.map((g) => g.gamePk).join(', ')}); ${report.plateUmpire.calledPitchesWithoutOne} called pitches name no one`,
   ];
 
   return { files, summary, sizes };

@@ -115,6 +115,7 @@ const table: string[] = [];
 const totals = { pitches: 0, dealable: 0, close: 0, near: 0, calibrators: 0, challenged: 0, agree: 0, overturned: 0 };
 let maxDrift = 0;
 let heldBack = 0;
+let noUmpirePitches = 0;
 const noUmpire = new Set<number>();
 
 for (const meta of manifest.shards) {
@@ -145,10 +146,10 @@ for (const meta of manifest.shards) {
     const before = games[k - 1];
 
     if (before && compareGames(before, g) >= 0) fail(`${meta.file}: games table out of order at ${g.gamePk}`);
-    if ((g.venue !== null && !venues.has(g.venue)) || (g.umpire !== null && !umpires.has(g.umpire))) {
-      fail(`${meta.file}: game ${g.gamePk} names a venue or umpire missing from its tables`);
-    }
-    if (g.umpire === null) noUmpire.add(g.gamePk);
+    if (g.venue !== null && !venues.has(g.venue)) fail(`${meta.file}: game ${g.gamePk} names a venue missing from its table`);
+  }
+  for (const [id, name] of umpires) {
+    if (!name || name.trim().toLowerCase() === 'no umpire') fail(`${meta.file}: umpire ${id} has no real name`);
   }
 
   for (const [k, p] of pitches.entries()) {
@@ -160,6 +161,12 @@ for (const meta of manifest.shards) {
     const key: [number, number, number] = [gameOrder.get(p.gamePk) ?? -1, p.atBat, p.pitch];
 
     for (const msg of pitchProblems(p, gameOrder, players, types)) fail(`${where}: ${msg}`);
+    if (p.umpire === null) {
+      noUmpire.add(p.gamePk);
+      noUmpirePitches++;
+    } else if (!umpires.has(p.umpire)) {
+      fail(`${where}: plate umpire ${p.umpire} missing from the umpires table`);
+    }
     if (ids.has(p.id)) fail(`${where}: appears twice`);
     ids.add(p.id);
     if (key[0] < prev[0] || (key[0] === prev[0] && (key[1] < prev[1] || (key[1] === prev[1] && key[2] <= prev[2])))) {
@@ -226,7 +233,7 @@ console.log(`largest play session: ${kb(sizes.largestSessionGzipBytes)} gzipped 
 console.log(
   `challenges: ABS reconstruction = final call on ${totals.agree}/${totals.challenged}; max stored-margin drift ${maxDrift.toFixed(4)} in; ${heldBack} drawable pitches held back (uncertain batter or pitcher, or an impossible count)`,
 );
-console.log(`games in the shards without a plate umpire: ${noUmpire.size}`);
+console.log(`pitches in the shards without a plate umpire: ${noUmpirePitches}, in games ${[...noUmpire].sort((a, b) => a - b).join(', ') || 'none'}`);
 
 if (rebuild) {
   const inputs = loadInputs(openCache(cacheDir()));

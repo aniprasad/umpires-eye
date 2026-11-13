@@ -19,7 +19,7 @@ export const GAME: Game = {
   series: null,
   seriesGame: null,
   venue: null,
-  umpire: null,
+  scheduledUmpire: null,
 };
 
 // A fastball-like fit (t = 0 at y0 = 50 ft) that crosses mid-plate exactly at (x, z).
@@ -176,6 +176,7 @@ export function judged(s: JudgedSpec): Judged {
     pitcherId: 20,
     pitcherName: 'Pitcher 20',
     throws: 'R',
+    umpireId: 70,
     pitchingTeamId: s.team ?? HOME,
     attribution: 'matchup',
     pitchType: s.pitchType ?? 'FF',

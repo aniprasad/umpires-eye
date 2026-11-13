@@ -8,7 +8,7 @@ export const SHARD_FORMAT = 'umpires-eye.season-shard';
 export const MANIFEST_FORMAT = 'umpires-eye.season-manifest';
 export const STATS_FORMAT = 'umpires-eye.season-stats';
 
-export const GAME_FIELDS = ['gamePk', 'date', 'start', 'gameType', 'away', 'home', 'series', 'seriesGame', 'venue', 'umpire'] as const;
+export const GAME_FIELDS = ['gamePk', 'date', 'start', 'gameType', 'away', 'home', 'series', 'seriesGame', 'venue'] as const;
 export const NAME_FIELDS = ['id', 'name'] as const;
 export const PLAYER_FIELDS = ['id', 'name', 'heightIn'] as const;
 export const CHALLENGE_FIELDS = ['by', 'team', 'role', 'overturned'] as const;
@@ -28,6 +28,7 @@ export const PITCH_FIELDS = [
   'bats',
   'pitcher',
   'throws',
+  'umpire',
   'type',
   'mph',
   ...TRAJ_KEYS,
@@ -109,7 +110,7 @@ export function quantize(j: Judged): Quantized {
   return { traj: { ...j.p.traj }, zoneTop: j.p.zoneTop, zoneBottom: j.p.zoneBottom, decimals: null };
 }
 
-// Venues and plate umpires are ids here; their names are in the shard's venues and umpires tables.
+// The venue is an id here; its name is in the shard's venues table.
 export function gameRow(g: Game, teamAbbr: (id: number) => string): Row {
   return [
     g.gamePk,
@@ -121,7 +122,6 @@ export function gameRow(g: Game, teamAbbr: (id: number) => string): Row {
     g.series,
     g.seriesGame,
     g.venue?.id ?? null,
-    g.umpire?.id ?? null,
   ];
 }
 
@@ -145,6 +145,7 @@ export function pitchRow(j: Judged, q: Quantized, dealable: boolean, teamAbbr: (
     p.bats,
     p.pitcherId,
     p.throws,
+    p.umpireId,
     p.pitchType,
     p.mph === null ? null : round(p.mph, 1),
     ...TRAJ_KEYS.map((k) => q.traj[k]),

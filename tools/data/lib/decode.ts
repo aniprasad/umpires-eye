@@ -42,6 +42,7 @@ export interface StoredPitch {
   bats: Side;
   pitcher: number;
   throws: Side;
+  umpire: number | null;
   type: string | null;
   mph: number | null;
   traj: Traj;
@@ -66,7 +67,6 @@ export interface StoredGame {
   series: string | null;
   seriesGame: number | null;
   venue: number | null;
-  umpire: number | null;
 }
 
 // Rows are read by field name, so a reader keeps working if a later version adds or reorders fields.
@@ -98,7 +98,6 @@ export function decodeGames(doc: ShardDoc): StoredGame[] {
       series: get('series') as string | null,
       seriesGame: get('seriesGame') as number | null,
       venue: get('venue') as number | null,
-      umpire: get('umpire') as number | null,
     };
   });
 }
@@ -140,6 +139,7 @@ export function decodePitches(doc: ShardDoc): StoredPitch[] {
       bats: get('bats') as Side,
       pitcher: get('pitcher') as number,
       throws: get('throws') as Side,
+      umpire: get('umpire') as number | null,
       type: get('type') as string | null,
       mph: get('mph') as number | null,
       traj,

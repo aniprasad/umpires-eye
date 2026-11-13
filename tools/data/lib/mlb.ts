@@ -100,6 +100,8 @@ export interface PlayEvent {
   isSubstitution?: boolean;
   player?: Ref;
   replacedPlayer?: Ref;
+  // On umpire_substitution events: the umpire who moves, or the one coming in. The feed gives no name here.
+  umpire?: Ref;
   position?: { abbreviation?: string };
   count?: Count;
   details?: {

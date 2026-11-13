@@ -3,6 +3,7 @@ import type { Play, PlayByPlay, PlayEvent, Ref, Review, Runner } from './mlb.ts'
 import type { Person } from './people.ts';
 import { TRAJ_KEYS, tAtY, type Traj } from './physics.ts';
 import type { Game } from './schedule.ts';
+import { spanAt, trackPlateUmpire, type PlateTrack } from './umpires.ts';
 
 export type Call = 'S' | 'B';
 export type Side = 'L' | 'R';
@@ -43,6 +44,8 @@ export interface CalledPitch {
   pitcherId: number;
   pitcherName: string;
   throws: Side;
+  // The plate umpire for this pitch, or null where the play log leaves it unknown.
+  umpireId: number | null;
   pitchingTeamId: number;
   attribution: Attribution;
   pitchType: string | null;
@@ -75,12 +78,14 @@ export interface Checks {
   orphanReviews: string[];
   roleAnomalies: string[];
   midPaSubstitutions: string[];
+  umpireProblems: string[];
   catcherListedAs: Record<string, number>;
 }
 
 export interface GameExtract {
   pitches: CalledPitch[];
   checks: Checks;
+  plate: PlateTrack;
 }
 
 interface Who {
@@ -124,6 +129,7 @@ const LISTS = [
   'orphanReviews',
   'roleAnomalies',
   'midPaSubstitutions',
+  'umpireProblems',
 ] as const;
 const BASE_BIT: Record<Base, number> = { '1B': 1, '2B': 2, '3B': 4 };
 const BASE_NAMED: Record<string, Base> = { '1st': '1B', '2nd': '2B', '3rd': '3B' };
@@ -164,6 +170,7 @@ export function emptyChecks(): Checks {
     orphanReviews: [],
     roleAnomalies: [],
     midPaSubstitutions: [],
+    umpireProblems: [],
     catcherListedAs: {},
   };
 }
@@ -431,14 +438,22 @@ function roleOf(byId: number | undefined, teamId: number, s: Sides, people: Map<
   return byId === s.batterId ? 'batter' : byId === s.pitcherId ? 'pitcher' : 'catcher';
 }
 
-export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Person>): GameExtract {
+// `officials` names the umpires by id, season-wide, from the schedule's crews.
+export function extractGame(
+  pbp: PlayByPlay,
+  game: Game,
+  people: Map<number, Person>,
+  officials: ReadonlyMap<number, string> = new Map(),
+): GameExtract {
   const pitches: CalledPitch[] = [];
   const checks = emptyChecks();
+  const plate = trackPlateUmpire(pbp, game.scheduledUmpire?.id ?? null, officials, game.gamePk);
   let prev: Play | undefined;
   let bases = new Map<number, Base>();
   let score = { away: 0, home: 0 };
 
-  for (const play of pbp.allPlays ?? []) {
+  checks.umpireProblems.push(...plate.problems);
+  for (const [playPos, play] of (pbp.allPlays ?? []).entries()) {
     const about = play.about ?? {};
     const top = about.isTopInning ?? about.halfInning === 'top';
     const inning = about.inning ?? 0;
@@ -485,6 +500,7 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
 
         if (tracking) {
           const attr = attrs.get(pos) ?? UNKNOWN_ATTR;
+          const span = spanAt(plate, playPos, pos);
           const before = new Map(bases);
           const touched = new Set<number>();
           const finalCall: Call = code === 'C' ? 'S' : 'B';
@@ -536,6 +552,7 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
             };
           }
 
+          if (span) span.called++;
           pitches.push({
             id: pid,
             gamePk: game.gamePk,
@@ -555,6 +572,7 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
             pitcherId: attr.pitcher.id,
             pitcherName: attr.pitcher.name,
             throws: attr.throws,
+            umpireId: span?.umpireId ?? null,
             pitchingTeamId: fieldingId,
             attribution: attr.attribution,
             pitchType: d?.type?.code ?? null,
@@ -600,5 +618,5 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
     prev = play;
   }
 
-  return { pitches, checks };
+  return { pitches, checks, plate };
 }

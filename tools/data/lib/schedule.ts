@@ -23,12 +23,15 @@ export interface Game {
   series: string | null;
   seriesGame: number | null;
   venue: Named | null;
-  umpire: Named | null;
+  // The plate umpire the schedule lists. A pitch's own plate umpire also follows the play log's umpire changes.
+  scheduledUmpire: Named | null;
 }
 
 export interface ScheduleResult {
   games: Game[];
   skipped: Record<string, number>;
+  // Every official named in any listing's crew, by id.
+  officials: Map<number, string>;
 }
 
 const isGameType = (v: string | undefined): v is GameType => GAME_TYPES.some((t) => t === v);
@@ -57,6 +60,7 @@ export function parseTeams(res: TeamsResponse): Map<number, Team> {
 // start.
 export function parseSchedule(responses: ScheduleResponse[]): ScheduleResult {
   const listings = new Map<number, ScheduleGame[]>();
+  const officials = new Map<number, string>();
 
   for (const res of responses) {
     for (const day of res.dates ?? []) {
@@ -65,6 +69,7 @@ export function parseSchedule(responses: ScheduleResponse[]): ScheduleResult {
 
         if (seen) seen.push(g);
         else listings.set(g.gamePk, [g]);
+        for (const o of g.officials ?? []) if (o.official?.fullName) officials.set(o.official.id, o.official.fullName);
       }
     }
   }
@@ -102,11 +107,11 @@ export function parseSchedule(responses: ScheduleResponse[]): ScheduleResult {
       series: post ? (g.seriesDescription ?? null) : null,
       seriesGame: post ? (g.seriesGameNumber ?? null) : null,
       venue: g.venue?.id !== undefined && g.venue.name ? { id: g.venue.id, name: g.venue.name } : null,
-      umpire: plate ? { id: plate.id, name: plate.fullName ?? `#${plate.id}` } : null,
+      scheduledUmpire: plate ? { id: plate.id, name: plate.fullName ?? `#${plate.id}` } : null,
     });
   }
 
   games.sort(compareGames);
 
-  return { games, skipped };
+  return { games, skipped, officials };
 }

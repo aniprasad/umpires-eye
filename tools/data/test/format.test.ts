@@ -51,19 +51,19 @@ test('a pitch row decodes back to the same pitch', () => {
 
   assert.ok(p);
   assert.equal(p.id, j.p.id);
+  assert.equal(p.umpire, 70);
   assert.deepEqual([p.ump, p.final, p.abs, p.marginIn, p.dealable], ['B', 'B', 'B', -1.23, true]);
   assert.deepEqual(p.challenge, { by: 30, team: 'HOM', role: 'C', overturned: false });
   assert.deepEqual([p.zoneTop, p.zoneBottom], [ZONE.top, ZONE.bottom]);
   assert.ok(Math.abs(p.traj.x0 - j.p.traj.x0) <= 5e-5);
 });
 
-test('a game row decodes back with its venue and plate umpire', () => {
-  const game = { ...GAME, gameType: 'W' as const, series: 'World Series', seriesGame: 5, venue: { id: 32, name: 'A Park' }, umpire: { id: 70, name: 'Plate Ump' } };
+test('a game row decodes back with its start and venue', () => {
+  const game = { ...GAME, gameType: 'W' as const, series: 'World Series', seriesGame: 5, venue: { id: 32, name: 'A Park' } };
   const doc = JSON.parse(
-    rowsJson({ fields: { games: GAME_FIELDS, venues: NAME_FIELDS, umpires: NAME_FIELDS } }, [
+    rowsJson({ fields: { games: GAME_FIELDS, venues: NAME_FIELDS } }, [
       ['games', [gameRow(game, (id) => (id === HOME ? 'HOM' : 'AWY'))]],
       ['venues', [[32, 'A Park']]],
-      ['umpires', [[70, 'Plate Ump']]],
     ]),
   ) as ShardDoc;
 
@@ -78,10 +78,8 @@ test('a game row decodes back with its venue and plate umpire', () => {
       series: 'World Series',
       seriesGame: 5,
       venue: 32,
-      umpire: 70,
     },
   ]);
-  assert.equal(decodeNames(doc, 'umpires').get(70), 'Plate Ump');
   assert.equal(decodeNames(doc, 'venues').get(32), 'A Park');
 });
 
