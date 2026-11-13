@@ -340,17 +340,22 @@ export function buildDataset(inputs: Inputs): BuildResult {
 
   const challenged = all.filter((j) => j.p.challenge);
   const poolDealable = pool.entries.filter((e) => e.dealable);
+  const inBand = (b: string): number => poolDealable.filter((e) => band(e.j) === b).length;
+  // Every pile counts the dealable pitches in its band, challenged ones included, as the dealer draws them.
   const composition = {
     pitches: pool.entries.length,
     dealable: poolDealable.length,
     closeWithinIn: CLOSE_IN,
-    close: poolDealable.filter((e) => storedAbsMargin(e.j) <= CLOSE_IN).length,
+    close: inBand('close'),
     nearWithinIn: NEAR_IN,
-    near: poolDealable.filter((e) => storedAbsMargin(e.j) > CLOSE_IN && storedAbsMargin(e.j) <= NEAR_IN).length,
+    near: inBand('near'),
+    // Between the near and calibrator bands: in the pool only when challenged, and never dealt.
+    mid: inBand('mid'),
     calibratorMinIn: CALIBRATOR_MIN_IN,
-    calibrators: pool.entries.filter((e) => e.bucket === 'calibrator').length,
+    calibrators: inBand('clear'),
     challenged: challenged.length,
     challengedDealable: pool.entries.filter((e) => e.bucket === 'challenge' && e.dealable).length,
+    sampled: { near: pool.entries.filter((e) => e.bucket === 'near').length, calibrators: pool.entries.filter((e) => e.bucket === 'calibrator').length },
     sampledPerClose: PER_CLOSE,
     seasonDealable: pool.season,
   };
@@ -562,7 +567,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `called pitches ${all.length} (left out: ${checks.ballInDirt} in the dirt, ${checks.noTracking} untracked; ${checks.automatic} automatic balls and strikes are not pitches)`,
     `challenges ${ch.total}, overturned ${ch.overturned}; ABS truth = final call on ${ch.absAgreesWithFinalCall.agree}/${ch.absAgreesWithFinalCall.total} (${ch.absAgreesWithFinalCall.pct}%)`,
     `ump vs ABS: overall ${ump.overall.agree}/${ump.overall.total} (${ump.overall.pct}%), within ${CLOSE_IN} in ${ump.close.agree}/${ump.close.total} (${ump.close.pct}%)`,
-    `pool ${composition.pitches}: close ${composition.close} of ${pool.season.close}, near ${composition.near} of ${pool.season.near}, calibrators ${composition.calibrators} of ${pool.season.clear} clear calls, challenged ${composition.challenged}`,
+    `pool ${composition.pitches}: close ${composition.close} of ${pool.season.close}, near ${composition.near} of ${pool.season.near}, calibrators ${composition.calibrators} of ${pool.season.clear} clear calls, ${composition.mid} challenged between ${NEAR_IN} and ${CALIBRATOR_MIN_IN} in, challenged ${composition.challenged}`,
     `shards ${count}: ${kb(Math.min(...sizes.shardBytes))}-${kb(Math.max(...sizes.shardBytes))} raw, ${kb(Math.min(...sizes.shardGzipBytes))}-${kb(Math.max(...sizes.shardGzipBytes))} gzipped; largest session ${kb(sizes.largestSessionGzipBytes)} of ${kb(SESSION_BUDGET_GZIP)}`,
     `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${impossible.length} called pitches with an impossible count (not dealable)`,
     `plate umpire: changed or unknown in ${report.plateUmpire.plateChanged.length} games (${report.plateUmpire.plateChanged.map((g) => g.gamePk).join(', ')}); ${report.plateUmpire.calledPitchesWithoutOne} called pitches name no one`,

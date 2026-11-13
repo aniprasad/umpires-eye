@@ -14,10 +14,12 @@ const margins = [
   -5,
   ...Array.from({ length: 12 }, (_, k) => (k % 2 ? 7 : -7) - k * 0.05),
 ];
-// A strike the batter challenged and a ball the catcher challenged, both upheld.
+// A strike the batter challenged and two balls the catcher challenged, all upheld; the second ball is 5 in out, between
+// the near and calibrator bands.
 const challenges = new Map([
   [3, challenge(11, AWAY, false)],
   [8, challenge(30, HOME, false)],
+  [27, challenge(30, HOME, false)],
 ]);
 const plays = margins.map((m, k) => {
   const review = challenges.get(k);
@@ -64,13 +66,14 @@ test('a synthetic season builds into a manifest, stats, one dealable shard and a
   assert.deepEqual([...first.files.keys()].sort(), [`${OUT_DIR}/manifest.json`, `${OUT_DIR}/shards/00.json`, `${OUT_DIR}/stats.json`, REPORT_PATH]);
   assert.deepEqual([...again.files], [...first.files]);
   assert.equal(stats.calledPitches.total, margins.length);
-  assert.deepEqual(stats.challenges.absAgreesWithFinalCall, { agree: 2, total: 2, pct: 100 });
+  assert.deepEqual(stats.challenges.absAgreesWithFinalCall, { agree: 3, total: 3, pct: 100 });
   assert.equal(stats.umpVsAbs.overall.pct, 100);
   assert.equal(JSON.parse(first.files.get(REPORT_PATH) ?? '{}').integrity.challengeRoleAnomalies.count, 0);
-  assert.equal(manifest.pool.close, 24);
-  assert.equal(manifest.pool.near, 3);
-  assert.equal(manifest.pool.calibrators, 3);
-  assert.equal(pitches.length, 30);
+  assert.deepEqual(
+    [manifest.pool.close, manifest.pool.near, manifest.pool.mid, manifest.pool.calibrators, manifest.pool.dealable],
+    [24, 3, 1, 3, 31],
+  );
+  assert.equal(pitches.length, 31);
   assert.ok(pitches.every((p) => p.dealable));
   assert.deepEqual(shard.players.map((r) => r[0]).sort(), [11, 20, 30]);
   assert.deepEqual(

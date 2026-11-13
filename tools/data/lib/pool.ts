@@ -14,7 +14,7 @@ export interface PoolEntry {
 export interface Pool {
   entries: PoolEntry[];
   // Dealable pitches in each band over the whole season, challenged or not, before any sampling.
-  season: { close: number; near: number; clear: number };
+  season: { close: number; near: number; mid: number; clear: number };
   notShowable: { close: number; near: number };
 }
 
@@ -61,12 +61,13 @@ export function spreadSample(candidates: readonly Judged[], want: number, seed: 
   return out;
 }
 
-// Every challenged pitch and every dealable close call, plus spread-out samples of near calls and clear calls.
+// Every challenged pitch and every dealable close call, plus spread-out samples of near calls and clear calls. A pitch
+// between NEAR_IN and CALIBRATOR_MIN_IN is neither, so only a challenged one is kept.
 export function selectPool(all: readonly Judged[], seed: string, rates: Rates = PER_CLOSE): Pool {
   const entries: PoolEntry[] = [];
   const near: Judged[] = [];
   const clear: Judged[] = [];
-  const season = { close: 0, near: 0, clear: 0 };
+  const season = { close: 0, near: 0, mid: 0, clear: 0 };
   const challenged = { near: 0, clear: 0 };
   const notShowable = { close: 0, near: 0 };
 
@@ -74,7 +75,7 @@ export function selectPool(all: readonly Judged[], seed: string, rates: Rates = 
     const b = band(j);
     const dealable = j.inBox && j.showable;
 
-    if (dealable && b !== 'mid') season[b]++;
+    if (dealable) season[b]++;
     if (j.p.challenge) {
       entries.push({ j, bucket: 'challenge', dealable });
       if (dealable && (b === 'near' || b === 'clear')) challenged[b]++;

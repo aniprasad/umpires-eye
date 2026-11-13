@@ -37,7 +37,7 @@ describe('selectPool', () => {
     const pool = selectPool(all, 'seed');
     const bySeq = new Map(pool.entries.map((e) => [e.j.seq, e]));
 
-    assert.deepEqual(pool.season, { close: 40, near: 31, clear: 50 });
+    assert.deepEqual(pool.season, { close: 40, near: 31, mid: 1, clear: 50 });
     assert.equal(count(pool, 'close'), 40);
     // Five near calls in all (40 / 8), and the challenged one is already in.
     assert.equal(count(pool, 'near'), 4);

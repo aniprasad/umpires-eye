@@ -30,7 +30,7 @@ interface Manifest {
   credit: string;
   truthNote: string;
   coverage: { calledPitches: number; challenges: number };
-  pool: { pitches: number; dealable: number; close: number; near: number; calibrators: number; challenged: number };
+  pool: { pitches: number; dealable: number; close: number; near: number; mid: number; calibrators: number; challenged: number };
   shards: ShardMeta[];
 }
 
@@ -112,7 +112,7 @@ if (JSON.stringify(listed) !== JSON.stringify(onDisk)) fail(`shards on disk ${on
 const ids = new Set<string>();
 const texts: string[] = [];
 const table: string[] = [];
-const totals = { pitches: 0, dealable: 0, close: 0, near: 0, calibrators: 0, challenged: 0, agree: 0, overturned: 0 };
+const totals = { pitches: 0, dealable: 0, close: 0, near: 0, mid: 0, calibrators: 0, challenged: 0, agree: 0, overturned: 0 };
 let maxDrift = 0;
 let heldBack = 0;
 let slowestDealable = 0;
@@ -193,8 +193,9 @@ for (const meta of manifest.shards) {
       cards.push({ id: p.id, seq: k, absMarginIn: m, challenged: p.challenge !== null });
       if (m <= CLOSE_IN) totals.close++;
       else if (m <= NEAR_IN) totals.near++;
+      else if (m < CALIBRATOR_MIN_IN) totals.mid++;
+      else totals.calibrators++;
     }
-    if (!p.challenge && m >= CALIBRATOR_MIN_IN) totals.calibrators++;
     if (p.challenge) {
       totals.challenged++;
       if (p.abs === p.final) totals.agree++;
@@ -219,6 +220,7 @@ if (
   totals.dealable !== pool.dealable ||
   totals.close !== pool.close ||
   totals.near !== pool.near ||
+  totals.mid !== pool.mid ||
   totals.calibrators !== pool.calibrators ||
   totals.challenged !== pool.challenged
 ) {
