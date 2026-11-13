@@ -22,6 +22,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run data:validate -- --no-rebuild
       - run: npm run build
       - name: Install browsers
         run: npx playwright install --with-deps chromium webkit

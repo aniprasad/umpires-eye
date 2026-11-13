@@ -20,10 +20,11 @@ npm run dev        # http://localhost:5173
 | `npm run preview` | Serves `dist/` at http://localhost:4173. |
 | `npm run lint` | `check:lockfile`, then ESLint. ESLint enforces the house style: a blank line after declarations and before a `return` that follows other statements. |
 | `npm run check:lockfile` | Fails if `package-lock.json` resolves any package outside registry.npmjs.org. |
-| `npm run typecheck` | `tsc` in strict mode over the app, the tests and the configs. |
-| `npm test` | Vitest unit tests, including every check of the mockup's `?selftest=1`. |
+| `npm run typecheck` | `tsc` in strict mode over the app, the tests and the configs, then `data:typecheck` over the data tools. |
+| `npm test` | Vitest unit tests, including every check of the mockup's `?selftest=1`, then `data:test`, the data tools' tests. |
 | `npm run e2e` | Playwright browser tests. It builds and serves the app itself. |
 | `npm run assets` | Rebuilds the shipped images, fonts and pitch pool from the masters in `mockup/`. The output is committed, so you only need this when a master changes. |
+| `npm run data:*` | The season dataset's tools: `fetch`, `build`, `validate`, `test` and `typecheck`. See `docs/DATA.md`. |
 
 CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: they run only when someone starts them from the Actions tab.
 
