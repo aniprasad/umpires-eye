@@ -19,6 +19,7 @@
     "assets": "node scripts/build-assets.mjs",
     "data:fetch": "node tools/data/fetch.ts",
     "data:build": "node tools/data/build.ts",
+    "data:daily": "node tools/data/daily.ts",
     "data:validate": "node tools/data/validate.ts",
     "data:test": "node --test \"tools/data/test/*.test.ts\"",
     "data:typecheck": "tsc -p tools/data/tsconfig.json"
