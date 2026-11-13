@@ -27,6 +27,9 @@ export interface ScheduleGame {
   teams?: { away?: { team?: Ref }; home?: { team?: Ref } };
   seriesDescription?: string;
   seriesGameNumber?: number;
+  venue?: { id?: number; name?: string };
+  // Only with hydrate=officials.
+  officials?: Array<{ official?: Ref; officialType?: string }>;
 }
 
 export interface ScheduleResponse {

@@ -23,7 +23,9 @@ import {
   familyOf,
   FORMAT_VERSION,
   GAME_FIELDS,
+  gameRow,
   MANIFEST_FORMAT,
+  NAME_FIELDS,
   PITCH_FIELDS,
   PLAYER_FIELDS,
   pitchRow,
@@ -42,7 +44,7 @@ import { absJudge, crossing } from './physics.ts';
 import { addChecks, emptyChecks, extractGame, type Checks } from './plays.ts';
 import { makeShards, PER_CLOSE, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
 import { hash32, mulberry32 } from './rng.ts';
-import { parseSchedule, parseTeams, type Game } from './schedule.ts';
+import { parseSchedule, parseTeams, type Named } from './schedule.ts';
 import {
   byGameType,
   challengeMismatches,
@@ -194,10 +196,24 @@ export function buildDataset(inputs: Inputs): BuildResult {
     [...typeNames].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([code, names]) => [code, [mostCommon(names), familyOf(code)]]),
   );
   const gameById = new Map(games.map((g) => [g.gamePk, g]));
-  const gameRow = (g: Game): Row => [g.gamePk, g.date, g.gameType, teamAbbr(g.awayId), teamAbbr(g.homeId), g.series, g.seriesGame];
-  const fields = { games: GAME_FIELDS, players: PLAYER_FIELDS, pitches: PITCH_FIELDS, challenge: CHALLENGE_FIELDS };
+  const fields = {
+    games: GAME_FIELDS,
+    venues: NAME_FIELDS,
+    umpires: NAME_FIELDS,
+    players: PLAYER_FIELDS,
+    pitches: PITCH_FIELDS,
+    challenge: CHALLENGE_FIELDS,
+  };
+  const nameRows = (named: ReadonlyArray<Named | null>): Row[] =>
+    [...new Map(named.flatMap((n) => (n ? [[n.id, n.name] as const] : []))).entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([id, name]): Row => [id, name]);
   const shardText = (entries: readonly PoolEntry[], index: number, count: number): string => {
-    const gamePks = [...new Set(entries.map((e) => e.j.p.gamePk))];
+    const shardGames = [...new Set(entries.map((e) => e.j.p.gamePk))].flatMap((pk) => {
+      const g = gameById.get(pk);
+
+      return g ? [g] : [];
+    });
     const ids = new Set<number>();
 
     for (const { j } of entries) {
@@ -210,11 +226,6 @@ export function buildDataset(inputs: Inputs): BuildResult {
       .filter((id) => players.has(id))
       .sort((a, b) => a - b)
       .map((id): Row => [id, players.get(id)?.name ?? '', players.get(id)?.heightIn ?? null]);
-    const gameRows = gamePks.flatMap((pk) => {
-      const g = gameById.get(pk);
-
-      return g ? [gameRow(g)] : [];
-    });
     const pitchRows = entries.map((e) => {
       const q = quantized.get(e.j.p.id) ?? quantize(e.j);
 
@@ -233,7 +244,9 @@ export function buildDataset(inputs: Inputs): BuildResult {
     };
 
     return rowsJson(head, [
-      ['games', gameRows],
+      ['games', shardGames.map((g) => gameRow(g, teamAbbr))],
+      ['venues', nameRows(shardGames.map((g) => g.venue))],
+      ['umpires', nameRows(shardGames.map((g) => g.umpire))],
       ['players', playerRows],
       ['pitches', pitchRows],
     ]);
@@ -283,12 +296,14 @@ export function buildDataset(inputs: Inputs): BuildResult {
     season: SEASON,
     credit: CREDIT,
     truthNote: TRUTH_NOTE,
-    source: 'MLB Stats API (statsapi.mlb.com): schedule, teams, game playByPlay and people endpoints.',
+    source: 'MLB Stats API (statsapi.mlb.com): teams, schedule (with officials), game playByPlay and people endpoints.',
     coverage: {
       gameTypes: GAME_TYPES,
       firstDate: games[0]?.date ?? null,
       lastDate: games.at(-1)?.date ?? null,
       games: games.length,
+      gamesWithVenue: games.filter((g) => g.venue).length,
+      gamesWithPlateUmpire: games.filter((g) => g.umpire).length,
       calledPitches: all.length,
       challenges: challenged.length,
     },
@@ -382,7 +397,15 @@ export function buildDataset(inputs: Inputs): BuildResult {
   const report = {
     note: 'Written by npm run data:build from the cached MLB Stats API responses. Deterministic: rebuilding gives the same file.',
     season: SEASON,
-    schedule: { games: games.length, byType: stats.games.byType, skippedListings: skipped },
+    schedule: {
+      games: games.length,
+      byType: stats.games.byType,
+      skippedListings: skipped,
+      venues: new Set(games.flatMap((g) => (g.venue ? [g.venue.id] : []))).size,
+      plateUmpires: new Set(games.flatMap((g) => (g.umpire ? [g.umpire.id] : []))).size,
+      gamesWithoutVenue: sample(games.filter((g) => !g.venue).map((g) => String(g.gamePk))),
+      gamesWithoutPlateUmpire: sample(games.filter((g) => !g.umpire).map((g) => String(g.gamePk))),
+    },
     integrity: {
       plays: checks.plays,
       pitchEvents: checks.pitchEvents,

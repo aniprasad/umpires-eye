@@ -9,9 +9,11 @@ export interface ShardDoc {
   shards: number;
   credit: string;
   truthNote: string;
-  fields: { games: string[]; players: string[]; pitches: string[]; challenge: string[] };
+  fields: { games: string[]; venues: string[]; umpires: string[]; players: string[]; pitches: string[]; challenge: string[] };
   pitchTypes: Record<string, [string, string]>;
   games: unknown[][];
+  venues: unknown[][];
+  umpires: unknown[][];
   players: unknown[][];
   pitches: unknown[][];
 }
@@ -62,6 +64,8 @@ export interface StoredGame {
   home: string;
   series: string | null;
   seriesGame: number | null;
+  venue: number | null;
+  umpire: number | null;
 }
 
 // Rows are read by field name, so a reader keeps working if a later version adds or reorders fields.
@@ -91,8 +95,17 @@ export function decodeGames(doc: ShardDoc): StoredGame[] {
       home: get('home') as string,
       series: get('series') as string | null,
       seriesGame: get('seriesGame') as number | null,
+      venue: get('venue') as number | null,
+      umpire: get('umpire') as number | null,
     };
   });
+}
+
+// Venue and plate umpire names by id.
+export function decodeNames(doc: ShardDoc, table: 'venues' | 'umpires'): Map<number, string> {
+  const col = columns(doc.fields[table]);
+
+  return new Map(doc[table].map((row) => [col(row, 'id') as number, col(row, 'name') as string]));
 }
 
 export function decodePitches(doc: ShardDoc): StoredPitch[] {

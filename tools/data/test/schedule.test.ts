@@ -44,6 +44,33 @@ test('parseSchedule keeps each completed game once, from its final listing, in d
   assert.deepEqual(skipped, { Cancelled: 1, 'game type S': 1 });
 });
 
+test('parseSchedule takes the venue and the home-plate umpire when the schedule lists them', () => {
+  const crew = [
+    { official: { id: 71, fullName: 'First Base Ump' }, officialType: 'First Base' },
+    { official: { id: 70, fullName: 'Plate Ump' }, officialType: 'Home Plate' },
+  ];
+  const { games } = parseSchedule([
+    {
+      dates: [
+        {
+          games: [
+            listing(1, '2026-04-02', 'F', { venue: { id: 32, name: 'A Park' }, officials: crew }),
+            listing(2, '2026-04-02', 'F', { officials: crew.slice(0, 1) }),
+          ],
+        },
+      ],
+    },
+  ]);
+
+  assert.deepEqual(
+    games.map((g) => [g.venue, g.umpire]),
+    [
+      [{ id: 32, name: 'A Park' }, { id: 70, name: 'Plate Ump' }],
+      [null, null],
+    ],
+  );
+});
+
 test('parseTeams maps ids to abbreviations', () => {
   const teams = parseTeams({ teams: [{ id: 158, abbreviation: 'MIL', name: 'Milwaukee Brewers' }, { id: 1 }] });
 

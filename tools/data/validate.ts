@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { cacheDir, openCache } from './lib/cache.ts';
 import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, NEAR_IN, SEASON, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
 import type { Card } from './lib/deal.ts';
-import { decodeGames, decodePitches, type ShardDoc, type StoredPitch } from './lib/decode.ts';
+import { decodeGames, decodeNames, decodePitches, type ShardDoc, type StoredPitch } from './lib/decode.ts';
 import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { absJudge, crossing, isDealable, TRAJ_KEYS } from './lib/physics.ts';
@@ -114,6 +114,7 @@ const table: string[] = [];
 const totals = { pitches: 0, dealable: 0, close: 0, near: 0, calibrators: 0, challenged: 0, agree: 0, overturned: 0 };
 let maxDrift = 0;
 let heldBack = 0;
+const noUmpire = new Set<number>();
 
 for (const meta of manifest.shards) {
   const text = read(`${OUT_DIR}/${meta.file}`);
@@ -127,6 +128,8 @@ for (const meta of manifest.shards) {
 
   const doc = JSON.parse(text) as ShardDoc;
   const games = decodeGames(doc);
+  const venues = decodeNames(doc, 'venues');
+  const umpires = decodeNames(doc, 'umpires');
   const gameOrder = new Map(games.map((g, i) => [g.gamePk, i]));
   const players = new Set(doc.players.map((r) => r[0] as number));
   const types = new Set(Object.keys(doc.pitchTypes));
@@ -143,6 +146,10 @@ for (const meta of manifest.shards) {
     if (before && (before.date > g.date || (before.date === g.date && before.gamePk >= g.gamePk))) {
       fail(`${meta.file}: games table out of order at ${g.gamePk}`);
     }
+    if ((g.venue !== null && !venues.has(g.venue)) || (g.umpire !== null && !umpires.has(g.umpire))) {
+      fail(`${meta.file}: game ${g.gamePk} names a venue or umpire missing from its tables`);
+    }
+    if (g.umpire === null) noUmpire.add(g.gamePk);
   }
 
   for (const [k, p] of pitches.entries()) {
@@ -220,6 +227,7 @@ console.log(`largest play session: ${kb(sizes.largestSessionGzipBytes)} gzipped 
 console.log(
   `challenges: ABS reconstruction = final call on ${totals.agree}/${totals.challenged}; max stored-margin drift ${maxDrift.toFixed(4)} in; ${heldBack} drawable pitches held back (uncertain batter or pitcher, or an impossible count)`,
 );
+console.log(`games in the shards without a plate umpire: ${noUmpire.size}`);
 
 if (rebuild) {
   const inputs = loadInputs(openCache(cacheDir()));

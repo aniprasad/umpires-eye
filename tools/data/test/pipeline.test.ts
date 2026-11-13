@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { decodePitches, type ShardDoc } from '../lib/decode.ts';
+import { decodeGames, decodePitches, type ShardDoc } from '../lib/decode.ts';
 import type { PlayByPlay, ScheduleResponse } from '../lib/mlb.ts';
 import { buildDataset, OUT_DIR, REPORT_PATH } from '../lib/pipeline.ts';
 import { AWAY, challenge, HOME, person, peopleOf, pitch, play, xForMargin } from './fixtures.ts';
@@ -38,6 +38,8 @@ const schedule: ScheduleResponse = {
           officialDate: '2026-05-01',
           status: { abstractGameState: 'Final', codedGameState: 'F', detailedState: 'Final' },
           teams: { away: { team: { id: AWAY } }, home: { team: { id: HOME } } },
+          venue: { id: 32, name: 'A Park' },
+          officials: [{ official: { id: 70, fullName: 'Plate Ump' }, officialType: 'Home Plate' }],
         },
       ],
     },
@@ -70,5 +72,10 @@ test('a synthetic season builds into a manifest, stats, one dealable shard and a
   assert.equal(pitches.length, 30);
   assert.ok(pitches.every((p) => p.dealable));
   assert.deepEqual(shard.players.map((r) => r[0]).sort(), [11, 20, 30]);
+  assert.deepEqual(
+    decodeGames(shard).map((g) => [g.venue, g.umpire]),
+    [[32, 70]],
+  );
+  assert.deepEqual([shard.venues, shard.umpires], [[[32, 'A Park']], [[70, 'Plate Ump']]]);
   assert.match(shard.credit, /Not affiliated with MLB/);
 });

@@ -7,6 +7,11 @@ export interface Team {
   name: string;
 }
 
+export interface Named {
+  id: number;
+  name: string;
+}
+
 export interface Game {
   gamePk: number;
   date: string;
@@ -15,6 +20,8 @@ export interface Game {
   homeId: number;
   series: string | null;
   seriesGame: number | null;
+  venue: Named | null;
+  umpire: Named | null;
 }
 
 export interface ScheduleResult {
@@ -73,6 +80,7 @@ export function parseSchedule(responses: ScheduleResponse[]): ScheduleResult {
     }
 
     const post = gameType !== 'R';
+    const plate = g.officials?.find((o) => o.officialType === 'Home Plate')?.official;
 
     games.push({
       gamePk,
@@ -82,6 +90,8 @@ export function parseSchedule(responses: ScheduleResponse[]): ScheduleResult {
       homeId,
       series: post ? (g.seriesDescription ?? null) : null,
       seriesGame: post ? (g.seriesGameNumber ?? null) : null,
+      venue: g.venue?.id !== undefined && g.venue.name ? { id: g.venue.id, name: g.venue.name } : null,
+      umpire: plate ? { id: plate.id, name: plate.fullName ?? `#${plate.id}` } : null,
     });
   }
 

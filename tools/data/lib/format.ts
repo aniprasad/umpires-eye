@@ -1,13 +1,15 @@
 import { absJudge, crossing, isDealable, TRAJ_KEYS, type Traj } from './physics.ts';
 import type { Judged } from './judge.ts';
 import type { Role } from './plays.ts';
+import type { Game } from './schedule.ts';
 
 export const FORMAT_VERSION = 1;
 export const SHARD_FORMAT = 'umpires-eye.season-shard';
 export const MANIFEST_FORMAT = 'umpires-eye.season-manifest';
 export const STATS_FORMAT = 'umpires-eye.season-stats';
 
-export const GAME_FIELDS = ['gamePk', 'date', 'gameType', 'away', 'home', 'series', 'seriesGame'] as const;
+export const GAME_FIELDS = ['gamePk', 'date', 'gameType', 'away', 'home', 'series', 'seriesGame', 'venue', 'umpire'] as const;
+export const NAME_FIELDS = ['id', 'name'] as const;
 export const PLAYER_FIELDS = ['id', 'name', 'heightIn'] as const;
 export const CHALLENGE_FIELDS = ['by', 'team', 'role', 'overturned'] as const;
 export const PITCH_FIELDS = [
@@ -105,6 +107,21 @@ export function quantize(j: Judged): Quantized {
   }
 
   return { traj: { ...j.p.traj }, zoneTop: j.p.zoneTop, zoneBottom: j.p.zoneBottom, decimals: null };
+}
+
+// Venues and plate umpires are ids here; their names are in the shard's venues and umpires tables.
+export function gameRow(g: Game, teamAbbr: (id: number) => string): Row {
+  return [
+    g.gamePk,
+    g.date,
+    g.gameType,
+    teamAbbr(g.awayId),
+    teamAbbr(g.homeId),
+    g.series,
+    g.seriesGame,
+    g.venue?.id ?? null,
+    g.umpire?.id ?? null,
+  ];
 }
 
 export function pitchRow(j: Judged, q: Quantized, dealable: boolean, teamAbbr: (id: number) => string): Row {

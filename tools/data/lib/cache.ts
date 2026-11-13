@@ -14,7 +14,8 @@ export interface Cache {
 
 export const cachePaths = {
   teams: (season: number): string => `statsapi-v1/teams/${season}.json.gz`,
-  schedule: (season: number, gameType: string): string => `statsapi-v1/schedule/${season}-${gameType}.json.gz`,
+  // Schedules are fetched with hydrate=officials for the plate umpire, so they are kept apart from plain ones.
+  schedule: (season: number, gameType: string): string => `statsapi-v1/schedule/${season}-${gameType}-officials.json.gz`,
   playByPlay: (gamePk: number): string => `statsapi-v1/playByPlay/${gamePk}.json.gz`,
   peopleDir: 'statsapi-v1/people',
   person: (id: number): string => `statsapi-v1/people/${id}.json.gz`,

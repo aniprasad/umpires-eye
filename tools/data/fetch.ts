@@ -46,7 +46,10 @@ const schedules: ScheduleResponse[] = [];
 
 for (const t of GAME_TYPES) {
   schedules.push(
-    await cachedJson<ScheduleResponse>(cachePaths.schedule(SEASON, t), `${API}/schedule?sportId=1&season=${SEASON}&gameType=${t}`),
+    await cachedJson<ScheduleResponse>(
+      cachePaths.schedule(SEASON, t),
+      `${API}/schedule?sportId=1&season=${SEASON}&gameType=${t}&hydrate=officials`,
+    ),
   );
 }
 

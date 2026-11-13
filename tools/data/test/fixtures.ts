@@ -9,7 +9,17 @@ import type { Game } from '../lib/schedule.ts';
 export const ZONE = { top: 3.4, bottom: 1.6 };
 export const AWAY = 1;
 export const HOME = 2;
-export const GAME: Game = { gamePk: 900001, date: '2026-05-01', gameType: 'R', awayId: AWAY, homeId: HOME, series: null, seriesGame: null };
+export const GAME: Game = {
+  gamePk: 900001,
+  date: '2026-05-01',
+  gameType: 'R',
+  awayId: AWAY,
+  homeId: HOME,
+  series: null,
+  seriesGame: null,
+  venue: null,
+  umpire: null,
+};
 
 // A fastball-like fit (t = 0 at y0 = 50 ft) that crosses mid-plate exactly at (x, z).
 export function trajThrough(x: number, z: number): Traj {
