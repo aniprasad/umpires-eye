@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { trackErrors } from './helpers';
 
+// Once its verdict is in the title, the page times ten repaints of the static layers, each a stretch of main-thread
+// work that holds off every read of the page, the title's included. On WebKit's 2x screen they took 2-5 s apiece, so the
+// first read waited 50 s on a quiet machine and ran past its 60 s on a loaded one. No check depends on the pixel density,
+// and at 1x a repaint takes about a second.
+test.use({ deviceScaleFactor: 1 });
+
 test('the self-test page passes', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
 
