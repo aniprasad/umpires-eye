@@ -39,7 +39,8 @@ test('a schedule as data:daily writes it passes, within the budgets', () => {
 });
 
 test('an ID on two dates fails', () => {
-  fails(withNovember(onDay('2026-11-02', (line) => line.replace(ids('2026-11-02')[0] ?? '', ids('2026-11-01')[0] ?? ''))), /scheduled on both 2026-11-01 and 2026-11-02/);
+  // Anchored: check mode's lock reader reports this too, and the test is for the check of its own.
+  fails(withNovember(onDay('2026-11-02', (line) => line.replace(ids('2026-11-02')[0] ?? '', ids('2026-11-01')[0] ?? ''))), /^\d+-\d+-1 is scheduled on both 2026-11-01 and 2026-11-02$/);
 });
 
 test('a row that differs from its shard fails', () => {
@@ -49,7 +50,7 @@ test('a row that differs from its shard fails', () => {
 test('an ID outside the reserve fails', () => {
   const outside = pool.pitches.map(idOf).find((id) => !isDailyReserve(id)) ?? '';
 
-  fails(withNovember(onDay('2026-11-04', (line) => line.replace(ids('2026-11-04')[3] ?? '', outside))), new RegExp(`${outside} isn't in the daily reserve`));
+  fails(withNovember(onDay('2026-11-04', (line) => line.replace(ids('2026-11-04')[3] ?? '', outside))), new RegExp(`^daily/2026-11\\.json 2026-11-04: ${outside} isn't in the daily reserve$`));
 });
 
 test('a gap in the dates fails', () => {
