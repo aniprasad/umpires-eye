@@ -1,27 +1,10 @@
 // Pitch data as the app consumes it. Units are PITCHf/x feet, seconds and mph, seen from the catcher:
 // +x is the catcher's right (1B side), y points toward the pitcher with y = 0 at the back tip of the plate, z is up.
 
+import type { Traj } from '../core/kinematics.ts';
+
 export type Side = 'L' | 'R';
 export type Call = 'ball' | 'strike';
-
-export interface Vec3 {
-  x: number;
-  y: number;
-  z: number;
-}
-
-/** The feed's 9-parameter constant-acceleration fit, p(t) = p0 + v0·t + ½·a·t², with t = 0 at y0 = 50 ft. */
-export interface Traj {
-  x0: number;
-  y0: number;
-  z0: number;
-  vX0: number;
-  vY0: number;
-  vZ0: number;
-  aX: number;
-  aY: number;
-  aZ: number;
-}
 
 export interface Challenge {
   by: string;
@@ -31,22 +14,29 @@ export interface Challenge {
   isOverturned: boolean;
 }
 
-export interface Game {
-  gamePk: number;
-  gameNumber: number;
-  away: string;
-  home: string;
-  date?: string;
-  awayName?: string;
-  homeName?: string;
-  venue?: string;
-  plateUmpire?: string;
+/** Per game. The plate umpire is on each Pitch instead, since umpires sometimes change mid-game. */
+export interface GameMeta {
+  readonly gamePk: number;
+  /** The official date, YYYY-MM-DD. */
+  readonly date: string;
+  readonly away: string;
+  readonly home: string;
+  /** How the copy names the game: "2026 World Series · Game 5" in the postseason. */
+  readonly label: string;
+  /** The game's number in its postseason series, or null in the regular season. */
+  readonly seriesGame: number | null;
+  readonly venue: string | null;
 }
 
 export interface Pitch {
   id: string;
   gamePk: number;
-  gameNumber: number;
+  /** Shared by every pitch of the game. */
+  game: GameMeta;
+  /** Sorts pitches into played order. It only compares pitches from the same file: a shard, a month file or the pool. */
+  order: number;
+  /** The plate umpire for this pitch, or null where the play log leaves it unknown. */
+  plateUmpire: string | null;
   inning: number;
   half: 'top' | 'bottom';
   outs: number;

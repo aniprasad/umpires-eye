@@ -1,4 +1,4 @@
-import { BALL_R } from '../math/constants';
+import { BALL_R } from '../core/rules.ts';
 import { groundZ, hull, ringPts, type Cam, type Projected } from '../math/geometry';
 import type { PreparedPitch } from '../math/kinematics';
 import { pitcherPose, type PitcherJoint } from '../math/pitcher';

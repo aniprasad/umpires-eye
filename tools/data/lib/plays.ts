@@ -1,7 +1,7 @@
-import { MID_Y, PLATE_FRONT_Y } from './constants.ts';
+import { tAtY, TRAJ_KEYS, type Traj } from '../../../src/core/kinematics.ts';
+import { MID_Y, PLATE_FRONT_Y } from '../../../src/core/rules.ts';
 import type { Play, PlayByPlay, PlayEvent, Ref, Review, Runner } from './mlb.ts';
 import type { Person } from './people.ts';
-import { TRAJ_KEYS, tAtY, type Traj } from './physics.ts';
 import type { Game } from './schedule.ts';
 import { spanAt, trackPlateUmpire, type PlateTrack } from './umpires.ts';
 

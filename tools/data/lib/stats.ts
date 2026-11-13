@@ -1,17 +1,14 @@
-import { CLOSE_IN, GAME_TYPES, NEAR_IN, PLATE_FRONT_Y, type GameType } from './constants.ts';
+import { absJudge, boxStrike } from '../../../src/core/abs.ts';
+import { crossing, posAt, releaseT } from '../../../src/core/kinematics.ts';
+import { CLOSE_IN, NEAR_IN, PLATE_FRONT_Y } from '../../../src/core/rules.ts';
+import type { Tally } from '../../../src/core/schema.ts';
+import { GAME_TYPES, type GameType } from './constants.ts';
 import { round } from './format.ts';
 import type { Judged } from './judge.ts';
 import type { Person } from './people.ts';
-import { absJudge, boxStrike, crossing, posAt, releaseT } from './physics.ts';
 import type { Role } from './plays.ts';
 import { storedAbsMargin } from './pool.ts';
 import type { Game } from './schedule.ts';
-
-export interface Tally {
-  agree: number;
-  total: number;
-  pct: number;
-}
 
 export interface Spread {
   n: number;

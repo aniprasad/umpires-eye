@@ -1,8 +1,9 @@
+import type { Vec3 } from '../core/kinematics.ts';
 import { NEAR } from '../math/constants';
 import { batterDof, batterPlace, batterRig, BATTER_IMG, type BatterRig } from '../math/batter';
 import { dofBlur } from '../math/dof';
 import { centroid, hull, ringPts, sphereOutline, type Cam, type Projected } from '../math/geometry';
-import type { Pitch, Vec3 } from '../math/types';
+import type { Pitch } from '../math/types';
 import { ctx2d, IMG, LAY, view } from './env';
 import { castShadows } from './field';
 import { withFilter } from './filter';

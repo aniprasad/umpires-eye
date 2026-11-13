@@ -3,7 +3,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { absJudge, crossing, inDealBox, type Traj } from '../lib/physics.ts';
+import { absJudge, inDealBox } from '../../../src/core/abs.ts';
+import { crossing, type Traj } from '../../../src/core/kinematics.ts';
 
 // The mockup's self-test guarantees, kept as a test: the same math must reproduce its validated World Series pool
 // (742 called pitches, 29 of 29 challenges, the ump right on 683). The pool is our own derived file, not an MLB response.

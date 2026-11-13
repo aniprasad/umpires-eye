@@ -1,3 +1,5 @@
+import { mulberry32 } from '../core/rng.ts';
+
 export interface Noise {
   fine: HTMLCanvasElement;
   coarse: HTMLCanvasElement;
@@ -15,10 +17,11 @@ function sheet(size: number): [HTMLCanvasElement, CanvasRenderingContext2D, Imag
 }
 
 /**
- * The one source of decorative randomness (the ground and chalk texture). It stays Math.random, as in the mockup,
- * so the parity tests can seed both pages alike; moving it to the seeded RNG is a follow-up once parity is proven.
+ * The one source of decorative randomness (the ground and chalk texture): a seeded stream of its own, so every load
+ * paints the same grain. Its seed is the one the parity tests give Math.random in the mockup (seedRandom), which draws
+ * its noise first, so the two still match pixel for pixel.
  */
-export const decorRandom = (): number => Math.random();
+export const decorRandom = mulberry32(20261113);
 
 /** Grey value noise, and alpha noise for the chalk: fine dropouts plus a coarse patchiness. */
 export function makeNoise(rand: () => number = decorRandom): Noise {

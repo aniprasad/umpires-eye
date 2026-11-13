@@ -1,5 +1,6 @@
+import { SEASON } from '../../../src/core/rules.ts';
 import { cachePaths, type Cache } from './cache.ts';
-import { GAME_TYPES, SEASON } from './constants.ts';
+import { GAME_TYPES } from './constants.ts';
 import type { PlayByPlay, RawPerson, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import { toPerson, type Person } from './people.ts';
 import type { Inputs } from './pipeline.ts';

@@ -1,22 +1,19 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BALL_R, MAX_FLIGHT_S, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from '../lib/constants.ts';
-import { decodeGames, decodeNames, decodePitches, type ShardDoc } from '../lib/decode.ts';
+import { absJudge } from '../../../src/core/abs.ts';
+import { decodeGames, decodeNames, decodePitches } from '../../../src/core/decode.ts';
+import { crossing, quickEnough } from '../../../src/core/kinematics.ts';
+import { BALL_R, MAX_FLIGHT_S, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from '../../../src/core/rules.ts';
 import {
   CHALLENGE_FIELDS,
   GAME_FIELDS,
-  gameRow,
   NAME_FIELDS,
   PITCH_FIELDS,
   PLAYER_FIELDS,
-  pitchRow,
-  quantize,
-  round,
-  roundTraj,
-  rowsJson,
-} from '../lib/format.ts';
+  type ShardDoc,
+} from '../../../src/core/schema.ts';
+import { gameRow, pitchRow, quantize, round, roundTraj, rowsJson } from '../lib/format.ts';
 import { judge } from '../lib/judge.ts';
-import { absJudge, crossing, quickEnough } from '../lib/physics.ts';
 import type { CalledPitch } from '../lib/plays.ts';
 import { GAME, HOME, judged, trajThrough, ZONE } from './fixtures.ts';
 

@@ -1,8 +1,8 @@
-import { BALL_R, MID_Y, PLATE_HALF } from '../lib/constants.ts';
+import { flightTime, tAtY, type Traj } from '../../../src/core/kinematics.ts';
+import { BALL_R, MID_Y, PLATE_HALF } from '../../../src/core/rules.ts';
 import type { Judged } from '../lib/judge.ts';
 import type { Play, PlayEvent, Review, Runner } from '../lib/mlb.ts';
 import type { Person } from '../lib/people.ts';
-import { flightTime, tAtY, type Traj } from '../lib/physics.ts';
 import type { Call, CalledPitch, Side } from '../lib/plays.ts';
 import type { Game } from '../lib/schedule.ts';
 

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { MAX_FLIGHT_S, MID_Y } from '../lib/constants.ts';
-import { dealTen, deckOf, tenProblems, type Card } from '../lib/deal.ts';
+import { dealTen, pilesOf, tenProblems } from '../../../src/core/deal.ts';
+import { tAtY } from '../../../src/core/kinematics.ts';
+import { mulberry32 } from '../../../src/core/rng.ts';
+import { MAX_FLIGHT_S, MID_Y } from '../../../src/core/rules.ts';
 import { judge, type Judged } from '../lib/judge.ts';
-import { tAtY } from '../lib/physics.ts';
 import { makeShards, selectPool, spreadSample, stratumOf, type Pool } from '../lib/pool.ts';
-import { mulberry32 } from '../lib/rng.ts';
 import { umpVsAbs } from '../lib/stats.ts';
 import { judged } from './fixtures.ts';
 
@@ -149,10 +149,10 @@ describe('makeShards', () => {
   test('lets every shard deal a full ten', () => {
     for (const s of shards) {
       const cards = s.filter((e) => e.dealable).map((e) => ({ id: e.j.p.id, seq: e.j.seq, absMarginIn: Math.abs(e.j.marginIn), challenged: !!e.j.p.challenge }));
-      const deck = deckOf(cards);
+      const piles = pilesOf(cards);
       const rand = mulberry32(1);
 
-      for (let k = 0; k < 50; k++) assert.deepEqual(tenProblems(dealTen(deck, rand) ?? []), []);
+      for (let k = 0; k < 50; k++) assert.deepEqual(tenProblems(dealTen(piles, rand) ?? []), []);
     }
   });
 
@@ -161,33 +161,5 @@ describe('makeShards', () => {
       makeShards(pool, 7, 'seed').map((s) => s.map((e) => e.j.seq)),
       shards.map((s) => s.map((e) => e.j.seq)),
     );
-  });
-});
-
-describe('dealing', () => {
-  const card = (seq: number, absMarginIn: number, challenged = false): Card => ({ id: `p${seq}`, seq, absMarginIn, challenged });
-  const deck = deckOf([
-    card(1, 7),
-    card(2, 0.3, true),
-    ...Array.from({ length: 7 }, (_, k) => card(10 + k, 1)),
-    card(30, 3),
-  ]);
-
-  test('deals a calibrator, then eight close calls and one more within 4.5 in, in played order', () => {
-    const ten = dealTen(deck, mulberry32(3));
-
-    assert.ok(ten);
-    assert.equal(ten[0]?.id, 'p1');
-    assert.deepEqual(tenProblems(ten), []);
-  });
-
-  test('refuses a deck without a challenged close call', () => {
-    assert.equal(dealTen(deckOf([card(1, 7), ...Array.from({ length: 9 }, (_, k) => card(10 + k, 1)), card(30, 3)]), mulberry32(3)), null);
-  });
-
-  test('tenProblems catches a ten dealt out of order', () => {
-    const ten = dealTen(deck, mulberry32(3)) ?? [];
-
-    assert.deepEqual(tenProblems([ten[0] as Card, ...ten.slice(1).reverse()]), ['not in played order']);
   });
 });

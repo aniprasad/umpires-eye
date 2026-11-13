@@ -1,4 +1,5 @@
-import { BALL_R, CROSS_PAD, HUD, LOOK_Y, MID_Y, MOUND_H, PITCHER_ROOM, PLATE_HALF, RUBBER_Y } from './constants';
+import { BALL_R, MID_Y, PLATE_HALF, RUBBER_Y } from '../core/rules.ts';
+import { CROSS_PAD, HUD, LOOK_Y, MOUND_H, PITCHER_ROOM } from './constants';
 import { makeCam, withUnion, type Cam, type Extent, type LensCam } from './geometry';
 import type { PreparedPitch } from './kinematics';
 import { eyeFor, eyeOf, stanceCorners } from './stance';

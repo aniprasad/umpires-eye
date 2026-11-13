@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Locator, Page, TestInfo } from '@playwright/test';
 import { WS_TODAY_IDS } from '../../src/data/ws2026';
+import { BEAT, FIRST_BEAT, WINDUP } from '../../src/math/constants';
 
 export type Call = 'strike' | 'ball';
 export type CallKey = 'S' | 's' | 'ArrowRight' | 'B' | 'b' | 'ArrowLeft';
@@ -35,7 +36,8 @@ const SLACK = 0.5;
 
 const fmtBox = (box: Box): string => `${box.width.toFixed(0)}x${box.height.toFixed(0)} at (${box.x.toFixed(0)}, ${box.y.toFixed(0)})`;
 
-// Both apps draw their canvas noise from Math.random, so the same seed gives two pages the same grain.
+// The mockup draws its canvas noise from Math.random before anything else does, and the port draws its own from a
+// stream with this seed (decorRandom), so seeding gives both pages the same grain.
 export async function seedRandom(page: Page, seed = 20261113): Promise<void> {
   await page.addInitScript((start: number) => {
     let a = start >>> 0;
@@ -123,21 +125,56 @@ export function callOf(key: CallKey): Call {
   return STRIKE_KEYS.includes(key) ? 'strike' : 'ball';
 }
 
-export async function callUntilAccepted(page: Page, input: CallKey | Locator, options: { tap?: boolean; timeout?: number } = {}): Promise<void> {
-  const button = typeof input === 'string' ? page.locator(callOf(input) === 'strike' ? '#btnStrike' : '#btnBall') : input;
-  const timeout = options.timeout ?? 10_000;
-  const deadline = Date.now() + timeout;
+/**
+ * Opens the app with its time on Playwright's clock, stopped once the page is ready. The app keeps all its time on what
+ * the clock fakes (performance.now, requestAnimationFrame, timers and Date), so from then on a pitch moves only when the
+ * test steps the clock (callPitch), and no delay on a loaded machine can make a call miss its window.
+ */
+export async function openPaused(page: Page, path: string): Promise<void> {
+  await page.clock.install();
+  await page.goto(path);
+  await waitReady(page);
+  // The page's clock starts at the test's wall time and keeps its pace, so a minute from now is still to come.
+  await page.clock.pauseAt(Date.now() + 60_000);
+}
 
-  // A press before the release only raises the "Wait for the pitch" toast, so keep pressing until one counts.
-  while (Date.now() < deadline) {
-    if (typeof input === 'string') await page.keyboard.press(input);
-    else if (options.tap) await input.tap({ timeout: 5_000 });
-    else await input.click({ timeout: 5_000 });
-    if (await button.evaluate((el) => el.classList.contains('is-called'))) return;
-    await page.waitForTimeout(120);
+// The call window runs 1.5 s past the catch, so a press within a step of the release lands early in it.
+const RELEASE_STEP_MS = 200;
+// A pitch is released WINDUP s after its beat, and the first pitch of a round waits a longer beat. One jump lands just
+// past the earlier of the two releases: a later pitch is released by then, and the first is a few steps short of it.
+const TO_RELEASE_MS = Math.round((Math.min(BEAT, FIRST_BEAT) + WINDUP) * 1000) + 100;
+// A verdict takes two steps at least: the first passes the moment the reveal starts, the second the moment its body shows.
+const VERDICT_STEP_MS = 1000;
+// More steps than the release or the verdict needs.
+const CLOCK_STEPS_MAX = 20;
+
+async function stepClockUntil(page: Page, stepMs: number, done: () => Promise<boolean>, what: string): Promise<void> {
+  for (let k = 0; k < CLOCK_STEPS_MAX; k++) {
+    if (await done()) return;
+    await page.clock.fastForward(stepMs);
   }
 
-  throw new Error(`${typeof input === 'string' ? `Key ${input}` : 'The call button'} was not taken as a call within ${timeout} ms`);
+  throw new Error(`${what} didn't come within ${(CLOCK_STEPS_MAX * stepMs) / 1000} s of page time`);
+}
+
+/**
+ * Calls the pitch in play on a page opened with openPaused, as the pitch begins. It jumps the clock to the release and
+ * steps on until it comes, presses the key or the button once, checks the call was taken, then steps on until the
+ * verdict has settled. Every step paints a frame, which WebKit takes a quarter of a second over, so the steps are few.
+ */
+export async function callPitch(page: Page, input: CallKey | Locator, options: { tap?: boolean } = {}): Promise<void> {
+  const button = typeof input === 'string' ? page.locator(callOf(input) === 'strike' ? '#btnStrike' : '#btnBall') : input;
+
+  await page.clock.fastForward(TO_RELEASE_MS);
+  // The call clock's bar stays full until the release, then drains.
+  await stepClockUntil(page, RELEASE_STEP_MS, async () => (await page.locator('#indClock').evaluate((el) => (el as HTMLElement).style.transform)) !== 'scaleX(1)', 'The release');
+  if (typeof input === 'string') await page.keyboard.press(input);
+  else if (options.tap) await input.tap({ timeout: 5_000 });
+  else await input.click({ timeout: 5_000 });
+  await expect(button, 'the call was taken').toHaveClass(/\bis-called\b/);
+  await page.clock.fastForward(VERDICT_STEP_MS);
+  await page.clock.fastForward(VERDICT_STEP_MS);
+  await stepClockUntil(page, VERDICT_STEP_MS, () => page.locator('#verdict').evaluate((el) => el.classList.contains('show-body')), 'The verdict');
 }
 
 export async function activeId(page: Page): Promise<string> {

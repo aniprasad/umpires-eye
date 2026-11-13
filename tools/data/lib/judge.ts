@@ -1,11 +1,12 @@
-import { MID_Y } from './constants.ts';
-import { absJudge, crossing, flightTime, inDealBox, quickEnough, type Point } from './physics.ts';
+import { absJudge, inDealBox } from '../../../src/core/abs.ts';
+import { crossing, flightTime, quickEnough, type Vec3 } from '../../../src/core/kinematics.ts';
+import { MID_Y } from '../../../src/core/rules.ts';
 import type { Call, CalledPitch } from './plays.ts';
 
 export interface Judged {
   p: CalledPitch;
   seq: number;
-  mid: Point;
+  mid: Vec3;
   truth: Call;
   marginIn: number;
   // The mockup's crossing box, judged at full precision. Only a pitch that is also showable is dealable.

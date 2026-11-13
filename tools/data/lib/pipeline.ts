@@ -1,13 +1,15 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
+import { absJudge } from '../../../src/core/abs.ts';
+import { dealTen, pilesOf, type Card } from '../../../src/core/deal.ts';
+import { crossing } from '../../../src/core/kinematics.ts';
+import { hash32, mulberry32 } from '../../../src/core/rng.ts';
 import {
   BALL_RADIUS_IN,
   CALIBRATOR_MIN_IN,
   CLOSE_IN,
   CREDIT,
   DEAL_BOX,
-  GAME_TYPE_NAMES,
-  GAME_TYPES,
   MAX_FLIGHT_S,
   MID_Y,
   NEAR_IN,
@@ -15,37 +17,31 @@ import {
   PLATE_HALF_IN,
   RUBBER_Y,
   SEASON,
-  SESSION_BUDGET_GZIP,
+  SEED,
   TRUTH_NOTE,
-} from './constants.ts';
-import { deckOf, dealTen, tenProblems, type Card } from './deal.ts';
+} from '../../../src/core/rules.ts';
 import {
   CHALLENGE_FIELDS,
-  familyOf,
   FORMAT_VERSION,
   GAME_FIELDS,
-  gameRow,
   MANIFEST_FORMAT,
   NAME_FIELDS,
   PITCH_FIELDS,
   PLAYER_FIELDS,
-  pitchRow,
-  quantize,
-  round,
-  rowsJson,
   SHARD_FORMAT,
   STATS_FORMAT,
-  type Quantized,
+  type ManifestDoc,
   type Row,
-} from './format.ts';
+  type StatsDoc,
+} from '../../../src/core/schema.ts';
+import { GAME_TYPE_NAMES, GAME_TYPES, SESSION_BUDGET_GZIP } from './constants.ts';
+import { familyOf, gameRow, pitchRow, quantize, round, rowsJson, type Quantized } from './format.ts';
 import { countPossible, judge, type Judged } from './judge.ts';
 import { ALLOWED, FAILING_KINDS, judgeFindings, type FailingKind } from './integrity.ts';
 import type { PlayByPlay, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import type { Person } from './people.ts';
-import { absJudge, crossing } from './physics.ts';
 import { addChecks, emptyChecks, extractGame, type Checks } from './plays.ts';
 import { band, makeShards, PER_CLOSE, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
-import { hash32, mulberry32 } from './rng.ts';
 import { parseSchedule, parseTeams, type Game, type Named } from './schedule.ts';
 import {
   byGameType,
@@ -61,7 +57,6 @@ import { plateChanged, plateRuns, type PlateTrack, type Reading } from './umpire
 
 export const OUT_DIR = 'public/data/season-2026';
 export const REPORT_PATH = 'tools/data/reports/season-2026.json';
-export const SEED = 'umpires-eye-2026';
 export const DEALS_PER_SHARD = 200;
 // Shard count comes from a fixed size, not from measured gzip bytes, because gzip output differs between zlib builds and
 // the files must rebuild identically anywhere. The build fails if the largest session would exceed the budget.
@@ -113,23 +108,22 @@ function cardOf(e: PoolEntry): DealCard {
   };
 }
 
+// Deals a shard's tens with a seeded rand and lists the deals a short pile stopped. A ten that breaks the rules never
+// comes back to be listed: dealTen throws on one.
 export function dealingCheck(cards: readonly Card[], seed: string, deals: number) {
-  const deck = deckOf(cards);
+  const piles = pilesOf(cards);
   const rand = mulberry32(hash32(seed));
   const problems: string[] = [];
 
   for (let k = 0; k < deals; k++) {
-    const ten = dealTen(deck, rand);
-    const found = ten ? tenProblems(ten) : ['not enough pitches'];
-
-    for (const p of found) problems.push(`deal ${k}: ${p}`);
+    if (!dealTen(piles, rand)) problems.push(`deal ${k}: not enough pitches`);
   }
 
   return {
-    calibrators: deck.calibrators.length,
-    close: deck.close.length,
-    closeChallenged: deck.closeChallenged.length,
-    near: deck.near.length,
+    calibrators: piles.calibrators.length,
+    close: piles.close.length,
+    closeChallenged: piles.closeChallenged.length,
+    near: piles.near.length,
     deals,
     problems,
   };
@@ -298,7 +292,9 @@ export function buildDataset(inputs: Inputs): BuildResult {
   }
 
   const pitchTypes = Object.fromEntries(
-    [...typeNames].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([code, names]) => [code, [mostCommon(names), familyOf(code)]]),
+    [...typeNames]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([code, names]): [string, [string, string]] => [code, [mostCommon(names), familyOf(code)]]),
   );
   const gameById = new Map(games.map((g) => [g.gamePk, g]));
   const fields = {
@@ -400,7 +396,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     sha256: sha256(texts[i] ?? ''),
   }));
   const usedTeams = new Set(games.flatMap((g) => [g.awayId, g.homeId]));
-  const manifest = {
+  const manifest: ManifestDoc = {
     format: MANIFEST_FORMAT,
     version: FORMAT_VERSION,
     season: SEASON,
@@ -458,7 +454,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     shards: shardMeta,
   };
   const ump = umpVsAbs(all);
-  const stats = {
+  const stats: StatsDoc = {
     format: STATS_FORMAT,
     version: FORMAT_VERSION,
     season: SEASON,

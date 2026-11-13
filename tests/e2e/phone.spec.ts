@@ -3,11 +3,12 @@ import type { Area, Box } from './helpers';
 import {
   attachShot,
   boxOf,
-  callUntilAccepted,
+  callPitch,
   expectApart,
   expectInside,
   horizontalOverflow,
   noteCanvasFilter,
+  openPaused,
   sceneColours,
   slugOf,
   todaysTen,
@@ -38,8 +39,7 @@ test('a round by touch ends on a card that scrolls to Play another ten', async (
   const ten = todaysTen();
   const strikes = ten.filter((pitch) => pitch.absTruth === 'strike').length;
 
-  await page.goto('./');
-  await waitReady(page);
+  await openPaused(page, './');
   await noteCanvasFilter(page, testInfo);
   await page.locator('#btnPlay').tap();
 
@@ -47,7 +47,7 @@ test('a round by touch ends on a card that scrolls to Play another ten', async (
     await test.step(`pitch ${n}`, async () => {
       await expect(app).toHaveAttribute('data-phase', 'pitch');
       await expect(page.locator('#indPitch')).toHaveText(`${n}/${ten.length}`);
-      await callUntilAccepted(page, page.locator('#btnStrike'), { tap: true });
+      await callPitch(page, page.locator('#btnStrike'), { tap: true });
       await expect(app).toHaveAttribute('data-phase', 'reveal');
       await expect(page.locator('#vLine')).toHaveText(/^\s*You Strike/);
       await page.locator('#btnNext').tap();

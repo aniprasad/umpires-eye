@@ -1,6 +1,6 @@
-import { CALIBRATOR_MIN_IN, CLOSE_IN, NEAR_IN } from './constants.ts';
+import { unitHash } from '../../../src/core/rng.ts';
+import { CALIBRATOR_MIN_IN, CLOSE_IN, NEAR_IN } from '../../../src/core/rules.ts';
 import type { Judged } from './judge.ts';
-import { unitHash } from './rng.ts';
 
 export type Bucket = 'challenge' | 'close' | 'near' | 'calibrator';
 

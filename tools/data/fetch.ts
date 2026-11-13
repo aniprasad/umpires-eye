@@ -1,7 +1,9 @@
 // npm run data:fetch: downloads what the 2026 dataset is built from into the shared cache (UE_CACHE_DIR, or
-// %LOCALAPPDATA%\umpires-eye\mlb-cache). Anything already cached is never fetched again.
+// %LOCALAPPDATA%\umpires-eye\mlb-cache on Windows and $XDG_CACHE_HOME or ~/.cache elsewhere; see lib/cache.ts).
+// Anything already cached is never fetched again.
+import { SEASON } from '../../src/core/rules.ts';
 import { cacheDir, cachePaths, openCache } from './lib/cache.ts';
-import { GAME_TYPES, SEASON } from './lib/constants.ts';
+import { GAME_TYPES } from './lib/constants.ts';
 import { describeError, getText, mapLimit } from './lib/http.ts';
 import type { PeopleResponse, PlayByPlay, ScheduleResponse, TeamsResponse } from './lib/mlb.ts';
 import { peopleIdsIn } from './lib/plays.ts';

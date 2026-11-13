@@ -1,53 +1,11 @@
-import { absJudge, crossing, inDealBox, quickEnough, TRAJ_KEYS, type Traj } from './physics.ts';
+import { absJudge, inDealBox } from '../../../src/core/abs.ts';
+import { crossing, quickEnough, TRAJ_KEYS, type Traj } from '../../../src/core/kinematics.ts';
+import type { Family, RoleCode, Row } from '../../../src/core/schema.ts';
 import type { Judged } from './judge.ts';
 import type { Role } from './plays.ts';
 import type { Game } from './schedule.ts';
 
-export const FORMAT_VERSION = 1;
-export const SHARD_FORMAT = 'umpires-eye.season-shard';
-export const MANIFEST_FORMAT = 'umpires-eye.season-manifest';
-export const STATS_FORMAT = 'umpires-eye.season-stats';
-
-export const GAME_FIELDS = ['gamePk', 'date', 'start', 'gameType', 'away', 'home', 'series', 'seriesGame', 'venue'] as const;
-export const NAME_FIELDS = ['id', 'name'] as const;
-export const PLAYER_FIELDS = ['id', 'name', 'heightIn'] as const;
-export const CHALLENGE_FIELDS = ['by', 'team', 'role', 'overturned'] as const;
-export const PITCH_FIELDS = [
-  'gamePk',
-  'atBat',
-  'pitch',
-  'inning',
-  'top',
-  'outs',
-  'balls',
-  'strikes',
-  'awayScore',
-  'homeScore',
-  'bases',
-  'batter',
-  'bats',
-  'pitcher',
-  'throws',
-  'umpire',
-  'type',
-  'mph',
-  ...TRAJ_KEYS,
-  'extension',
-  'zoneTop',
-  'zoneBottom',
-  'ump',
-  'final',
-  'abs',
-  'marginIn',
-  'dealable',
-  'challenge',
-] as const;
-
-export type Family = 'fastball' | 'breaking' | 'offspeed' | 'other';
-export type Cell = string | number | null | Cell[];
-export type Row = Cell[];
-
-export const ROLE_CODE: Record<Role, 'B' | 'P' | 'C'> = { batter: 'B', pitcher: 'P', catcher: 'C' };
+export const ROLE_CODE: Record<Role, RoleCode> = { batter: 'B', pitcher: 'P', catcher: 'C' };
 
 const FAMILY: Record<string, Family> = {
   FF: 'fastball',

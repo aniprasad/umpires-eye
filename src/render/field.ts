@@ -1,7 +1,8 @@
-import { EYE, MID_Y, MOUND_C, MOUND_H, MOUND_R, NEAR, PLATE_FRONT, PLATE_HALF, RUBBER_Y } from '../math/constants';
+import type { Vec3 } from '../core/kinematics.ts';
+import { MID_Y, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from '../core/rules.ts';
+import { EYE, MOUND_C, MOUND_H, MOUND_R, NEAR } from '../math/constants';
 import { bandPts, groundZ, ringPts, type Cam } from '../math/geometry';
 import { clamp } from '../math/util';
-import type { Vec3 } from '../math/types';
 import { LAY, view, ctx2d } from './env';
 import { withFilter } from './filter';
 import { noise } from './noise';
@@ -131,7 +132,7 @@ function drawChalk(g: CanvasRenderingContext2D, cam: Cam): void {
 export function drawPlate(g: CanvasRenderingContext2D, cam: Cam): void {
   const z = 0.02;
 
-  fillPoly(g, cam, [{ x: -PLATE_HALF, y: PLATE_FRONT, z }, { x: PLATE_HALF, y: PLATE_FRONT, z }, { x: PLATE_HALF, y: MID_Y, z }, { x: 0, y: 0, z }, { x: -PLATE_HALF, y: MID_Y, z }], '#f6f3ea');
+  fillPoly(g, cam, [{ x: -PLATE_HALF, y: PLATE_FRONT_Y, z }, { x: PLATE_HALF, y: PLATE_FRONT_Y, z }, { x: PLATE_HALF, y: MID_Y, z }, { x: 0, y: 0, z }, { x: -PLATE_HALF, y: MID_Y, z }], '#f6f3ea');
 }
 
 /** Chalk is laid on its own sheet, grained (fine dropouts, coarse patchiness, soft edges), then put down on the dirt. */

@@ -22,7 +22,7 @@ npm run dev        # http://localhost:5173
 | `npm run check:lockfile` | Fails if `package-lock.json` resolves any package outside registry.npmjs.org. |
 | `npm run typecheck` | `tsc` in strict mode over the app, the tests and the configs, then `data:typecheck` over the data tools. |
 | `npm test` | Vitest unit tests, including every check of the mockup's `?selftest=1`, then `data:test`, the data tools' tests. |
-| `npm run e2e` | Playwright browser tests. It builds and serves the app itself. |
+| `npm run e2e` | Playwright browser tests, one run at a time per machine (see below). It builds and serves the app itself. |
 | `npm run assets` | Rebuilds the shipped images, fonts and pitch pool from the masters in `mockup/`. The output is committed, so you only need this when a master changes. |
 | `npm run data:*` | The season dataset's tools: `fetch`, `build`, `validate`, `test` and `typecheck`. See `docs/DATA.md`. |
 
@@ -37,6 +37,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
   - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`. By default the mockup's footnotes take the height of the port's longer credit line, so the rest of the screen lines up. Set `UE_PARITY_ALIGN=0` to compare the pages untouched.
 - Run one project with `npx playwright test --project=desktop-webkit`.
 - Each run builds and serves its own copy on port 4173 and stops at once if that port is taken, so it never tests another checkout's server. Set `UE_E2E_PORT` (for example `UE_E2E_PORT=4191`) to run on another port, such as beside a running `npm run preview`; ports that browsers block, such as 4190, are refused.
+- `npm run e2e` runs take turns on a machine, from any checkout, because two at once overload it. Each takes a lock file in the OS temp folder (`umpires-eye-e2e.lock`, with its pid, port and start time), waits while another live run holds it, logging every 30 s, and gives up after 20 minutes. A lock left by a run that died is taken over. The lock is skipped when `CI` is set, and `npx playwright test` doesn't take it.
 
 ## URL switches
 
@@ -46,12 +47,14 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 | `?state=reveal&i=4&call=strike` | The reveal for pitch 4 after a strike call. |
 | `?state=card&correct=8` | The umpire card for a round with 8 right. |
 | `?selftest=1` | The self-test report. The page title becomes `SELFTEST PASS` or `SELFTEST FAIL`. |
+| `?pool=ws` | The 2026 World Series pool. It's also the default for now; other values are ignored. |
 | `?canvasFilter=fallback` | Draws the depth of field without the canvas `filter`, as WebKit does. |
 
 ## How it's built
 
-- `src/math/`: pure TypeScript with no DOM. Kinematics, ABS truth and zone, camera and lens fit, stance, depth of field, the batter, catcher, mitt framing, pitcher pose, mask clearance, dealing, and the reveal's wording. Node scripts can import these.
-- `src/data/`: `PitchSource`, the seam a dataset plugs into, and the 2026 World Series source (`public/data/ws-2026/pool.json`).
+- `src/core/`: pure TypeScript the app shares with the data tools: the rules, the seeded draws, the trajectory, the ABS rule and deal box, the season files' formats and their reader, the dealer, and the daily schedule's types, reserve rule and local dates. The tools run these files as they are under Node, so relative imports end in `.ts`. Lint and `src/core/tsconfig.json` keep core free of the DOM, Node, Vite and `Math.random`.
+- `src/math/`: pure TypeScript with no DOM. Camera and lens fit, stance, depth of field, the batter, catcher, mitt framing, pitcher pose, mask clearance, dealing, and the reveal's wording.
+- `src/data/`: the source contract a dataset implements (`source.ts`: Today's Ten for a date, the deck for Another ten, the lens points and the ump figure), the `?pool=` switch, and the 2026 World Series source (`public/data/ws-2026/pool.json`).
 - `src/render/`: the scene. Static layers are painted once per stance, and the next pitch's are painted ahead. The ball, mitt, pitcher and reveal are drawn every frame. `filter.ts` draws every blur and colour grade, with a fallback for engines without canvas `filter`, such as Safari.
 - `src/game/` and `src/ui/`: the flow (start, ten pitches, reveal, card), input, the HUD, the verdict panel and the card.
 - `src/selftest/`: the mockup's self-test checks as pure functions. Vitest runs them, and so does `?selftest=1`.

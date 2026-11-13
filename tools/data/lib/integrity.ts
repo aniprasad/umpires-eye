@@ -1,5 +1,5 @@
-import type { StoredPitch } from './decode.ts';
-import { TRAJ_KEYS } from './physics.ts';
+import { TRAJ_KEYS } from '../../../src/core/kinematics.ts';
+import type { StoredPitch } from '../../../src/core/schema.ts';
 
 // Integrity findings that fail data:build and data:validate. Each kind lists its findings as text that starts with the
 // pitch or plate appearance it is about.

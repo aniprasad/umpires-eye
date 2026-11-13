@@ -1,6 +1,6 @@
+import type { Vec3 } from '../core/kinematics.ts';
 import { MOUND_C, MOUND_H, MOUND_R, NEAR } from './constants';
 import { clamp } from './util';
-import type { Vec3 } from './types';
 
 export interface Pt {
   x: number;

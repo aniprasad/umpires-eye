@@ -1,10 +1,12 @@
-import { CATCH_Y, EYE, FRAME, MID_Y, MITT_MOVE, MITT_SETUP_Z, PLATE_HALF } from './constants';
+import type { Vec3 } from '../core/kinematics.ts';
+import { gauss, hash32, mulberry32 } from '../core/rng.ts';
+import { MID_Y, PLATE_HALF } from '../core/rules.ts';
+import { CATCH_Y, EYE, FRAME, MITT_MOVE, MITT_SETUP_Z } from './constants';
 import { projPoly, type Cam, type Rect } from './geometry';
 import type { PreparedPitch } from './kinematics';
-import { gauss, hash32, rng } from './rng';
 import { eyeFor, eyeOf } from './stance';
 import { clamp, lerp, smooth } from './util';
-import type { Side, Vec3 } from './types';
+import type { Side } from './types';
 
 export interface CatcherRig {
   head: Vec3;
@@ -37,7 +39,7 @@ export function mittSetup(P: PreparedPitch): Vec3 {
   const hit = SETUPS.get(P);
 
   if (hit) return hit;
-  const r = rng(hash32(P.id));
+  const r = mulberry32(hash32(P.id));
   const o = { x: clamp(P.k.mid.x + gauss(r) * (7 / 12), -1.3, 1.3), y: CATCH_Y, z: MITT_SETUP_Z };
 
   SETUPS.set(P, o);
@@ -76,7 +78,7 @@ export function frameOf(P: PreparedPitch): Frame | null {
 }
 
 function computeFrame(P: PreparedPitch): Frame | null {
-  const r = rng(hash32('frame|' + P.id));
+  const r = mulberry32(hash32('frame|' + P.id));
   const u = r();
   const size = r();
   const dur = r();

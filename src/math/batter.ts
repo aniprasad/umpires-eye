@@ -1,6 +1,7 @@
+import type { Vec3 } from '../core/kinematics.ts';
 import { dofBlur } from './dof';
 import { sphereOutline, type Cam, type Projected, type Rect } from './geometry';
-import type { Pitch, Vec3 } from './types';
+import type { Pitch } from './types';
 
 /**
  * The photographic batter, keyed offline from the generated source still. Anchors are in batter-image pixels:

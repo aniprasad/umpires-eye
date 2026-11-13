@@ -1,11 +1,6 @@
-// Field geometry, the ump's slot and the game's timing. Feet and seconds unless the name says otherwise.
+// Field geometry, the ump's slot and the game's timing. Feet and seconds unless the name says otherwise. The plate, the
+// ball and the deal box are in src/core/rules.ts, shared with the data tools.
 
-export const BALL_R = 1.45 / 12;
-export const PLATE_HALF = 8.5 / 12;
-export const PLATE_FRONT = 17 / 12;
-/** The ABS plane: the zone is judged as the ball passes the middle of the plate. */
-export const MID_Y = 8.5 / 12;
-export const RUBBER_Y = 60.5;
 export const MOUND_H = 10 / 12;
 export const MOUND_C = { x: 0, y: 59 } as const;
 export const MOUND_R = 9;
@@ -29,8 +24,6 @@ export const STANCE_MAX = {
 
 /** The camera yaw aims at (0, LOOK_Y). */
 export const LOOK_Y = 30;
-/** Crossings the game deals; every other pool pitch is at least 6.6 in from flipping the call. */
-export const PLAY = { zMin: 0.9, zMax: 4.5, xMax: 1.5 } as const;
 /** Air kept around every crossing ball inside the frame. */
 export const CROSS_PAD = 0.06;
 /** Sky kept above the pitcher's cap, in tan units. */

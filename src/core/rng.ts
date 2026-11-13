@@ -1,3 +1,5 @@
+// Bit for bit the mockup's FNV-1a and mulberry32, so a seed gives the same draws in the app and in the data tools.
+
 export type Rand = () => number;
 
 /** FNV-1a: a stable 32-bit seed from a pitch id or any other string. */
@@ -12,8 +14,8 @@ export function hash32(str: string): number {
   return h >>> 0;
 }
 
-/** mulberry32: deterministic per seed, so replays, URL states and tests all see the same draws. */
-export function rng(seed: number): Rand {
+/** Deterministic per seed, so replays, URL states, builds and tests all see the same draws. */
+export function mulberry32(seed: number): Rand {
   let a = seed >>> 0;
 
   return () => {
@@ -25,6 +27,11 @@ export function rng(seed: number): Rand {
 
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** A stable draw in [0, 1) for one key, independent of every other draw. */
+export function unitHash(key: string): number {
+  return hash32(key) / 4294967296;
 }
 
 /** Box-Muller: one standard normal draw from two uniform draws. */

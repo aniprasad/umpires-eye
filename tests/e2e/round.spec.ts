@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { CallKey } from './helpers';
-import { activeId, callOf, callUntilAccepted, phaseMarks, recordPhases, secondsBetween, todaysTen, trackErrors, waitReady } from './helpers';
+import { activeId, callOf, callPitch, openPaused, phaseMarks, recordPhases, secondsBetween, todaysTen, trackErrors, waitReady } from './helpers';
 
 // Every binding gets used, and the strikes and balls are mixed so the expected score comes from the data.
 const KEYS: readonly CallKey[] = ['S', 'B', 'ArrowRight', 'ArrowLeft', 's', 'b', 'S', 'ArrowLeft', 'ArrowRight', 'B'];
@@ -17,8 +17,7 @@ test('a keyboard round of ten ends on the umpire card', async ({ page }) => {
   const umpRight = ten.filter((pitch) => pitch.umpCorrect).length;
 
   expect(ten).toHaveLength(KEYS.length);
-  await page.goto('./');
-  await waitReady(page);
+  await openPaused(page, './');
   await expect(page.locator('#btnPlay')).toBeEnabled();
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
   await expect.poll(() => activeId(page)).toBe('btnPlay');
@@ -30,7 +29,7 @@ test('a keyboard round of ten ends on the umpire card', async ({ page }) => {
     await test.step(`pitch ${n}: ${key}`, async () => {
       await expect(app).toHaveAttribute('data-phase', 'pitch');
       await expect(page.locator('#indPitch')).toHaveText(`${n}/10`);
-      await callUntilAccepted(page, key);
+      await callPitch(page, key);
       await expect(app).toHaveAttribute('data-phase', 'reveal');
       await expect(page.locator('#vLine')).toHaveText(new RegExp(`^\\s*You ${WORD[callOf(key)]}`));
       await expect(page.locator('#nextLabel')).toHaveText(n < KEYS.length ? 'Next pitch' : 'See your card');
@@ -108,8 +107,7 @@ test('the card copies the result and deals another ten', async ({ page }) => {
   const app = page.locator('#app');
   const copy = page.locator('#btnCopy');
 
-  await page.goto('./?state=card&correct=7');
-  await waitReady(page);
+  await openPaused(page, './?state=card&correct=7');
   await expect(page.locator('#cards')).toBeVisible();
   await expect(copy).toHaveText('Copy result');
   await copy.click();
@@ -120,9 +118,32 @@ test('the card copies the result and deals another ten', async ({ page }) => {
   await expect(page.locator('#cards')).toBeHidden();
   await expect(page.locator('#indPitch')).toHaveText('1/10');
   await expect(page.locator('#scMain')).toHaveText('Another ten');
-  await callUntilAccepted(page, 'S');
+  await callPitch(page, 'S');
   await expect(app).toHaveAttribute('data-phase', 'reveal');
   await expect(page.locator('#vLine')).toHaveText(/^\s*You Strike/);
   await expect(page.locator('#err')).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('?pool=ws plays the World Series pool, as the default still does', async ({ page }) => {
+  const errors = trackErrors(page);
+  const data: string[] = [];
+
+  page.on('request', (req) => {
+    if (req.url().includes('/data/')) data.push(new URL(req.url()).pathname);
+  });
+  await page.goto('./');
+  await waitReady(page);
+  const lede = await page.locator('#startLede').textContent();
+
+  await page.goto('./?pool=ws');
+  await waitReady(page);
+  await expect(page.locator('#startLede')).toHaveText(lede ?? '');
+  await expect(page.locator('#startLede')).toContainText('from Games 1, 2 and 5 of the 2026 World Series');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+  await expect(page.locator('#muGame')).toHaveText(/^2026 World Series · Game 5 · \d–\d count$/);
+  expect(data.length).toBeGreaterThan(0);
+  expect(data.filter((path) => !path.endsWith('/data/ws-2026/pool.json'))).toEqual([]);
   expect(errors).toEqual([]);
 });
