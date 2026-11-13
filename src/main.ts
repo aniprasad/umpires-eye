@@ -54,7 +54,7 @@ async function boot(): Promise<void> {
   ]).then((results) => results.flatMap((r) => (r.status === 'rejected' ? [message(r.reason)] : [])).join('\n'));
 
   try {
-    const source = await openSource(sourceIdOf(POOL), import.meta.env.BASE_URL);
+    const source = await openSource(sourceIdOf(POOL, SELFTEST), import.meta.env.BASE_URL);
 
     // The stats load alongside today's files (§4.1). Play never waits for them; T11 shows the figure.
     void source.umpFigure();

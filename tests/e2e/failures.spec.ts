@@ -44,7 +44,7 @@ test('a pitch file the server can\'t find leaves Play disabled and says why', as
   const errors = pageErrors(page);
 
   await page.route(POOL, (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' }));
-  await page.goto('./');
+  await page.goto('./?pool=ws');
   await expectNoRound(page, /The pitch data didn't load: Could not load the pitch data \(404/, NOTE_LEDE);
   expect(errors).toEqual([]);
 });
@@ -55,7 +55,7 @@ test("a pool without one of Today's Ten is refused, naming the pitch", async ({ 
   const body = JSON.stringify({ ...pool, pitches: pool.pitches.filter((p) => p.id !== missing) });
 
   await page.route(POOL, (route) => route.fulfill({ status: 200, contentType: 'application/json', body }));
-  await page.goto('./');
+  await page.goto('./?pool=ws');
   await expectNoRound(page, new RegExp(`Today's Ten pitches are missing from the pool: ${missing}`), NOTE_LEDE);
   expect(errors).toEqual([]);
 });
@@ -64,7 +64,7 @@ test('a lost connection asks for a reload', async ({ page }) => {
   const errors = pageErrors(page);
 
   await page.route(POOL, (route) => route.abort('internetdisconnected'));
-  await page.goto('./');
+  await page.goto('./?pool=ws');
   await expectNoRound(page, /The pitch data didn't load: Could not reach the pitch data/, RELOAD_LEDE);
   expect(errors).toEqual([]);
 });
@@ -79,7 +79,7 @@ test("card art that won't load is reported, and the game still starts", async ({
   const errors = pageErrors(page);
 
   await page.route('**/card-art-*.webp', (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' }));
-  await page.goto('./');
+  await page.goto('./?pool=ws');
   await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
   await expect(page.locator('#err')).toBeVisible();
   await expect(page.locator('#err')).toContainText(/Could not load \S*card-art-\d+-\S*\.webp/);

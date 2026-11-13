@@ -396,7 +396,7 @@ describe('the season source', () => {
 
     expect(source).toMatchObject({ id: 'season-2026', label: '2026 season', lensPoints: boxLensPoints() });
     expect(fetched).not.toHaveBeenCalled();
-    expect(sourceIdOf(null)).toBe('ws-2026');
+    expect(sourceIdOf(null)).toBe('season-2026');
   });
 });
 

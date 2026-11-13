@@ -92,8 +92,12 @@ describe('the World Series source', () => {
     }
   });
 
-  it('is what ?pool=ws opens, and still the default', () => {
-    expect([sourceIdOf('ws'), sourceIdOf(null), sourceIdOf('nonsense')]).toEqual(['ws-2026', 'ws-2026', 'ws-2026']);
+  it('is what ?pool=ws opens, and what the self-test reads without a ?pool=', () => {
+    expect([sourceIdOf('ws'), sourceIdOf('ws', true), sourceIdOf(null, true)]).toEqual(['ws-2026', 'ws-2026', 'ws-2026']);
+  });
+
+  it('gives way to the 2026 season as the default', () => {
+    expect([sourceIdOf(null), sourceIdOf('nonsense'), sourceIdOf('season', true)]).toEqual(['season-2026', 'season-2026', 'season-2026']);
   });
 });
 

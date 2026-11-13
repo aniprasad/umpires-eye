@@ -39,7 +39,7 @@ test('a round by touch ends on a card that scrolls to Play another ten', async (
   const ten = todaysTen();
   const strikes = ten.filter((pitch) => pitch.absTruth === 'strike').length;
 
-  await openPaused(page, './');
+  await openPaused(page, './?pool=ws');
   await noteCanvasFilter(page, testInfo);
   await page.locator('#btnPlay').tap();
 
@@ -74,7 +74,7 @@ for (const { state, left, right } of LAYOUTS) {
     const errors = trackErrors(page);
     const phase = new URLSearchParams(state).get('state');
 
-    await page.goto(`./?${state}`);
+    await page.goto(`./?pool=ws&${state}`);
     await waitReady(page);
     await noteCanvasFilter(page, testInfo);
     await attachShot(page, testInfo, slugOf(state));

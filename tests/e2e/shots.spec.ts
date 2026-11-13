@@ -29,7 +29,7 @@ for (const viewport of VIEWPORTS) {
         const params = new URLSearchParams(state);
         const phase = params.get('state');
 
-        await page.goto(`./?${state}`);
+        await page.goto(`./?pool=ws&${state}`);
         await waitReady(page);
         await attachShot(page, testInfo, `${size}-${slugOf(state)}`);
         await expect(page.locator('#err')).toBeHidden();
