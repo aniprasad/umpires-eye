@@ -272,6 +272,7 @@ test('a live pitch with the fallback filter runs about as fast as the mockup in 
 
   testInfo.annotations.push({ type: 'frame gap P50, median of rounds', description: runs.map(([name]) => `${name} ${gap(name).toFixed(1)} ms`).join('; ') });
   await testInfo.attach('frames.json', { body: JSON.stringify(rounds, null, 2), contentType: 'application/json' });
-  // Headless frame times are indicative only. This bound catches a filter redone in full every frame.
+  // Headless frame times are indicative only. This bound catches the static scene's blurs redone every frame. It can't
+  // see the mitt's cached blur redone instead of reused, a few ms of script that moves no frame gap here; M3 guards that.
   for (const [name] of runs.slice(1)) expect(gap(name), name).toBeLessThan(1.25 * gap('mockup') + 2);
 });
