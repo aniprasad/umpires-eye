@@ -10,6 +10,11 @@ import { createLens } from '../../src/math/lens';
 import { eyeOf } from '../../src/math/stance';
 import { mockupUrl, seedRandom, trackErrors, waitReady } from './helpers';
 
+// A trace's screencast copies every frame the page draws, and its DOM snapshots wait on the page between steps. In
+// WebKit they made the frames the speed test compares three times slower. These tests time frames and read pixels, so
+// their traces keep the steps and their timings without either. (Playwright sets traces per file, not per test.)
+test.use({ trace: { mode: 'retain-on-failure', screenshots: false, snapshots: false } });
+
 // Pitch 8 of Today's Ten (a right-hander) frozen in the windup: the catcher's helmet rises out of the bottom edge on the
 // side away from the batter. Its top edge is the scene's strongest defocused edge, against the lit infield.
 const PITCH = 8;
@@ -205,15 +210,21 @@ interface FrameStats {
   gapP95: number;
 }
 
-type Frames = { costs: number[]; stamps: number[] };
+type Frames = { costs: number[]; stamps: number[]; start: number };
 
-/** Times every animation frame callback the page runs: its script cost, and when it ran. */
+/** Times every animation frame callback the page runs, its script cost and when it ran, since the last "Play ball". */
 async function timeFrames(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const raf = window.requestAnimationFrame.bind(window);
-    const frames = { costs: [] as number[], stamps: [] as number[] };
+    const frames = { costs: [] as number[], stamps: [] as number[], start: 0 };
 
     Object.assign(window, { ueFrames: frames });
+    addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      frames.costs.length = 0;
+      frames.stamps.length = 0;
+      frames.start = performance.now();
+    }, true);
     window.requestAnimationFrame = (cb) => raf((t) => {
       const t0 = performance.now();
 
@@ -224,19 +235,26 @@ async function timeFrames(page: Page): Promise<void> {
   });
 }
 
-/** One live pitch from "Play ball" through the reveal. */
+// The first pitch releases 2.4 s after "Play ball" and is caught 2.81 s after it, so this takes in the beat, the windup,
+// the flight and the catch. Six-second windows ran on into the reveal, and with them WebKit ran past the test's timeout.
+const SAMPLE_MS = 3000;
+// A frame slower than the whole window, such as a static scene blurred afresh, still leaves gaps to compare.
+const MIN_FRAMES = 3;
+
+/** The live part of one pitch: SAMPLE_MS of page time from "Play ball", and MIN_FRAMES frames at least. */
 async function pitchFrames(page: Page, url: string): Promise<FrameStats> {
   await page.goto(url);
   await waitReady(page);
   await page.keyboard.press('Enter');
-  await page.evaluate(() => {
+  const { costs, stamps } = await page.evaluate(([ms, n]) => new Promise<Frames>((resolve) => {
     const f = (window as unknown as { ueFrames: Frames }).ueFrames;
+    const check = (): void => {
+      if (performance.now() - f.start >= ms && f.stamps.length >= n) resolve(f);
+      else setTimeout(check, 50);
+    };
 
-    f.costs.length = 0;
-    f.stamps.length = 0;
-  });
-  await page.waitForTimeout(6000);
-  const { costs, stamps } = await page.evaluate(() => (window as unknown as { ueFrames: Frames }).ueFrames);
+    check();
+  }), [SAMPLE_MS, MIN_FRAMES] as const);
   const pct = (a: number[], p: number): number => [...a].sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(p * a.length))];
   const gaps = [...new Set(stamps)].sort((a, b) => a - b).map((t, i, a) => (i ? t - a[i - 1] : 0)).slice(1);
 
