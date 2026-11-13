@@ -123,7 +123,10 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await expect(page.locator('#ubCorrect')).toHaveText(String(expected));
   await expect(page.locator('#ubUmp')).toHaveText(`${umpRight}/10`);
   await expect(page.locator('#ubSet')).toHaveText("2026 season set · Today's Ten");
-  // the text the start screen fetched is parsed on the card, never during a pitch
+  // The card paints before the text the start screen fetched is parsed: the parse waits until the page is idle, and the
+  // paused clock keeps it from being idle until the test runs it. It's never parsed during a pitch.
+  expect(await parsesOf(page)).toEqual([]);
+  await page.clock.runFor(PAST_IDLE_MS);
   await expect.poll(() => parsesOf(page)).toEqual(['card']);
 
   await page.locator('#btnAgain').click();
@@ -146,6 +149,24 @@ test('with Save-Data on, the start screen fetches no shard', async ({ page }) =>
   await page.clock.runFor(PAST_IDLE_MS);
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
   expect(asked).toEqual(['manifest.json', 'daily/2026-11.json']);
+});
+
+test("without requestIdleCallback, as in Safari, a Play before the 2 s stand-in fetches no shard during the pitch", async ({ page }) => {
+  await serveSeason(page);
+  await watchLoads(page);
+  // Playwright's clock adds a requestIdleCallback of its own. A page's init scripts run after the clock's.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'requestIdleCallback', { value: undefined, configurable: true, writable: true });
+  });
+  await page.clock.install();
+  // paused before the page loads, so none of the stand-in's 2 s can pass before the press
+  await page.clock.pauseAt(Date.now() + 1_000);
+  await page.goto(`./?pool=season&date=${mini.date}`);
+  await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+  await page.clock.runFor(PAST_IDLE_MS);
+  expect((await loadsOf(page)).filter((load) => load.path.startsWith('shards/'))).toEqual([]);
 });
 
 test('with Save-Data on, the card fetches no shard either, and Another ten loads it when pressed', async ({ page }) => {

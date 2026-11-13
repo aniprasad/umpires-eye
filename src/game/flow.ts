@@ -194,9 +194,14 @@ export function nextPitch(): void {
   if (G.i + 1 < G.set.length) beginPitch(G.i + 1);
   else {
     showCards();
-    // The season's shard is parsed here if it isn't yet, while the card is up and nothing moves. A failure waits for the
-    // press, which tries again and says what went wrong.
-    if (!saveData()) world().another.ready().catch(() => undefined);
+    // The season's shard is parsed once the card has painted and the page is idle: a parse takes tens of milliseconds,
+    // more on a phone. A press that comes sooner parses it at once. A failure waits for the press, which tries again and
+    // says what went wrong.
+    if (!saveData()) {
+      whenIdle(() => {
+        if (G.phase === 'card') world().another.ready().catch(() => undefined);
+      });
+    }
   }
 }
 
@@ -377,7 +382,12 @@ export function bootFlow(): void {
     updateScore(false);
     if (!SELFTEST) UI.btnPlay.focus({ preventScroll: true });
     // Another ten's shard loads while the player reads the start screen, unless the device asks for less data (§4.1).
-    if (!saveData()) whenIdle(() => w.source.prefetch?.());
+    // Safari's stand-in can come after Play; the card loads it then.
+    if (!saveData()) {
+      whenIdle(() => {
+        if (G.phase === 'start') w.source.prefetch?.();
+      });
+    }
   }
   render(performance.now());
   const de = document.documentElement;
