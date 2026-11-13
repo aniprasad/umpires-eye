@@ -48,20 +48,33 @@ function parse(filter: string): FilterSpec {
 
 const scratchCanvases: HTMLCanvasElement[] = [];
 
-/** A cleared work canvas. It is resized only when the target's size changes (a resize), never per draw. */
-function scratch(i: number, w: number, h: number): CanvasRenderingContext2D {
-  const c = scratchCanvases[i] || (scratchCanvases[i] = document.createElement('canvas'));
+// Work canvases are read back on almost every use; this asks engines that keep canvases on the GPU to keep these
+// in memory instead, where a readback is cheap.
+function workCanvas(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
 
-  if (c.width !== w || c.height !== h) {
-    c.width = w;
-    c.height = h;
+  c.getContext('2d', { willReadFrequently: true });
+
+  return c;
+}
+
+/**
+ * A work canvas with its top-left w × h (and a 2 px margin) cleared. It only ever grows, in practice once per
+ * resize, so filtered draws never reallocate it; all the work happens in that top-left region.
+ */
+function scratch(i: number, w: number, h: number): CanvasRenderingContext2D {
+  const c = scratchCanvases[i] || (scratchCanvases[i] = workCanvas());
+
+  if (c.width < w + 2 || c.height < h + 2) {
+    c.width = Math.max(c.width, w + 2);
+    c.height = Math.max(c.height, h + 2);
   }
   const x = ctx2d(c);
 
   x.setTransform(1, 0, 0, 1, 0, 0);
   x.globalAlpha = 1;
   x.globalCompositeOperation = 'source-over';
-  x.clearRect(0, 0, w, h);
+  x.clearRect(0, 0, w + 2, h + 2);
 
   return x;
 }
@@ -95,12 +108,12 @@ function blurPass(src: HTMLCanvasElement, dst: CanvasRenderingContext2D, w: numb
   dst.setTransform(1, 0, 0, 1, 0, 0);
   dst.globalAlpha = 1;
   dst.globalCompositeOperation = 'source-over';
-  dst.clearRect(0, 0, w, h);
+  dst.clearRect(0, 0, w + 2, h + 2);
   dst.imageSmoothingEnabled = true;
   gaussTaps(sigma).forEach((t, i) => {
     dst.globalCompositeOperation = i ? 'lighter' : 'source-over';
     dst.globalAlpha = t.w;
-    dst.drawImage(src, horizontal ? t.off : 0, horizontal ? 0 : t.off);
+    dst.drawImage(src, 0, 0, w, h, horizontal ? t.off : 0, horizontal ? 0 : t.off, w, h);
   });
   dst.globalAlpha = 1;
   dst.globalCompositeOperation = 'source-over';
@@ -212,10 +225,19 @@ function colourMatrix(c: CanvasRenderingContext2D, w: number, h: number, s: Filt
   c.putImageData(img, 0, 0);
 }
 
+/** Where a block lands on the target, in target pixels. */
+interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /** A fallback result kept for a draw that repeats every frame (the mitt while it holds still). */
 interface Held {
   key: string;
   canvas: HTMLCanvasElement;
+  box: Box;
   sw: number;
   sh: number;
   k: number;
@@ -223,18 +245,59 @@ interface Held {
 
 const held = new Map<string, Held>();
 
-function composite(g: CanvasRenderingContext2D, src: HTMLCanvasElement, sw: number, sh: number, k: number): void {
+function composite(g: CanvasRenderingContext2D, src: HTMLCanvasElement, box: Box, sw: number, sh: number, k: number): void {
   g.save();
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.imageSmoothingEnabled = true;
-  g.drawImage(src, 0, 0, sw, sh, 0, 0, sw * k, sh * k);
+  g.drawImage(src, 0, 0, sw, sh, box.x, box.y, sw * k, sh * k);
   g.restore();
+}
+
+// Content boxes are found at 1/8 scale: cheap, and fine enough that a thin line still leaves some alpha.
+const DETECT = 8;
+
+/**
+ * The part of the target a block draws in, grown by `reach` (how far its blur spreads), or null if it draws nothing.
+ * The block is drawn once more on a coarse work canvas, whose alpha shows where it went.
+ */
+function contentBox(draw: (c: CanvasRenderingContext2D) => void, m: DOMMatrix, W: number, H: number, reach: number): Box | null {
+  const dw = Math.ceil(W / DETECT);
+  const dh = Math.ceil(H / DETECT);
+  const d = scratch(2, dw, dh);
+
+  d.save();
+  d.setTransform(m.a / DETECT, m.b / DETECT, m.c / DETECT, m.d / DETECT, m.e / DETECT, m.f / DETECT);
+  draw(d);
+  d.restore();
+  const px = d.getImageData(0, 0, dw, dh).data;
+  let x0 = dw;
+  let y0 = dh;
+  let x1 = -1;
+  let y1 = -1;
+
+  for (let y = 0; y < dh; y++) {
+    for (let x = 0; x < dw; x++) {
+      if (!px[4 * (y * dw + x) + 3]) continue;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  const pad = Math.ceil(reach) + 2 * DETECT;
+  const l = Math.max(0, x0 * DETECT - pad);
+  const t = Math.max(0, y0 * DETECT - pad);
+
+  return { x: l, y: t, w: Math.min(W, (x1 + 1) * DETECT + pad) - l, h: Math.min(H, (y1 + 1) * DETECT + pad) - t };
 }
 
 /**
  * Draws with a CSS filter string such as `blur(12.4px)` or `brightness(0.72) contrast(1.07)`. Blur lengths are in
  * canvas pixels, as the native filter treats them. The fallback draws the block on a work canvas scaled down by k so
- * the blur needs only a few taps, blurs it, and scales it back up; `draw` must set all the state it relies on.
+ * the blur needs only a few taps, blurs it, and scales it back up; `draw` must set all the state it relies on and
+ * draw the same thing every time it's called. Where k is small the work canvas covers only the block's own box,
+ * since a full-size pass would cost as much for a few shadows as for the whole field.
  * A per-frame caller passes `memo` (a slot and a key covering everything `draw` depends on): while the key holds,
  * the fallback reuses its last result instead of blurring again.
  */
@@ -263,21 +326,26 @@ export function withFilter(
     return;
   }
   const k = colour ? 1 : Math.min(16, Math.max(1, Math.floor(spec.blur / 1.25)));
-  const sw = Math.ceil(g.canvas.width / k);
-  const sh = Math.ceil(g.canvas.height / k);
+  const W = g.canvas.width;
+  const H = g.canvas.height;
   const m = g.getTransform();
-  const key = memo ? `${memo.key}|${filter}|${g.canvas.width}x${g.canvas.height}|${m.a},${m.b},${m.c},${m.d},${m.e},${m.f}` : '';
+  const key = memo ? `${memo.key}|${filter}|${W}x${H}|${m.a},${m.b},${m.c},${m.d},${m.e},${m.f}` : '';
   const hit = memo ? held.get(memo.slot) : undefined;
 
   if (hit && hit.key === key) {
-    composite(g, hit.canvas, hit.sw, hit.sh, hit.k);
+    composite(g, hit.canvas, hit.box, hit.sw, hit.sh, hit.k);
 
     return;
   }
+  const box = k <= 4 ? contentBox(draw, m, W, H, blur ? 3 * spec.blur : 0) : { x: 0, y: 0, w: W, h: H };
+
+  if (!box) return;
+  const sw = Math.ceil(box.w / k);
+  const sh = Math.ceil(box.h / k);
   const a = scratch(0, sw, sh);
 
   a.save();
-  a.setTransform(m.a / k, m.b / k, m.c / k, m.d / k, m.e / k, m.f / k);
+  a.setTransform(m.a / k, m.b / k, m.c / k, m.d / k, (m.e - box.x) / k, (m.f - box.y) / k);
   draw(a);
   a.restore();
   if (colour) colourMatrix(a, sw, sh, spec);
@@ -295,15 +363,15 @@ export function withFilter(
   if (memo) {
     const keep = hit ? hit.canvas : document.createElement('canvas');
 
-    if (keep.width !== sw || keep.height !== sh) {
-      keep.width = sw;
-      keep.height = sh;
+    if (keep.width < sw || keep.height < sh) {
+      keep.width = Math.max(keep.width, sw);
+      keep.height = Math.max(keep.height, sh);
     }
     const kc = ctx2d(keep);
 
     kc.clearRect(0, 0, sw, sh);
-    kc.drawImage(a.canvas, 0, 0);
-    held.set(memo.slot, { key, canvas: keep, sw, sh, k });
+    kc.drawImage(a.canvas, 0, 0, sw, sh, 0, 0, sw, sh);
+    held.set(memo.slot, { key, canvas: keep, box, sw, sh, k });
   }
-  composite(g, a.canvas, sw, sh, k);
+  composite(g, a.canvas, box, sw, sh, k);
 }
