@@ -59,7 +59,10 @@ export interface Season {
 export interface DailyArgs {
   /** The first date with a Today's Ten. Only the first run takes it; the schedule's start never moves. */
   from?: string;
-  /** Schedule through this date. The schedule never shrinks, so the recorded last date is the default and the floor. */
+  /**
+   * Schedule through this date. The recorded last date is the default, and an earlier one is refused: the schedule never
+   * shrinks.
+   */
   through?: string;
   /** The last date that may have been served. It never moves backwards. */
   servedThrough?: string;
@@ -358,6 +361,9 @@ export function generateDaily(
   if (args.check && !recorded) throw new Error('There is no schedule to check: the manifest has no daily block.');
   if (recorded && args.from !== undefined && args.from !== recorded.first) {
     throw new Error(`The schedule starts on ${recorded.first}, and --from can't move it.`);
+  }
+  if (recorded && args.through !== undefined && args.through < recorded.last) {
+    throw new Error(`The schedule runs to ${recorded.last} and never shrinks, so --through can't be ${args.through}.`);
   }
 
   const first = recorded?.first ?? args.from;

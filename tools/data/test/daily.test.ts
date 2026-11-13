@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { isDailyReserve, varietyProblems, type DailyDoc } from '../../../src/core/daily.ts';
 import { tenProblems } from '../../../src/core/deal.ts';
 import { decodeTables } from '../../../src/core/decode.ts';
@@ -193,7 +195,7 @@ test('the manifest lists every month file with its size and hash, and the build 
   assert.ok(first.files.has(`${OUT_DIR}/manifest.json`));
 });
 
-test('the first run needs --from and --through, the start never moves, and a broken lock is refused', () => {
+test('the first run needs --from and --through, the start never moves, the schedule never shrinks, and a broken lock is refused', () => {
   const months = monthsOf(first);
   const november = months.get('daily/2026-11.json') ?? '';
   const twice = november.replace(idsOn(first, '2026-11-02')[0] ?? '', idsOn(first, '2026-11-01')[0] ?? '');
@@ -201,7 +203,19 @@ test('the first run needs --from and --through, the start never moves, and a bro
   assert.throws(() => daily(season, { through: '2026-12-01' }), /needs --from/);
   assert.throws(() => daily(season, { from: '2026-11-01' }), /needs --through/);
   assert.throws(() => again(season, { from: '2026-10-01' }), /starts on 2026-11-01/);
+  assert.throws(() => again(season, { through: '2026-12-09' }), /runs to 2026-12-10 and never shrinks/);
+  assert.equal(again(season, { through: '2026-12-10' }).daily.last, '2026-12-10');
   assert.throws(() => daily(season, {}, new Map([...months, ['daily/2027-01.json', '{}']]), withDaily(season, first)), /doesn't list daily\/2027-01.json/);
   assert.throws(() => daily(season, {}, new Map([['daily/2026-12.json', months.get('daily/2026-12.json') ?? '']]), withDaily(season, first)), /2026-11.json is listed in the manifest but missing/);
   assert.throws(() => daily(season, {}, new Map([...months, ['daily/2026-11.json', twice]]), withDaily(season, first)), /scheduled on both/);
+});
+
+test('data:daily prints a bad argument as its message alone, without a stack trace', () => {
+  // --check, so the CLI would write nothing to the real dataset even if the argument got through.
+  const cli = fileURLToPath(new URL('../daily.ts', import.meta.url));
+  const run = spawnSync(process.execPath, [cli, '--check', '--through', 'not-a-date'], { encoding: 'utf8', timeout: 60_000 });
+
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /^not-a-date isn't a date, YYYY-MM-DD$/m);
+  assert.doesNotMatch(run.stderr, /^\s+at /m);
 });

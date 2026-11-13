@@ -8,7 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { ManifestDoc } from '../../src/core/schema.ts';
-import { DAILY_DIR, generateDaily } from './lib/daily.ts';
+import { DAILY_DIR, generateDaily, type DailyRun } from './lib/daily.ts';
 import { OUT_DIR } from './lib/pipeline.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -28,13 +28,23 @@ const dailyDir = join(root, OUT_DIR, DAILY_DIR);
 const monthTexts = new Map(
   (existsSync(dailyDir) ? readdirSync(dailyDir) : []).map((name) => [`${DAILY_DIR}/${name}`, read(`${OUT_DIR}/${DAILY_DIR}/${name}`)]),
 );
-const run = generateDaily(manifestText, shardTexts, monthTexts, {
-  ...(args.from === undefined ? {} : { from: args.from }),
-  ...(args.through === undefined ? {} : { through: args.through }),
-  ...(args['served-through'] === undefined ? {} : { servedThrough: args['served-through'] }),
-  today: new Date().toISOString().slice(0, 10),
-  check: args.check,
-});
+let run: DailyRun;
+
+try {
+  run = generateDaily(manifestText, shardTexts, monthTexts, {
+    ...(args.from === undefined ? {} : { from: args.from }),
+    ...(args.through === undefined ? {} : { through: args.through }),
+    ...(args['served-through'] === undefined ? {} : { servedThrough: args['served-through'] }),
+    today: new Date().toISOString().slice(0, 10),
+    check: args.check,
+  });
+} catch (e) {
+  // A bad argument or a broken history is a plain Error whose message says it all. Anything else is a bug, so it keeps
+  // its stack.
+  if (!(e instanceof Error) || e.constructor !== Error) throw e;
+  console.error(e.message);
+  process.exit(1);
+}
 
 if (args.check) {
   const differ = [...run.files].filter(([rel, text]) => !existsSync(join(root, rel)) || read(rel) !== text).map(([rel]) => rel);

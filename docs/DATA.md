@@ -445,7 +445,7 @@ npm run data:typecheck # strict TypeScript check of tools/data
 - `npm run data:daily -- --through 2029-06-30` extends the schedule. The reserve lasts to about 2030-03-19 (the daily report's fresh run).
 - `--served-through YYYY-MM-DD` sets the last date that may have been served, if that's later than the default: the day after the run's UTC date. Pass the date the commit will be live by.
 - `npm run data:daily -- --check` writes nothing. It reproduces the recorded schedule, with its recorded `servedThrough`, and fails if any file differs. `data:validate` runs the same check.
-- The schedule was started with `npm run data:daily -- --from 2026-11-01 --through 2028-12-31`. `--from` is for the first run only: the start never moves.
+- The schedule was started with `npm run data:daily -- --from 2026-11-01 --through 2028-12-31`. `--from` is for the first run only: the start never moves. `--through` only extends the schedule; a date before its last one is an error.
 
 The code lives in `tools/data/`, and in `src/core/`, which it shares with the app:
 - `fetch.ts`, `build.ts`, `daily.ts` and `validate.ts`.
