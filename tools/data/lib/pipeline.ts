@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { absJudge } from '../../../src/core/abs.ts';
-import { dealTen, pilesOf, tenProblems, type Card } from '../../../src/core/deal.ts';
+import { dealTen, pilesOf, type Card } from '../../../src/core/deal.ts';
 import { crossing } from '../../../src/core/kinematics.ts';
 import { hash32, mulberry32 } from '../../../src/core/rng.ts';
 import {
@@ -108,16 +108,15 @@ function cardOf(e: PoolEntry): DealCard {
   };
 }
 
+// Deals a shard's tens with a seeded rand and lists the deals a short pile stopped. A ten that breaks the rules never
+// comes back to be listed: dealTen throws on one.
 export function dealingCheck(cards: readonly Card[], seed: string, deals: number) {
   const piles = pilesOf(cards);
   const rand = mulberry32(hash32(seed));
   const problems: string[] = [];
 
   for (let k = 0; k < deals; k++) {
-    const ten = dealTen(piles, rand);
-    const found = ten ? tenProblems(ten) : ['not enough pitches'];
-
-    for (const p of found) problems.push(`deal ${k}: ${p}`);
+    if (!dealTen(piles, rand)) problems.push(`deal ${k}: not enough pitches`);
   }
 
   return {
