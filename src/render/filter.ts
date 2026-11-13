@@ -159,7 +159,8 @@ function convolve(src: Float32Array, dst: Float32Array, lines: number, len: numb
 /**
  * An exact separable Gaussian over a work canvas's pixels, in premultiplied floats. Summing faint drawImage taps
  * rounds each tap to 8 bits, and WebKit rounds them up, so a 19-tap blur of a dark navy comes out grey; here nothing
- * is rounded until the end. Outside the canvas counts as transparent, as it does for the native filter.
+ * is rounded until the end. Outside the work canvas counts as transparent: it already reaches as far past the
+ * target's edges as the native filter reads.
  */
 function blurExact(c: CanvasRenderingContext2D, w: number, h: number, sigma: number): void {
   const R = Math.max(1, Math.ceil(sigma * 3));
@@ -257,16 +258,16 @@ function composite(g: CanvasRenderingContext2D, src: HTMLCanvasElement, box: Box
 const DETECT = 8;
 
 /**
- * The part of the target a block draws in, grown by `reach` (how far its blur spreads), or null if it draws nothing.
- * The block is drawn once more on a coarse work canvas, whose alpha shows where it went.
+ * The part of `area` a block draws in, grown by `reach` (how far its blur spreads), or null if it draws nothing
+ * there. The block is drawn once more on a coarse work canvas, whose alpha shows where it went.
  */
-function contentBox(draw: (c: CanvasRenderingContext2D) => void, m: DOMMatrix, W: number, H: number, reach: number): Box | null {
-  const dw = Math.ceil(W / DETECT);
-  const dh = Math.ceil(H / DETECT);
+function contentBox(draw: (c: CanvasRenderingContext2D) => void, m: DOMMatrix, area: Box, reach: number): Box | null {
+  const dw = Math.ceil(area.w / DETECT);
+  const dh = Math.ceil(area.h / DETECT);
   const d = scratch(2, dw, dh);
 
   d.save();
-  d.setTransform(m.a / DETECT, m.b / DETECT, m.c / DETECT, m.d / DETECT, m.e / DETECT, m.f / DETECT);
+  d.setTransform(m.a / DETECT, m.b / DETECT, m.c / DETECT, m.d / DETECT, (m.e - area.x) / DETECT, (m.f - area.y) / DETECT);
   draw(d);
   d.restore();
   const px = d.getImageData(0, 0, dw, dh).data;
@@ -286,10 +287,12 @@ function contentBox(draw: (c: CanvasRenderingContext2D) => void, m: DOMMatrix, W
   }
   if (x1 < 0) return null;
   const pad = Math.ceil(reach) + 2 * DETECT;
-  const l = Math.max(0, x0 * DETECT - pad);
-  const t = Math.max(0, y0 * DETECT - pad);
+  const l = Math.max(area.x, area.x + x0 * DETECT - pad);
+  const t = Math.max(area.y, area.y + y0 * DETECT - pad);
+  const r = Math.min(area.x + area.w, area.x + (x1 + 1) * DETECT + pad);
+  const b = Math.min(area.y + area.h, area.y + (y1 + 1) * DETECT + pad);
 
-  return { x: l, y: t, w: Math.min(W, (x1 + 1) * DETECT + pad) - l, h: Math.min(H, (y1 + 1) * DETECT + pad) - t };
+  return { x: l, y: t, w: r - l, h: b - t };
 }
 
 /**
@@ -337,7 +340,11 @@ export function withFilter(
 
     return;
   }
-  const box = k <= 4 ? contentBox(draw, m, W, H, blur ? 3 * spec.blur : 0) : { x: 0, y: 0, w: W, h: H };
+  const reach = blur ? Math.ceil(3 * spec.blur) : 0;
+  // The native filter blurs in what's drawn up to 3σ past the canvas edge (the catcher's helmet runs off the bottom),
+  // so the work area reaches that far out too.
+  const area = { x: -reach, y: -reach, w: W + 2 * reach, h: H + 2 * reach };
+  const box = k <= 4 ? contentBox(draw, m, area, reach) : area;
 
   if (!box) return;
   const sw = Math.ceil(box.w / k);

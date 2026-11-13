@@ -16,6 +16,9 @@ const PITCH = 8;
 const QUERY = `state=pitch&i=${PITCH}&t=-0.6`;
 // Rows of the strip at the top and bottom that set the infield and helmet levels.
 const LEVEL_ROWS = 0.12;
+// Levels any row of the frame foot may drift from Edge native. Clipping the blur at the frame edge put the worst row
+// 21-25 levels off, the infield showing through the helmet; blurring in what's past the edge brings it under 2.
+const FOOT_GAP = 4;
 
 interface Strip {
   x0: number;
@@ -93,8 +96,37 @@ async function measureEdge(page: Page, s: Strip): Promise<Edge> {
 
 const rms = (a: number[], b: number[]): number => Math.sqrt(a.reduce((m, v, i) => m + (v - b[i]) ** 2, 0) / a.length);
 
+/**
+ * Mean colour per row of the strip's columns over the bottom 3 sigma of the frame. The helmet runs off the bottom
+ * edge there, and a blur that ignores what's drawn past the edge lets the infield show through it.
+ */
+async function frameFoot(page: Page, s: Strip): Promise<number[][]> {
+  return page.evaluate((s) => {
+    const c = document.getElementById('scene') as HTMLCanvasElement;
+    const dpr = c.width / innerWidth;
+    const x0 = Math.round(s.x0 * dpr);
+    const y0 = Math.round((innerHeight - 3 * s.sigma) * dpr);
+    const img = (c.getContext('2d') as CanvasRenderingContext2D).getImageData(x0, y0, Math.round(s.x1 * dpr) - x0, c.height - y0);
+    const rows: number[][] = [];
+
+    for (let y = 0; y < img.height; y++) {
+      const sum = [0, 0, 0];
+
+      for (let x = 0; x < img.width; x++) {
+        for (let k = 0; k < 3; k++) sum[k] += img.data[4 * (y * img.width + x) + k];
+      }
+      rows.push(sum.map((v) => v / img.width));
+    }
+
+    return rows;
+  }, s);
+}
+
+/** The largest gap between two row profiles, in any channel of any row. */
+const worstRow = (a: number[][], b: number[][]): number => Math.max(...a.map((row, y) => Math.max(...row.map((v, k) => Math.abs(v - b[y][k])))));
+
 /** Edge with its native canvas filter, at the page's size and density: the reference every engine is held to. */
-async function nativeReference(page: Page, s: Strip, baseURL: string | undefined): Promise<Edge> {
+async function nativeReference(page: Page, s: Strip, baseURL: string | undefined): Promise<{ edge: Edge; foot: number[][] }> {
   const size = page.viewportSize();
   const dpr = await page.evaluate(() => devicePixelRatio);
   const browser: Browser = await chromium.launch(process.env.CI ? {} : { channel: 'msedge' });
@@ -105,7 +137,7 @@ async function nativeReference(page: Page, s: Strip, baseURL: string | undefined
 
     await open(ref, QUERY);
 
-    return await measureEdge(ref, s);
+    return { edge: await measureEdge(ref, s), foot: await frameFoot(ref, s) };
   } finally {
     await browser.close();
   }
@@ -118,18 +150,22 @@ test('the lens defocuses the catcher whichever way the engine draws it', async (
 
   await open(page, QUERY);
   const edge = await measureEdge(page, s);
-  const ref = await nativeReference(page, s, baseURL);
+  const foot = await frameFoot(page, s);
+  const { edge: ref, foot: refFoot } = await nativeReference(page, s, baseURL);
   const diff = rms(edge.profile, ref.profile);
+  const footGap = worstRow(foot, refFoot);
 
   testInfo.annotations.push(
     { type: 'canvasFilter', description: edge.filter },
     { type: 'helmet edge', description: `25-75% rise ${edge.spread.toFixed(1)} px for a lens blur of ${s.sigma.toFixed(1)} px (Edge native ${ref.spread.toFixed(1)} px); infield ${edge.field.toFixed(1)} and helmet ${edge.helmet.toFixed(1)} levels (Edge native ${ref.field.toFixed(1)} and ${ref.helmet.toFixed(1)}); profile RMS against Edge ${diff.toFixed(2)} levels` },
+    { type: 'frame foot', description: `helmet where it runs off the bottom: worst row ${footGap.toFixed(1)} levels from Edge native` },
   );
   expect(['native', 'fallback']).toContain(edge.filter);
   // a Gaussian of sigma s rises 25-75% over 1.35 s; an unblurred edge would rise in a pixel or two
   expect(edge.spread).toBeGreaterThan(0.8 * s.sigma);
   expect(edge.spread).toBeLessThan(2 * s.sigma);
   expect(diff).toBeLessThan(3);
+  expect(footGap).toBeLessThan(FOOT_GAP);
   expect(errors).toEqual([]);
 });
 
@@ -140,9 +176,11 @@ test('the forced fallback blur matches the native canvas filter', async ({ page,
 
   await open(page, QUERY);
   const native = await measureEdge(page, s);
+  const nativeFoot = await frameFoot(page, s);
 
   await open(page, `${QUERY}&canvasFilter=fallback`);
   const fallback = await measureEdge(page, s);
+  const footGap = worstRow(await frameFoot(page, s), nativeFoot);
   const diff = rms(fallback.profile, native.profile);
   const frame = await page.evaluate(() => {
     const c = document.getElementById('scene') as HTMLCanvasElement;
@@ -150,11 +188,12 @@ test('the forced fallback blur matches the native canvas filter', async ({ page,
     return { w: c.width, h: c.height };
   });
 
-  testInfo.annotations.push({ type: 'fallback vs native', description: `rise ${fallback.spread.toFixed(1)} vs ${native.spread.toFixed(1)} px; profile RMS ${diff.toFixed(2)} levels at ${frame.w}x${frame.h}` });
+  testInfo.annotations.push({ type: 'fallback vs native', description: `rise ${fallback.spread.toFixed(1)} vs ${native.spread.toFixed(1)} px; profile RMS ${diff.toFixed(2)} levels at ${frame.w}x${frame.h}; frame foot worst row ${footGap.toFixed(1)} levels` });
   expect(native.filter).toBe('native');
   expect(fallback.filter).toBe('fallback');
   expect(Math.abs(fallback.spread - native.spread)).toBeLessThan(0.2 * native.spread);
   expect(diff).toBeLessThan(2);
+  expect(footGap).toBeLessThan(FOOT_GAP);
 });
 
 interface FrameStats {
