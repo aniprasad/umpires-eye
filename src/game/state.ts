@@ -4,16 +4,19 @@ import { prep } from '../math/kinematics';
 import { createLens, type Lens } from '../math/lens';
 import type { Pitch } from '../math/types';
 import type { CallOrNone, Result } from '../math/words';
+import { anotherTen, type AnotherTen } from './another';
 
 export type Phase = 'boot' | 'start' | 'pitch' | 'reveal' | 'replay' | 'card';
 
-/** The loaded dataset and everything derived from it once. Another ten asks the source for its deck when it's first played. */
+/** The loaded dataset and everything derived from it once. */
 export interface World {
   source: PitchSource;
   /** Today's Ten, prepared once, so per-pitch caches (stance, framing, path dots) live for the session. */
   today: PreparedPitch[];
   /** Fitted once, to the source's lens points, so it never shifts with what's loaded. */
   lens: Lens;
+  /** Deals Another ten for this page, asking the source for its deck when it's first wanted. */
+  another: AnotherTen;
 }
 
 let current: World | null = null;
@@ -23,6 +26,7 @@ export function createWorld(source: PitchSource, today: readonly Pitch[]): World
     source,
     today: today.map(prep),
     lens: createLens(source.lensPoints),
+    another: anotherTen(source, today),
   };
 }
 

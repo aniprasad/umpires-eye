@@ -1,11 +1,11 @@
 import { prep } from '../math/kinematics';
-import type { Deck } from '../data/source';
+import { LoadError } from '../data/source';
 import { isWorldSeries } from '../data/ws2026';
 import { BEAT, FIRST_BEAT, REPLAY_RATE, WINDUP } from '../math/constants';
-import { pickPoolTen, seasonLede, todayLede } from '../math/deal';
+import { seasonLede, todayLede } from '../math/deal';
 import { callWindowEnd, clockLeft, countAfter, judged, replayLength, revealAt, urlStateResult } from '../math/flow';
 import { PT } from '../math/pitcher';
-import type { Call } from '../math/types';
+import type { Call, Pitch } from '../math/types';
 import { clamp, easeOut3, lerp } from '../math/util';
 import { drawBall } from '../render/ball';
 import { drawMitt } from '../render/catcher';
@@ -22,6 +22,15 @@ import { Q, REDUCED, SELFTEST, STATE } from './params';
 import { curP, G, world } from './state';
 
 const sNow = (now: number): number => (G.frozenS !== null ? G.frozenS : (now - G.trel) / 1000);
+
+/** The device asks for less data (Save-Data, which Chromium reports and Safari doesn't). */
+const saveData = (): boolean => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+
+// Safari has no requestIdleCallback; §4.1 waits 2 s there instead.
+const whenIdle = (run: () => void): void => {
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(() => run());
+  else window.setTimeout(run, 2000);
+};
 
 export function sceneState(now: number): SceneState {
   const P = curP();
@@ -106,6 +115,8 @@ export function beginPitch(i: number, opts: { first?: boolean } = {}): void {
   UI.score.classList.remove('yield');
   window.clearTimeout(G.tBody);
   window.clearTimeout(G.tAhead);
+  // which pitch is in play, for tests
+  UI.app.dataset.pitch = P.id;
   setPhase('pitch');
   updateScore(false);
   announce(`Pitch ${i + 1} of ${G.set.length}. ${P.batter.name}, bats ${P.batter.side === 'R' ? 'right' : 'left'}, against ${P.pitcher.name}.`);
@@ -181,7 +192,12 @@ export function startReplay(): void {
 export function nextPitch(): void {
   if (G.phase !== 'reveal' && G.phase !== 'replay') return;
   if (G.i + 1 < G.set.length) beginPitch(G.i + 1);
-  else showCards();
+  else {
+    showCards();
+    // The season's shard is parsed here if it isn't yet, while the card is up and nothing moves. A failure waits for the
+    // press, which tries again and says what went wrong.
+    if (!saveData()) world().another.ready().catch(() => undefined);
+  }
 }
 
 export function startGame(): void {
@@ -198,26 +214,26 @@ export function startGame(): void {
 let dealing = false;
 
 /**
- * "Play another ten": a fresh deal from the source's deck, never repeating Today's Ten. The deck loads when it's first
- * asked for, so the season's shard waits until the player wants more than Today's Ten (§4.2).
+ * "Play another ten": the next ten from the source's decks, with none of Today's Ten and no pitch dealt earlier on this
+ * page (§3). Under Save-Data, this is when the season's shard loads.
  */
 export async function playAnother(): Promise<void> {
   const w = world();
-  let deck: Deck;
+  let ten: Pitch[];
 
   // one deal per press, however long the deck takes
   if (dealing) return;
   dealing = true;
   try {
-    deck = await w.source.deck();
+    ten = await w.another.deal();
   } catch (e) {
-    fail(`More pitches didn't load: ${e instanceof Error ? e.message : String(e)}`);
+    fail(e instanceof LoadError ? `More pitches didn't load: ${e.message}` : e instanceof Error ? e.message : String(e));
 
     return;
   } finally {
     dealing = false;
   }
-  G.set = pickPoolTen(deck.pitches, w.today, Math.random).map(prep);
+  G.set = ten.map(prep);
   G.mode = 'pool';
   G.results = [];
   G.i = 0;
@@ -360,6 +376,8 @@ export function bootFlow(): void {
     UI.indPitch.textContent = `1/${G.set.length}`;
     updateScore(false);
     if (!SELFTEST) UI.btnPlay.focus({ preventScroll: true });
+    // Another ten's shard loads while the player reads the start screen, unless the device asks for less data (§4.1).
+    if (!saveData()) whenIdle(() => w.source.prefetch?.());
   }
   render(performance.now());
   const de = document.documentElement;
