@@ -19,44 +19,21 @@ import {
   SEED,
   TRUTH_NOTE,
 } from '../../src/core/rules.ts';
-import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT, type ShardDoc } from '../../src/core/schema.ts';
+import {
+  FORMAT_VERSION,
+  MANIFEST_FORMAT,
+  SHARD_FORMAT,
+  STATS_FORMAT,
+  type ManifestDoc,
+  type ShardDoc,
+  type StatsDoc,
+} from '../../src/core/schema.ts';
 import { cacheDir, openCache } from './lib/cache.ts';
 import { SESSION_BUDGET_GZIP } from './lib/constants.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
 import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, REPORT_PATH, sessionSizes, sha256 } from './lib/pipeline.ts';
 import { compareGames } from './lib/schedule.ts';
-import type { Tally } from './lib/stats.ts';
-
-interface ShardMeta {
-  file: string;
-  pitches: number;
-  dealable: number;
-  bytes: number;
-  sha256: string;
-}
-
-interface Manifest {
-  format: string;
-  version: number;
-  season: number;
-  credit: string;
-  truthNote: string;
-  coverage: { calledPitches: number; challenges: number };
-  pool: { pitches: number; dealable: number; close: number; near: number; mid: number; calibrators: number; challenged: number };
-  shards: ShardMeta[];
-}
-
-interface Stats {
-  format: string;
-  version: number;
-  season: number;
-  credit: string;
-  truthNote: string;
-  calledPitches: { total: number };
-  challenges: { total: number; overturned: number; absAgreesWithFinalCall: Tally };
-  umpVsAbs: { overall: Tally; close: Tally };
-}
 
 const MARGIN_TOLERANCE_IN = 0.011;
 
@@ -78,8 +55,8 @@ if (!manifestText || !statsText) {
   process.exit(1);
 }
 
-const manifest = JSON.parse(manifestText) as Manifest;
-const stats = JSON.parse(statsText) as Stats;
+const manifest = JSON.parse(manifestText) as ManifestDoc;
+const stats = JSON.parse(statsText) as StatsDoc;
 const listed = manifest.shards.map((s) => s.file).sort();
 const onDisk = readdirSync(join(root, OUT_DIR, 'shards'))
   .map((f) => `shards/${f}`)

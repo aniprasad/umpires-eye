@@ -66,15 +66,19 @@ export interface Fields {
   challenge: readonly string[];
 }
 
-/** A shard as written: its head, its place among the shards, and five tables of rows. */
-export interface ShardDoc {
+/** What every season file starts with. */
+export interface FileHead {
   format: string;
   version: number;
   season: number;
-  shard: number;
-  shards: number;
   credit: string;
   truthNote: string;
+}
+
+/** A shard as written: its head, its place among the shards, and five tables of rows. */
+export interface ShardDoc extends FileHead {
+  shard: number;
+  shards: number;
   fields: Fields;
   /** A pitch type code's name and family. */
   pitchTypes: Record<string, [string, string]>;
@@ -83,6 +87,111 @@ export interface ShardDoc {
   umpires: unknown[][];
   players: unknown[][];
   pitches: unknown[][];
+}
+
+/** A shard, as the manifest lists it. */
+export interface ShardFileMeta {
+  /** Relative to the manifest, e.g. "shards/00.json". */
+  file: string;
+  pitches: number;
+  dealable: number;
+  bytes: number;
+  sha256: string;
+}
+
+/** manifest.json, in the MANIFEST_FORMAT. docs/DATA.md describes each block. */
+export interface ManifestDoc extends FileHead {
+  source: string;
+  coverage: {
+    gameTypes: readonly string[];
+    /** YYYY-MM-DD, or null when there are no games. */
+    firstDate: string | null;
+    lastDate: string | null;
+    games: number;
+    gamesWithVenue: number;
+    calledPitchesWithPlateUmpire: number;
+    calledPitches: number;
+    challenges: number;
+  };
+  /** Each convention, in words. */
+  conventions: Record<string, string>;
+  rules: {
+    ballRadiusIn: number;
+    plateHalfWidthIn: number;
+    judgePlaneYFt: number;
+    frontOfPlateYFt: number;
+    rubberYFt: number;
+    dealBox: { zMin: number; zMax: number; xMax: number };
+    maxFlightS: number;
+    closeIn: number;
+    nearIn: number;
+    calibratorMinIn: number;
+  };
+  /** A game type code's name. */
+  gameTypes: Record<string, string>;
+  /** A team abbreviation's name. */
+  teams: Record<string, string>;
+  /** A pitch type code's name and family. */
+  pitchTypes: Record<string, [string, string]>;
+  fields: Fields;
+  /** What the shards hold, what the sampler added and at what rates, and the season's dealable pitches in each band. */
+  pool: {
+    pitches: number;
+    dealable: number;
+    closeWithinIn: number;
+    close: number;
+    nearWithinIn: number;
+    near: number;
+    /** Between the near and calibrator bands: in the pool only when challenged, and never dealt. */
+    mid: number;
+    calibratorMinIn: number;
+    calibrators: number;
+    challenged: number;
+    challengedDealable: number;
+    sampled: { near: number; calibrators: number };
+    sampledPerClose: { near: number; calibrator: number };
+    seasonDealable: { close: number; near: number; mid: number; clear: number };
+  };
+  session: { budgetGzipBytes: number; files: readonly string[] };
+  shards: ShardFileMeta[];
+}
+
+/** How many calls agreed, of how many, and that as a percentage to two decimals (0 when there were none). */
+export interface Tally {
+  agree: number;
+  total: number;
+  pct: number;
+}
+
+/** A tally of the calls within withinIn inches of the zone's edge. */
+export interface BandTally extends Tally {
+  withinIn: number;
+}
+
+/**
+ * stats.json, in the STATS_FORMAT: season totals over every called pitch, not just the pool's. Counts by game type are
+ * keyed by its code.
+ */
+export interface StatsDoc extends FileHead {
+  games: { total: number; byType: Record<string, number> };
+  calledPitches: { total: number; calledStrikes: number; balls: number; byType: Record<string, number> };
+  excluded: { ballInDirt: number; automatic: number; noTracking: number };
+  challenges: {
+    total: number;
+    overturned: number;
+    /** Keyed by who challenged: catcher, pitcher or batter. */
+    byRole: Record<string, { challenges: number; overturned: number }>;
+    absAgreesWithFinalCall: Tally;
+  };
+  /** The plate umpire's original call against our ABS reconstruction, except afterChallenges, which takes the final call. */
+  umpVsAbs: {
+    overall: Tally;
+    close: BandTally;
+    near: BandTally;
+    afterChallenges: Tally;
+    missed: { strikesCalledBalls: number; ballsCalledStrikes: number };
+  };
+  umpVsAbsByGameType: Record<string, { overall: Tally; close: BandTally }>;
 }
 
 export interface StoredGame {

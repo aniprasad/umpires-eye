@@ -30,7 +30,9 @@ import {
   PLAYER_FIELDS,
   SHARD_FORMAT,
   STATS_FORMAT,
+  type ManifestDoc,
   type Row,
+  type StatsDoc,
 } from '../../../src/core/schema.ts';
 import { GAME_TYPE_NAMES, GAME_TYPES, SESSION_BUDGET_GZIP } from './constants.ts';
 import { familyOf, gameRow, pitchRow, quantize, round, rowsJson, type Quantized } from './format.ts';
@@ -291,7 +293,9 @@ export function buildDataset(inputs: Inputs): BuildResult {
   }
 
   const pitchTypes = Object.fromEntries(
-    [...typeNames].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([code, names]) => [code, [mostCommon(names), familyOf(code)]]),
+    [...typeNames]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([code, names]): [string, [string, string]] => [code, [mostCommon(names), familyOf(code)]]),
   );
   const gameById = new Map(games.map((g) => [g.gamePk, g]));
   const fields = {
@@ -393,7 +397,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     sha256: sha256(texts[i] ?? ''),
   }));
   const usedTeams = new Set(games.flatMap((g) => [g.awayId, g.homeId]));
-  const manifest = {
+  const manifest: ManifestDoc = {
     format: MANIFEST_FORMAT,
     version: FORMAT_VERSION,
     season: SEASON,
@@ -451,7 +455,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     shards: shardMeta,
   };
   const ump = umpVsAbs(all);
-  const stats = {
+  const stats: StatsDoc = {
     format: STATS_FORMAT,
     version: FORMAT_VERSION,
     season: SEASON,
