@@ -1,162 +1,27 @@
-import { readFileSync } from 'node:fs';
-import { chromium, expect, test } from '@playwright/test';
-import type { Browser, Page } from '@playwright/test';
-import { fromPoolFile, type PoolFile } from '../../src/data/ws2026';
-import { catcherRig } from '../../src/math/catcher';
-import { playPoints } from '../../src/math/deal';
-import { dofBlur } from '../../src/math/dof';
-import { prep } from '../../src/math/kinematics';
-import { createLens } from '../../src/math/lens';
-import { eyeOf } from '../../src/math/stance';
-import { mockupUrl, seedRandom, trackErrors, waitReady } from './helpers';
+import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { QUERY, frameFoot, helmetStrip, measureEdge, open, readReference, referenceKey, shootCatcher } from './catcher';
+import { mockupUrl, trackErrors, waitReady } from './helpers';
 
 // A trace's screencast copies every frame the page draws, and its DOM snapshots wait on the page between steps. In
 // WebKit they made the frames the speed test compares three times slower. These tests time frames and read pixels, so
 // their traces keep the steps and their timings without either. (Playwright sets traces per file, not per test.)
 test.use({ trace: { mode: 'retain-on-failure', screenshots: false, snapshots: false } });
 
-// Pitch 8 of Today's Ten (a right-hander) frozen in the windup: the catcher's helmet rises out of the bottom edge on the
-// side away from the batter. Its top edge is the scene's strongest defocused edge, against the lit infield.
-const PITCH = 8;
-const QUERY = `state=pitch&i=${PITCH}&t=-0.6`;
-// Rows of the strip at the top and bottom that set the infield and helmet levels.
-const LEVEL_ROWS = 0.12;
 // Levels any row of the frame foot may drift from Edge native. Clipping the blur at the frame edge put the worst row
 // 21-25 levels off, the infield showing through the helmet; blurring in what's past the edge brings it under 2.
 const FOOT_GAP = 4;
 
-interface Strip {
-  x0: number;
-  x1: number;
-  y0: number;
-  y1: number;
-  /** The lens blur at the helmet, CSS px. */
-  sigma: number;
-}
-
-interface Edge {
-  dpr: number;
-  filter: string;
-  /** Luminance per row of canvas pixels, averaged across the strip. */
-  profile: number[];
-  /** Mean luminance of the infield above the edge and of the helmet below it. */
-  field: number;
-  helmet: number;
-  /** 25-75% rise of the edge, CSS px. */
-  spread: number;
-}
-
-const pool = JSON.parse(readFileSync(new URL('../../public/data/ws-2026/pool.json', import.meta.url), 'utf8')) as PoolFile;
-const data = fromPoolFile(pool);
-const lens = createLens(playPoints(data.today, data.pitches));
-
-/** A 40 px column strip across the top edge of the catcher's helmet, from the same math the renderer uses. */
-function helmetStrip(W: number, H: number): Strip {
-  const P = prep(data.today[PITCH - 1]);
-  const cam = lens.camFor(W, H, P);
-  const m = catcherRig(P.batter.side, eyeOf(P));
-  const q = cam.p(m.head);
-  const top = q.y - m.r * q.k;
-  const sigma = Math.max(2, dofBlur(cam, q.d));
-
-  return { x0: Math.round(q.x - 20), x1: Math.round(q.x + 20), y0: Math.round(top - 3 * sigma), y1: Math.min(H, Math.round(top + 3 * sigma)), sigma };
-}
-
-async function open(page: Page, query: string): Promise<void> {
-  await seedRandom(page);
-  await page.goto(`./?${query}`);
-  await waitReady(page);
-}
-
-async function measureEdge(page: Page, s: Strip): Promise<Edge> {
-  const { dpr, filter, profile } = await page.evaluate((s) => {
-    const c = document.getElementById('scene') as HTMLCanvasElement;
-    const dpr = c.width / innerWidth;
-    const x0 = Math.round(s.x0 * dpr);
-    const y0 = Math.round(s.y0 * dpr);
-    const img = (c.getContext('2d') as CanvasRenderingContext2D).getImageData(x0, y0, Math.round(s.x1 * dpr) - x0, Math.round(s.y1 * dpr) - y0);
-    const rows: number[] = [];
-
-    for (let y = 0; y < img.height; y++) {
-      let sum = 0;
-
-      for (let x = 0; x < img.width; x++) {
-        const i = 4 * (y * img.width + x);
-
-        sum += 0.2126 * img.data[i] + 0.7152 * img.data[i + 1] + 0.0722 * img.data[i + 2];
-      }
-      rows.push(sum / img.width);
-    }
-
-    return { dpr, filter: document.documentElement.dataset.canvasFilter ?? '', profile: rows };
-  }, s);
-  const n = Math.max(1, Math.round(profile.length * LEVEL_ROWS));
-  const mean = (a: number[]): number => a.reduce((x, y) => x + y, 0) / a.length;
-  const field = mean(profile.slice(0, n));
-  const helmet = mean(profile.slice(-n));
-  const below = (f: number): number => profile.findIndex((v) => v < field - f * (field - helmet));
-
-  return { dpr, filter, profile, field, helmet, spread: (below(0.75) - below(0.25)) / dpr };
-}
-
 const rms = (a: number[], b: number[]): number => Math.sqrt(a.reduce((m, v, i) => m + (v - b[i]) ** 2, 0) / a.length);
-
-/**
- * Mean colour per row of the strip's columns over the bottom 3 sigma of the frame. The helmet runs off the bottom
- * edge there, and a blur that ignores what's drawn past the edge lets the infield show through it.
- */
-async function frameFoot(page: Page, s: Strip): Promise<number[][]> {
-  return page.evaluate((s) => {
-    const c = document.getElementById('scene') as HTMLCanvasElement;
-    const dpr = c.width / innerWidth;
-    const x0 = Math.round(s.x0 * dpr);
-    const y0 = Math.round((innerHeight - 3 * s.sigma) * dpr);
-    const img = (c.getContext('2d') as CanvasRenderingContext2D).getImageData(x0, y0, Math.round(s.x1 * dpr) - x0, c.height - y0);
-    const rows: number[][] = [];
-
-    for (let y = 0; y < img.height; y++) {
-      const sum = [0, 0, 0];
-
-      for (let x = 0; x < img.width; x++) {
-        for (let k = 0; k < 3; k++) sum[k] += img.data[4 * (y * img.width + x) + k];
-      }
-      rows.push(sum.map((v) => v / img.width));
-    }
-
-    return rows;
-  }, s);
-}
 
 /** The largest gap between two row profiles, in any channel of any row. */
 const worstRow = (a: number[][], b: number[][]): number => Math.max(...a.map((row, y) => Math.max(...row.map((v, k) => Math.abs(v - b[y][k])))));
 
-/** Edge with its native canvas filter, at the page's size and density: the reference every engine is held to. */
-async function nativeReference(page: Page, s: Strip, baseURL: string | undefined): Promise<{ edge: Edge; foot: number[][] }> {
-  const size = page.viewportSize();
-  const dpr = await page.evaluate(() => devicePixelRatio);
-  const browser: Browser = await chromium.launch(process.env.CI ? {} : { channel: 'msedge' });
-
-  try {
-    const context = await browser.newContext({ baseURL, viewport: size, deviceScaleFactor: dpr });
-    const ref = await context.newPage();
-
-    await open(ref, QUERY);
-
-    return { edge: await measureEdge(ref, s), foot: await frameFoot(ref, s) };
-  } finally {
-    await browser.close();
-  }
-}
-
-test('the lens defocuses the catcher whichever way the engine draws it', async ({ page, baseURL }, testInfo) => {
+test('the lens defocuses the catcher whichever way the engine draws it', async ({ page }, testInfo) => {
   const errors = trackErrors(page);
-  const size = page.viewportSize() ?? { width: 1440, height: 900 };
-  const s = helmetStrip(size.width, size.height);
-
-  await open(page, QUERY);
-  const edge = await measureEdge(page, s);
-  const foot = await frameFoot(page, s);
-  const { edge: ref, foot: refFoot } = await nativeReference(page, s, baseURL);
+  const { strip: s, edge, foot } = await shootCatcher(page);
+  // Edge with its native canvas filter at this page's size and density: the reference every engine is held to.
+  const { edge: ref, foot: refFoot } = readReference(testInfo, await referenceKey(page));
   const diff = rms(edge.profile, ref.profile);
   const footGap = worstRow(foot, refFoot);
 

@@ -33,6 +33,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 - `npx playwright install webkit` once, for the WebKit runs. Chromium-based runs use the installed Microsoft Edge (`channel: 'msedge'`), because Playwright's own Chromium doesn't run on Windows ARM64. CI on Linux uses Playwright's Chromium instead.
 - Projects:
   - `desktop-edge` and `desktop-webkit`: a keyboard round, screenshots at 1440×900 and 1024×768, the self-test page, the depth-of-field checks and the failure states (pitch data or card art that won't load).
+  - `native-reference` (Edge): draws the native canvas filter's reference for the depth-of-field check, at each desktop project's size and density. It runs first, in its own worker, and comes along whenever a desktop project runs.
   - `iphone` (WebKit) and `pixel` (Edge): touch rounds in device emulation.
   - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`. By default the mockup's footnotes take the height of the port's longer credit line, so the rest of the screen lines up. Set `UE_PARITY_ALIGN=0` to compare the pages untouched.
 - Run one project with `npx playwright test --project=desktop-webkit`.
