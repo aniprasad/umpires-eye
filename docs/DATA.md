@@ -2,7 +2,7 @@
 
 `public/data/season-2026/` holds every called pitch of the 2026 MLB season that the game can deal, each judged against our reconstruction of the ABS zone. It covers the regular season and the postseason (game types R, F, D, L and W).
 
-The files are built by a script in this repo (`tools/data/`) from the MLB Stats API. The build is reproducible: the same cached responses always give byte-identical files.
+The files are built by a script in this repo (`tools/data/`) from the MLB Stats API. The build is reproducible: the same cached responses always give byte-identical files. A second script schedules Today's Ten from the built files into monthly files under `daily/`, keeping what may already have been served (see [Today's Ten](#todays-ten)).
 
 ## Credit and terms
 
@@ -19,7 +19,7 @@ What is real and what is ours:
 | The 9-parameter trajectory fit, speed, extension | The umpire's original call on overturned pitches (the opposite of the final call) |
 | The batter's ABS zone (`strikeZoneTop`/`Bottom`) | The game state before each pitch (rebuilt from the play log, then cross-checked against the feed) |
 | Game, team, venue, umpire and player names, scheduled start times, roster heights | Each pitch's plate umpire where the crew changed during the game, read from the play log's umpire changes (an inference, explained below) |
-| | `dealable`, the pool and the shards |
+| | `dealable`, the pool, the shards and Today's Ten |
 
 ## Sources
 
@@ -252,34 +252,108 @@ The build deals 200 rounds from every shard with the mockup's Today's Ten rule a
 - 1 within 4.5 in;
 - in played order.
 
-**Sizes.** A play session downloads `manifest.json`, `stats.json` and one shard.
+**Sizes.** Before Play is enabled, the app loads `manifest.json`, the date's month file and `stats.json`: the boot fetch. A session adds one shard for Another ten.
 
 | File | Raw | Gzipped |
 |---|---|---|
+| `manifest.json` | about 16 KB | 5.2 KB |
+| A month file, `daily/YYYY-MM.json` | 94–104 KB | 32.5–35.5 KB (budget 50 KB) |
+| `stats.json` | about 3 KB | 0.9 KB |
+| **Boot fetch** (the manifest, the largest month file and stats) | | **41.6 KB** (budget 50 KB) |
 | One shard | 805–811 KB | 250–251 KB |
-| `manifest.json` | about 11 KB | 4 KB |
-| `stats.json` | about 3 KB | 1 KB |
-| **One play session** | | **255 KB** (budget 300 KB) |
+| **Largest session** (the boot fetch and the largest shard) | | **292 KB** (budget 300 KB) |
 | All 22 shards | about 17.8 MB | about 5.5 MB |
+| All 26 month files | about 2.6 MB | about 0.9 MB |
 
-The shard count comes from a fixed size (`PITCHES_PER_SHARD` = 3,500 in `tools/data/lib/pipeline.ts`), not from measured gzip size. Gzip output can differ between zlib builds, and the files must rebuild identically anywhere. The build fails if the largest session would exceed the budget.
+The shard count comes from a fixed size (`PITCHES_PER_SHARD` = 3,500 in `tools/data/lib/pipeline.ts`), not from measured gzip size. Gzip output can differ between zlib builds, and the files must rebuild identically anywhere. The build fails if manifest, stats and the largest shard would exceed the session budget; `data:validate` holds all three budgets, the month file included.
+
+## Today's Ten
+
+`npm run data:daily` chooses Today's Ten for every date from 2026-11-01 to 2028-12-31 ahead of time, and writes them to `daily/YYYY-MM.json`, one file per month. Everyone on the same date gets the same ten, and once a date may have been served, its ten never changes. `docs/M2-DESIGN.md` §2 has the design.
+
+**The reserve.** A quarter of the pool is held back for the schedule. A pitch is reserved when `unitHash("umpires-eye-2026|daily|" + id)` is below 0.25: `isDailyReserve` in `src/core/daily.ts`.
+- It rests on the ID alone, so the tools and the app agree on it, and a rebuild can't change it.
+- Another ten never deals from it, so nobody meets a future daily pitch early.
+- It holds 18,725 dealable pitches, among them 14,928 close calls (1,830 of them challenged), 1,899 near calls and 1,875 calibrators.
+
+**A day's ten** has the round's make-up: a calibrator first, then eight close calls (at least one challenged) and one near call, the nine in played order. It also keeps five variety rules, `varietyProblems` in `src/core/daily.ts`:
+
+| Rule | Counted over | Draws it turned down in the fresh run below |
+|---|---|---|
+| At most one pitch per game | all ten | 31 |
+| At least three left-handed and three right-handed batters | all ten | 201 |
+| At least two pitch families, and not every close call a fastball | the nine, and the eight close calls | 52 |
+| At least one pitch with two strikes or three balls | the nine | 228 |
+| At most three ABS-challenged close calls | the eight close calls | 36 |
+
+The calibrator counts toward spreading games and batter sides. It's an easy call by design, though, so the pitch families and the full count are looked for among the nine. The split of balls and strikes and the real ump's record are left to the draw: steering either would give something away or misstate the umpires.
+
+**Dealing.** Each date is dealt with core's `dealTen`, from the reserve's dealable pitches minus every ID another day holds.
+- The draw is mulberry32, seeded with FNV-1a of `umpires-eye-2026|today|<date>`.
+- A ten that breaks a variety rule is drawn again from the same stream, so a date always gets the same ten from the same pitches.
+- The nine follow the season's played order across shards: date, then the scheduled `start` from the games rows, then gamePk, at-bat and pitch. So doubleheaders come in the order they were played. A test proves it with a doubleheader whose early game has the higher gamePk and sits in the later shard.
+
+**History.** The month files are a lock: each run reads them before it writes.
+- `servedThrough` is the last date that may have been served anywhere. It defaults to the day after the run's UTC date, the latest local date on Earth, and never moves backwards. Pass `--served-through` with a later date if the commit won't be live by then.
+- On each run, every scheduled day is in one of three states:
+  - **Available** while all ten of its pitches are still in the pool and dealable. Its rows are refreshed from the current shards, so a data fix reaches the dailies too.
+  - **Unavailable** if a pitch has left the pool or stopped being dealable, and the date is on or before `servedThrough`. The day keeps its IDs, names the `missing` ones and ships no rows. The app has no Today's Ten that day.
+  - **Re-dealt** if the date is after `servedThrough` and a pitch has gone, or the ten no longer keeps the rules. Nobody can have played it, so it's dealt again with its own seed.
+- A served day isn't judged again. If a data fix moves one of its pitches across a band edge, it stays as everyone played it, and both the run and `data:validate` report the drift.
+- No ID is ever scheduled twice, history included. The first date never moves, and the schedule never shrinks.
+
+**The schedule as shipped:** 2026-11-01 to 2028-12-31, 792 days, all available. It was generated on 2026-11-13, so it's recorded as served through 2026-11-14, though nothing had been published yet.
+
+**Horizon and tries.** `tools/data/reports/season-2026-daily.json` records them. Its fresh run deals from the first date with no history until the reserve can't deal a ten, so the report depends only on the shards and the recorded dates.
+- The reserve lasts **1,235 days**, to 2030-03-19, before it runs out of challenged close calls. The 792 shipped days use 64% of it.
+- The variety rules take **1.40 draws a day on average, and 6 at most**. Of the 1,235 days, 888 pass on the first draw, 246 on the second, 66 on the third, 28 on the fourth, 3 on the fifth and 4 on the sixth. Over the 792 shipped days, the figures are 1.38 and 6.
+- The shipped schedule is exactly that run's first 792 days.
+- After it, the reserve still holds 8,592 close calls (561 of them challenged), 1,107 near calls and 1,083 calibrators.
+- The design estimated 1,220 days and 1.34 draws, with 5 at most. That was before the review rebuild, with the two-strike rule counted over all ten.
+
+**Checks.** Besides the rebuild, `data:validate` checks the schedule from the files alone, in `tools/data/lib/daily-check.ts`:
+- every month file reads with the app's decoder, carries the manifest's build id, and has the size and hash the manifest lists;
+- an available day's rows are exactly its shards' rows, every pitch on it is stored as dealable, and every table holds only what the rows reference;
+- each day after `servedThrough` keeps the round's make-up and the variety rules. A served day that no longer does is reported, not failed;
+- an unavailable day is on or before `servedThrough`, and names exactly the pitches that left the pool or stopped being dealable;
+- no ID is on two dates, and every ID is reserved;
+- the dates run from `first` to `last` without gaps, each in its own month's file;
+- the reserve count is recounted;
+- each month file is within 50 KB gzipped, the boot fetch within 50 KB and the largest session within 300 KB;
+- check mode reproduces every month file, the manifest and the report byte for byte.
 
 ## Format (version 1)
 
-All files are UTF-8 JSON. Shards keep one row per line so diffs stay readable. Each file starts with `format`, `version`, `season`, `credit` and `truthNote`.
+All files are UTF-8 JSON. Shards and month files keep one row per line so diffs stay readable. Every file's head has `format`, `version`, `season`, `build`, `credit` and `truthNote`, with `build` right after `season`, or after a month file's `month`.
+
+### The build id
+
+`build` names the content of one build. It's the first 12 hex digits of a sha256 over the shards' and `stats.json`'s text as they were before the id was stamped in: the sha256 of each text, one per line, the shards in order and then stats. (`tools/data/lib/build-id.ts`)
+- `data:build` stamps it right after `season` in the manifest, `stats.json`, every shard and the build report. A rebuild from the same inputs keeps it, and `data:daily` writing the manifest's daily block doesn't change it.
+- `data:daily` stamps each month file with the id of the shards its rows came from.
+- So a file whose id differs from the manifest's comes from another build: the app refetches the manifest once, as `docs/M2-DESIGN.md` §4.3 describes.
+- `data:validate` checks that every file carries the manifest's id, and recomputes the id from the files with their stamps taken out.
 
 ### `manifest.json` (`umpires-eye.season-manifest`)
 
 | Key | Contents |
 |---|---|
+| `build` | The build id |
 | `source`, `coverage` | Endpoints; game types, first and last date, games (and how many have a venue), called pitches (and how many name a plate umpire), challenges |
 | `conventions` | Units, axes, trajectory, ABS rule, calls, `marginIn`, bases, games and played order, `umpire`, flags, ids, in words |
 | `rules` | The numbers: ball radius, plate half-width, judging plane, `dealBox`, `maxFlightS`, close/near/calibrator bands |
 | `gameTypes`, `teams`, `pitchTypes` | Names for codes; `pitchTypes` maps a code to `[name, family]` (fastball, breaking, offspeed or other) |
 | `fields` | Column names for every shard table |
 | `pool` | The composition above: shipped counts, `sampled` (what the sampler added), `sampledPerClose` (the rates) and `seasonDealable` (the season counts) |
-| `session` | The download budget |
+| `session` | The session budget, and the files a session loads |
 | `shards[]` | `file`, `pitches`, `dealable`, `bytes`, `sha256` for each shard |
+| `daily` | Today's Ten, last in the file. `data:daily` alone writes it, and `data:build` keeps it as it is. |
+
+The `daily` block:
+- `first` and `last`: the horizon, the first and last dates with a scheduled ten. Outside it there's no Today's Ten.
+- `servedThrough`: the last date that may have been served. That day's ten and every earlier one never change.
+- `reserve`: `share` is the reserve rule's cut-off, 0.25. `pitches` counts the dealable pool pitches whose IDs are reserved (18,725), on the shards whose build id the month files carry. `data:daily` counts it on every run. After a rebuild, the block keeps the old count until `data:daily` runs again, but `data:validate` recounts it and fails meanwhile, as it does on the month files' old build id.
+- `files[]`: `month`, `file`, `bytes` and `sha256` for each month file, one for every month from `first` to `last`.
 
 ### `stats.json` (`umpires-eye.season-stats`)
 
@@ -337,34 +411,54 @@ Pitch fields, all describing the moment before the pitch:
 
 Axes are the catcher's view: x across the plate (+x toward first base), y toward the pitcher (0 at the back tip of the plate, front edge at 17/12 ft), z up.
 
+### `daily/YYYY-MM.json` (`umpires-eye.season-daily`)
+
+A month of Today's Ten, in a shard's format so that one decoder reads both: `decodeTables(doc, DAILY_FORMAT)`.
+- The head adds `month` (YYYY-MM), and `build` is the id of the shards its rows came from. `fields` are the shards' field lists, and `pitchTypes` holds only the types its rows use.
+- `days` has one line per date, in order:
+  - `{"ids": [...], "available": true}`: ten pitch IDs, the calibrator first, then the nine in played order. A pitch's place in `ids` is its order in the round.
+  - `{"ids": [...], "available": false, "missing": [...]}`: a served day that has lost a pitch, as described above. It ships no rows.
+- Then the five tables, as in a shard, with only the rows of available days' pitches, each exactly as its shard stores it, and only the games, venues, plate umpires and players those rows reference. Each pitch is scheduled on one date only, so each row appears once.
+
 ## Rebuilding
 
 You need Node 22.18 or later (the scripts are TypeScript run with Node's type stripping). The scripts have no dependencies. Only `data:typecheck` needs `typescript` and `@types/node`, which `npm ci` installs with the app's dev dependencies.
 
 ```sh
 npm run data:fetch     # once: downloads into the cache (about 2,500 requests, 263 MB)
-npm run data:build     # about 15 s, reads only the cache, writes public/data/season-2026 and the report
+npm run data:build     # about 20 s, reads only the cache, writes public/data/season-2026 (but daily/) and the report
+npm run data:daily     # about 5 s: refreshes Today's Ten for the build, keeping its history (see below)
 npm run data:validate  # checks the files, then rebuilds from the cache and compares them byte for byte
-npm run data:test      # unit tests for the math and parsers, with synthetic fixtures
+npm run data:test      # unit tests for the math, the parsers and the schedule, with synthetic fixtures
 npm run data:typecheck # strict TypeScript check of tools/data
 ```
 
 - Set `UE_CACHE_DIR` to put the cache somewhere else.
-- `npm run data:validate -- --no-rebuild` skips the rebuild comparison. Use it when there's no cache.
+- `npm run data:validate -- --no-rebuild` skips the rebuild comparison. Use it when there's no cache. Its checks of Today's Ten never need the cache.
 - The build is deterministic: the seed is `umpires-eye-2026`, and the files hold no timestamps or gzip sizes.
 - To ship a different mix, change `PER_CLOSE` in `tools/data/lib/pool.ts`, or `PITCHES_PER_SHARD` in `tools/data/lib/pipeline.ts`, and rebuild.
 - MLB sometimes corrects old games. A fetch into an empty cache months later may differ slightly from the committed dataset; `data:validate` will say so.
 - If a rebuild meets a new integrity finding, the build stops and names it. Check it by hand, then either fix the parser or pin it in `ALLOWED` in `tools/data/lib/integrity.ts` and describe it here.
 
+**Today's Ten.** `data:build` leaves the month files alone. Whenever it changes the build id it says so, and `data:validate` fails until `data:daily` has run:
+- `npm run data:daily` refreshes every month file from the new shards and records the new reserve count. Days keep their tens, apart from the unavailable and re-dealt days described above, and the run lists those.
+- `npm run data:daily -- --through 2029-06-30` extends the schedule. The reserve lasts to about 2030-03-19 (the daily report's fresh run).
+- `--served-through YYYY-MM-DD` sets the last date that may have been served, if that's later than the default: the day after the run's UTC date. Pass the date the commit will be live by.
+- `npm run data:daily -- --check` writes nothing. It reproduces the recorded schedule, with its recorded `servedThrough`, and fails if any file differs. `data:validate` runs the same check.
+- The schedule was started with `npm run data:daily -- --from 2026-11-01 --through 2028-12-31`. `--from` is for the first run only: the start never moves.
+
 The code lives in `tools/data/`, and in `src/core/`, which it shares with the app:
-- `fetch.ts`, `build.ts` and `validate.ts`.
+- `fetch.ts`, `build.ts`, `daily.ts` and `validate.ts`.
 - `lib/`, which has:
   - `plays.ts`: parse the play log and rebuild the game state;
   - `umpires.ts`: follow the plate umpire through the play log's umpire changes;
   - `judge.ts`: the ABS model and the dealing rules for each pitch;
   - `pool.ts`: pool and shards;
   - `format.ts`: writing the files;
+  - `build-id.ts`: the build id, and taking it out again to check it;
   - `integrity.ts`: the allowlist and the per-pitch checks `data:validate` runs;
   - `stats.ts`: totals and the validation report;
-  - `pipeline.ts`: the build.
-- `src/core/`: the rules (`rules.ts`), the seeded draws (`rng.ts`), the trajectory (`kinematics.ts`), the ABS rule and deal box (`abs.ts`), the file formats, field lists and the types of the shard, manifest and stats files (`schema.ts`) with their reader (`decode.ts`), the round of ten (`deal.ts`), which deals only rows whose stored `dealable` flag is set, and the daily schedule (`daily.ts`): the month file's types, the daily reserve and local dates. The tools import these files as they are, under Node; `lib/constants.ts` keeps only the tools' own settings.
+  - `pipeline.ts`: the build;
+  - `daily.ts`: Today's Ten's schedule, with the month files as its lock;
+  - `daily-check.ts`: `data:validate`'s checks of Today's Ten and the budgets.
+- `src/core/`: the rules (`rules.ts`), the seeded draws (`rng.ts`), the trajectory (`kinematics.ts`), the ABS rule and deal box (`abs.ts`), the file formats, field lists and the types of the shard, manifest and stats files (`schema.ts`) with their reader (`decode.ts`), the round of ten (`deal.ts`), which deals only rows whose stored `dealable` flag is set, and the daily schedule (`daily.ts`): the month file's types, the daily reserve, the variety rules and local dates. The tools import these files as they are, under Node; `lib/constants.ts` keeps only the tools' own settings and budgets.
