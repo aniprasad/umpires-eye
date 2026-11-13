@@ -34,6 +34,8 @@ export interface SynthPitch {
   challenged?: boolean;
   dealable?: boolean;
   bats?: 'L' | 'R';
+  /** The batter's ID; by default one of two, by side. */
+  batter?: number;
   type?: 'FF' | 'SL' | 'CH';
   balls?: number;
   strikes?: number;
@@ -53,6 +55,7 @@ const FIELDS = { games: GAME_FIELDS, venues: NAME_FIELDS, umpires: NAME_FIELDS, 
 const PLAYERS: Record<number, Row> = { 11: [11, 'Lou Lefty', 74], 12: [12, 'Rex Righty', 73], 20: [20, 'Pat Pitcher', null], 30: [30, 'Cal Catcher', 72] };
 
 export const idOf = (p: SynthPitch): string => `${p.gamePk}-${p.atBat}-1`;
+const batterOf = (p: SynthPitch): number => p.batter ?? (p.bats === 'L' ? 11 : 12);
 
 /** The first at-bat from `from` on whose first pitch's ID is (or, with `reserved` false, isn't) in the daily reserve. */
 export function atBatFor(gamePk: number, from = 1, reserved = true): number {
@@ -76,7 +79,7 @@ function cells(p: SynthPitch): Row {
     awayScore: 0,
     homeScore: 0,
     bases: 0,
-    batter: p.bats === 'L' ? 11 : 12,
+    batter: batterOf(p),
     bats: p.bats ?? 'R',
     pitcher: 20,
     throws: 'R',
@@ -119,7 +122,7 @@ export function synthSeason(games: readonly SynthGame[], pitches: readonly Synth
   const groups = files.map((_, i) => pitches.filter((p, k) => (p.shard ?? k % shards) === i).sort(played));
   const shardText = (group: readonly SynthPitch[], i: number, build: string | null): string => {
     const shardGames = [...new Set(group.map((p) => p.gamePk))].flatMap((pk) => gameOf.get(pk) ?? []).sort(compareGames);
-    const players = [...new Set(group.flatMap((p) => [p.bats === 'L' ? 11 : 12, 20, ...(p.challenged ? [30] : [])]))].sort((a, b) => a - b);
+    const players = [...new Set(group.flatMap((p) => [batterOf(p), 20, ...(p.challenged ? [30] : [])]))].sort((a, b) => a - b);
     const head = {
       format: SHARD_FORMAT,
       version: FORMAT_VERSION,
@@ -137,7 +140,7 @@ export function synthSeason(games: readonly SynthGame[], pitches: readonly Synth
       ['games', shardGames.map((g): Row => [g.gamePk, g.date, g.start, 'R', 'AWY', 'HOM', null, null, 32])],
       ['venues', shardGames.length ? [[32, 'A Park']] : []],
       ['umpires', group.length ? [[70, 'Plate Ump']] : []],
-      ['players', players.map((id) => PLAYERS[id] ?? [])],
+      ['players', players.map((id): Row => PLAYERS[id] ?? [id, `Batter ${id}`, 70 + (id % 8)])],
       ['pitches', group.map(cells)],
     ]);
   };
@@ -193,6 +196,8 @@ export function poolFor(days: number): { games: SynthGame[]; pitches: SynthPitch
       challenged: kind === 'close' && k % 5 === 0,
       dealable: kind !== 'undealable',
       bats: (k >> 1) % 2 ? 'L' : 'R',
+      // Far more batters than a month's days use, so a month file's players table has rows to leave out.
+      batter: 100 + ((k * 13) % 97),
       type: (['FF', 'SL', 'FF', 'CH'] as const)[k % 4],
       balls: k % 4,
       strikes: (k >> 2) % 3,
