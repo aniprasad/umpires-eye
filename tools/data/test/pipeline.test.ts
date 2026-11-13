@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import type { ManifestDaily } from '../../../src/core/daily.ts';
 import { decodeGames, decodePitches } from '../../../src/core/decode.ts';
 import type { ShardDoc } from '../../../src/core/schema.ts';
+import { buildIdOf, unstamped } from '../lib/build-id.ts';
 import type { PlayByPlay, ScheduleResponse } from '../lib/mlb.ts';
 import { buildDataset, OUT_DIR, REPORT_PATH } from '../lib/pipeline.ts';
 import { AWAY, challenge, HOME, person, peopleOf, pitch, play, xForMargin } from './fixtures.ts';
@@ -91,4 +93,46 @@ test('the build fails on an integrity finding that is not on the allowlist', () 
   const broken = [play({ atBat: 0, batter: 11, events: [pitch(0, 1, { code: 'B', after: [0, 1], x: xForMargin(-0.05) })] }), ...plays.slice(1)];
 
   assert.throws(() => buildDataset({ ...inputs, loadPlays: () => ({ allPlays: broken }) }), /1 integrity findings outside the allowlist.*900001-0-1/);
+});
+
+test('every file carries one build id: the hash of the shards and stats before it was stamped in', () => {
+  const { files, build } = buildDataset(inputs);
+  const text = (rel: string): string => files.get(`${OUT_DIR}/${rel}`) ?? '';
+  const docs = ['manifest.json', 'stats.json', 'shards/00.json'].map((rel) => JSON.parse(text(rel)) as Record<string, unknown>);
+
+  assert.match(build, /^[0-9a-f]{12}$/);
+  assert.deepEqual(
+    docs.map((d) => [d.build, Object.keys(d).indexOf('build')]),
+    [[build, 3], [build, 3], [build, 3]],
+  );
+  assert.equal(buildIdOf(['shards/00.json', 'stats.json'].map((rel) => unstamped(text(rel), build) ?? '')), build);
+  assert.equal(unstamped(text('stats.json'), 'another id'), null);
+});
+
+test('a build keeps the daily block it is given, which leaves the build id and the other files alone', () => {
+  const daily: ManifestDaily = {
+    first: '2026-11-01',
+    last: '2026-11-30',
+    servedThrough: '2026-11-14',
+    reserve: { share: 0.25, pitches: 7 },
+    files: [{ month: '2026-11', file: 'daily/2026-11.json', bytes: 1, sha256: 'ab' }],
+  };
+  const plain = buildDataset(inputs);
+  const kept = buildDataset(inputs, daily);
+  const manifest = JSON.parse(kept.files.get(`${OUT_DIR}/manifest.json`) ?? '{}') as Record<string, unknown>;
+
+  assert.equal(kept.build, plain.build);
+  assert.deepEqual(manifest.daily, daily);
+  assert.equal(Object.keys(manifest).at(-1), 'daily');
+  for (const [rel, text] of plain.files) {
+    if (!rel.endsWith('manifest.json')) assert.equal(kept.files.get(rel), text, rel);
+  }
+});
+
+test('a change in the data changes the build id', () => {
+  const renamed = structuredClone(schedule);
+  const game = renamed.dates?.[0]?.games?.[0];
+
+  if (game?.venue) game.venue.name = 'B Park';
+  assert.notEqual(buildDataset({ ...inputs, schedules: [renamed] }).build, buildDataset(inputs).build);
 });

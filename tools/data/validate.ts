@@ -29,6 +29,7 @@ import {
   type StatsDoc,
 } from '../../src/core/schema.ts';
 import { cacheDir, openCache } from './lib/cache.ts';
+import { buildIdOf, unstamped } from './lib/build-id.ts';
 import { SESSION_BUDGET_GZIP } from './lib/constants.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
@@ -70,6 +71,8 @@ for (const [name, doc, format] of [
   if (doc.credit !== CREDIT) fail(`${name}: the MLB credit is missing or changed`);
   if (doc.truthNote !== TRUTH_NOTE) fail(`${name}: the reconstruction note is missing or changed`);
 }
+if (typeof manifest.build !== 'string' || !manifest.build) fail('manifest.json has no build id');
+if (stats.build !== manifest.build) fail(`stats.json: build ${stats.build} is not the manifest's ${manifest.build}`);
 if (JSON.stringify(listed) !== JSON.stringify(onDisk)) fail(`shards on disk ${onDisk.join(',')} differ from the manifest`);
 
 // The build refuses findings outside the allowlist; judging the committed report again catches a hand-edited one.
@@ -130,6 +133,7 @@ for (const meta of manifest.shards) {
   let prev: [number, number, number] = [-1, -1, -1];
 
   if (doc.format !== SHARD_FORMAT || doc.version !== FORMAT_VERSION || doc.season !== SEASON) fail(`${meta.file}: wrong format header`);
+  if (doc.build !== manifest.build) fail(`${meta.file}: build ${doc.build} is not the manifest's ${manifest.build}`);
   if (doc.credit !== CREDIT || doc.truthNote !== TRUTH_NOTE) fail(`${meta.file}: credit or reconstruction note missing`);
   if (doc.shards !== manifest.shards.length || pitches.length !== meta.pitches) fail(`${meta.file}: counts differ from the manifest`);
   for (const [k, g] of games.entries()) {
@@ -200,6 +204,12 @@ for (const meta of manifest.shards) {
 
 const sizes = sessionSizes(manifestText, statsText, texts);
 const pool = manifest.pool;
+// The id names the shards' and stats' content, so it's recomputed from them, as they were before it was stamped in.
+const bare = [...texts, statsText].map((t) => unstamped(t, manifest.build));
+
+if (bare.every((t): t is string => t !== null) && buildIdOf(bare) !== manifest.build) {
+  fail(`the build id ${manifest.build} isn't the hash of the shards and stats, which is ${buildIdOf(bare)}`);
+}
 
 if (sizes.largestSessionGzipBytes > SESSION_BUDGET_GZIP) fail(`a play session downloads ${sizes.largestSessionGzipBytes} gzipped bytes`);
 if (
@@ -240,7 +250,7 @@ if (rebuild) {
   } else {
     console.log('rebuilding from the cache to check the files are reproducible ...');
 
-    const rebuilt = buildDataset(inputs);
+    const rebuilt = buildDataset(inputs, manifest.daily);
 
     for (const [rel, text] of rebuilt.files) {
       if (read(rel) !== text) fail(`${rel} differs from a fresh rebuild`);
