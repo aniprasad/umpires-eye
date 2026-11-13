@@ -134,19 +134,20 @@ export const versioned = (url: string, build: string): string => `${url}${url.in
 /**
  * A file and a manifest from the same build (§4.3). GitHub Pages lets browsers keep either one for ten minutes, so a
  * deploy can pair a fresh copy with a stale one. On a mismatch the manifest is fetched again past the cache, and then,
- * unless that settled it, the file under `versioned()`. A mismatch that survives both is broken data.
+ * unless that settled it, the file at the address the fresh manifest gives it: `versioned()` by the build, or a shard's
+ * own ?v=. A mismatch that survives both is broken data.
  */
 export async function matchBuild<M extends Built, F extends Built>(
   manifest: M,
   file: F,
-  refetch: { readonly manifest: () => Promise<M>; readonly file: (build: string) => Promise<F> },
+  refetch: { readonly manifest: () => Promise<M>; readonly file: (fresh: M) => Promise<F> },
   what: string,
 ): Promise<{ readonly manifest: M; readonly file: F }> {
   if (file.build === manifest.build) return { manifest, file };
   const fresh = await refetch.manifest();
 
   if (file.build === fresh.build) return { manifest: fresh, file };
-  const again = await refetch.file(fresh.build);
+  const again = await refetch.file(fresh);
 
   if (again.build !== fresh.build) {
     throw new LoadError('data', `Could not match ${what} to the manifest: it's from build ${again.build}, the manifest from build ${fresh.build}.`);

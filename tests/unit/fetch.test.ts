@@ -153,13 +153,13 @@ describe('matching a file to the manifest by build', () => {
     expect(refetch.file).not.toHaveBeenCalled();
   });
 
-  it('fetches the manifest again for a stale file, and then the file under the build the manifest names', async () => {
+  it('fetches the manifest again for a stale file, and then the file at the address the fresh manifest gives', async () => {
     const refetch = refetcher('b2', 'b2');
     const got = await matchBuild(first('b2'), first('b1'), refetch, what);
 
     expect(got).toEqual({ manifest: { build: 'b2', from: 'refetch' }, file: { build: 'b2', from: 'refetch' } });
     expect(refetch.manifest).toHaveBeenCalledTimes(1);
-    expect(refetch.file.mock.calls).toEqual([['b2']]);
+    expect(refetch.file.mock.calls).toEqual([[{ build: 'b2', from: 'refetch' }]]);
   });
 
   it('settles a stale manifest by fetching the manifest alone again', async () => {
