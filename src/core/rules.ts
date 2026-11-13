@@ -30,8 +30,8 @@ export const NEAR_IN = 4.5;
 export const CALIBRATOR_MIN_IN = 6;
 
 /**
- * The data credit AGENTS.md requires. The data files carry it, the copied result ends with it, and vite.config.ts
- * writes it into index.html's footnotes at build time.
+ * The data credit AGENTS.md requires, and its only copy. Every data file carries it, the copied result ends with it,
+ * and vite.config.ts writes it into index.html's footnotes at build time.
  */
 export const CREDIT = 'MLB Stats API, \u00a9 MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.';
 export const TRUTH_NOTE =

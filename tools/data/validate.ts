@@ -6,14 +6,14 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cacheDir, openCache } from './lib/cache.ts';
-import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, MAX_FLIGHT_S, NEAR_IN, SEASON, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
+import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, MAX_FLIGHT_S, NEAR_IN, SEASON, SEED, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
 import type { Card } from './lib/deal.ts';
 import { decodeGames, decodeNames, decodePitches, decodePlayers, type ShardDoc } from './lib/decode.ts';
 import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
 import { absJudge, crossing, flightTime, inDealBox } from './lib/physics.ts';
-import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, REPORT_PATH, SEED, sessionSizes, sha256 } from './lib/pipeline.ts';
+import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, REPORT_PATH, sessionSizes, sha256 } from './lib/pipeline.ts';
 import { compareGames } from './lib/schedule.ts';
 import type { Tally } from './lib/stats.ts';
 

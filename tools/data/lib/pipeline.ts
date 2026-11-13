@@ -15,6 +15,7 @@ import {
   PLATE_HALF_IN,
   RUBBER_Y,
   SEASON,
+  SEED,
   SESSION_BUDGET_GZIP,
   TRUTH_NOTE,
 } from './constants.ts';
@@ -61,7 +62,6 @@ import { plateChanged, plateRuns, type PlateTrack, type Reading } from './umpire
 
 export const OUT_DIR = 'public/data/season-2026';
 export const REPORT_PATH = 'tools/data/reports/season-2026.json';
-export const SEED = 'umpires-eye-2026';
 export const DEALS_PER_SHARD = 200;
 // Shard count comes from a fixed size, not from measured gzip bytes, because gzip output differs between zlib builds and
 // the files must rebuild identically anywhere. The build fails if the largest session would exceed the budget.

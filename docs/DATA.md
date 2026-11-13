@@ -34,7 +34,7 @@ What is real and what is ours:
 
 - A full fetch is 2,483 requests and about 263 MB over the wire. It covers 2,469 completed games (R 2,429, F 9, D 16, L 10, W 5) from 2026-03-25 to 2026-10-28, plus 799 players. One cancelled game is skipped.
 - The fetcher is polite. It runs at most 4 requests at a time, asks for gzip, and retries with growing waits (the API's DNS sometimes fails for a moment).
-- Raw responses are cached gzipped **outside the repo**, in `UE_CACHE_DIR` or by default `%LOCALAPPDATA%\umpires-eye\mlb-cache`. The layout is `statsapi-v1/{teams,schedule,playByPlay,people}/…json.gz`.
+- Raw responses are cached gzipped **outside the repo**, in `UE_CACHE_DIR` if it's set. Otherwise it's `%LOCALAPPDATA%\umpires-eye\mlb-cache` on Windows, and `$XDG_CACHE_HOME/umpires-eye/mlb-cache` or `~/.cache/umpires-eye/mlb-cache` elsewhere. The layout is `statsapi-v1/{teams,schedule,playByPlay,people}/…json.gz`.
   - Anything cached is never fetched again, so reruns and other worktrees share one download.
   - Delete the folder to start fresh.
 
@@ -130,7 +130,7 @@ The model is the mockup's, unchanged. It matched 29 of 29 World Series challenge
   - the batter and pitcher are certain;
   - the count before the pitch is a possible one.
 
-The code is `tools/data/lib/physics.ts` (`tAtY`, `crossing`, `absJudge`, `inDealBox`, `flightTime`) and `tools/data/lib/judge.ts`, checked against the mockup's 742 pitches in `tools/data/test/mockup.test.ts`.
+The code is `src/core/kinematics.ts` and `src/core/abs.ts` (`tAtY`, `crossing`, `flightTime`, `absJudge`, `inDealBox`), which the app shares, and `tools/data/lib/judge.ts`. They're checked against the mockup's 742 pitches in `tools/data/test/mockup.test.ts`.
 
 ## Validation
 
@@ -339,7 +339,7 @@ Axes are the catcher's view: x across the plate (+x toward first base), y toward
 
 ## Rebuilding
 
-You need Node 22.18 or later (the scripts are TypeScript run with Node's type stripping). The scripts have no dependencies. Only `data:typecheck` needs `typescript` and `@types/node`, which come with the app port's dev dependencies; until that lands, install them anywhere and run `tsc -p tools/data/tsconfig.json`.
+You need Node 22.18 or later (the scripts are TypeScript run with Node's type stripping). The scripts have no dependencies. Only `data:typecheck` needs `typescript` and `@types/node`, which `npm ci` installs with the app's dev dependencies.
 
 ```sh
 npm run data:fetch     # once: downloads into the cache (about 2,500 requests, 263 MB)
@@ -356,15 +356,16 @@ npm run data:typecheck # strict TypeScript check of tools/data
 - MLB sometimes corrects old games. A fetch into an empty cache months later may differ slightly from the committed dataset; `data:validate` will say so.
 - If a rebuild meets a new integrity finding, the build stops and names it. Check it by hand, then either fix the parser or pin it in `ALLOWED` in `tools/data/lib/integrity.ts` and describe it here.
 
-The code lives in `tools/data/`:
+The code lives in `tools/data/`, and in `src/core/`, which it shares with the app:
 - `fetch.ts`, `build.ts` and `validate.ts`.
 - `lib/`, which has:
   - `plays.ts`: parse the play log and rebuild the game state;
   - `umpires.ts`: follow the plate umpire through the play log's umpire changes;
-  - `physics.ts` and `judge.ts`: the ABS model and the dealing rules;
+  - `judge.ts`: the ABS model and the dealing rules for each pitch;
   - `pool.ts`: pool and shards;
   - `deal.ts`: the Today's Ten rule;
   - `format.ts` and `decode.ts`: the files;
   - `integrity.ts`: the allowlist and the per-pitch checks `data:validate` runs;
   - `stats.ts`: totals and the validation report;
   - `pipeline.ts`: the build.
+- `src/core/`: the rules (`rules.ts`), the seeded draws (`rng.ts`), the trajectory (`kinematics.ts`) and the ABS rule and deal box (`abs.ts`). The tools import these files as they are, under Node. `lib/constants.ts`, `rng.ts` and `physics.ts` re-export them.

@@ -14,9 +14,12 @@ describe('the seeded draws', () => {
 
   it('mulberry32 gives the same draws per seed, and unitHash is the hash over 2^32', () => {
     const r = mulberry32(42);
+    const draws = Array.from({ length: 10_000 }, mulberry32(7));
 
     expect([r(), r(), r()]).toEqual([0.6011037519201636, 0.44829055899754167, 0.8524657934904099]);
     expect(mulberry32(0)()).toBe(0.26642920868471265);
+    expect(draws.every((v) => v >= 0 && v < 1)).toBe(true);
+    expect(draws.reduce((s, v) => s + v, 0) / draws.length).toBeCloseTo(0.5, 1);
     expect(unitHash('umpires-eye-2026')).toBe(3220614827 / 2 ** 32);
   });
 });
@@ -39,8 +42,13 @@ describe('ABS truth', () => {
     expect(j.marginIn).toBeCloseTo((BALL_R - Math.hypot(0.1, 0.1)) * 12, 9);
   });
 
-  it('signs the margin: positive inside, negative outside, in inches', () => {
-    expect(absJudge(0, 2.4, top, bottom).marginIn).toBeGreaterThan(6);
+  it('signs the margin in inches to the nearest edge: positive inside, negative outside', () => {
+    const justOut = absJudge(-(PLATE_HALF + BALL_R + 0.01 / 12), 2.4, top, bottom);
+
+    expect(absJudge(0, 2.4, top, bottom).marginIn).toBeCloseTo(1.45 + 8.5, 9);
+    expect(absJudge(PLATE_HALF + BALL_R - 1e-12, 2.4, top, bottom).marginIn).toBeCloseTo(0, 9);
+    expect(justOut.strike).toBe(false);
+    expect(justOut.marginIn).toBeCloseTo(-0.01, 9);
     expect(absJudge(1.5, 2.4, top, bottom).marginIn).toBeLessThan(-6);
   });
 
@@ -70,6 +78,7 @@ describe('kinematics', () => {
     for (const Y of [60, 50, MID_Y, -1.5]) expect(posAt(tr, tAtY(tr, Y)).y).toBeCloseTo(Y, 9);
     expect(tAtY(tr, tr.y0)).toBe(0);
     expect(tAtY(tr, 55)).toBeLessThan(0);
+    expect(tAtY({ ...tr, aY: 0 }, MID_Y)).toBeCloseTo((50 - MID_Y) / 130, 12);
     expect(crossing(tr).y).toBeCloseTo(MID_Y, 12);
     expect(posAt(tr, releaseT(tr, 6.5)).y).toBeCloseTo(RUBBER_Y - 6.5, 9);
   });

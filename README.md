@@ -51,7 +51,8 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 
 ## How it's built
 
-- `src/math/`: pure TypeScript with no DOM. Kinematics, ABS truth and zone, camera and lens fit, stance, depth of field, the batter, catcher, mitt framing, pitcher pose, mask clearance, dealing, and the reveal's wording. Node scripts can import these.
+- `src/core/`: pure TypeScript the app shares with the data tools: the rules, the seeded draws, the trajectory, and the ABS rule and deal box. The tools run these files as they are under Node, so relative imports end in `.ts`. Lint and `src/core/tsconfig.json` keep core free of the DOM, Node, Vite and `Math.random`.
+- `src/math/`: pure TypeScript with no DOM. Camera and lens fit, stance, depth of field, the batter, catcher, mitt framing, pitcher pose, mask clearance, dealing, and the reveal's wording. It re-exports core's kinematics and ABS truth, for now.
 - `src/data/`: `PitchSource`, the seam a dataset plugs into, and the 2026 World Series source (`public/data/ws-2026/pool.json`).
 - `src/render/`: the scene. Static layers are painted once per stance, and the next pitch's are painted ahead. The ball, mitt, pitcher and reveal are drawn every frame. `filter.ts` draws every blur and colour grade, with a fallback for engines without canvas `filter`, such as Safari.
 - `src/game/` and `src/ui/`: the flow (start, ten pitches, reveal, card), input, the HUD, the verdict panel and the card.
