@@ -94,13 +94,14 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await openPaused(page, `./?pool=season&date=${mini.date}`);
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
   await expect(page.locator('#startLede')).toHaveText(/^Today's Ten: real pitches from the 2026 season, \d+ of them close calls/);
-  // no shard before Play (§4.2), and then the shard's text once the start screen is ready and idle (§4.1)
-  await expect.poll(async () => (await loadsOf(page)).length).toBe(3);
-  expect(await loadsOf(page)).toEqual([
-    { path: 'manifest.json', ready: '', phase: 'boot' },
-    { path: 'daily/2026-11.json', ready: '', phase: 'boot' },
-    { path: mini.shardUrl, ready: '1', phase: 'start' },
-  ]);
+  // the manifest, the month file and the stats while the page boots, and no shard before Play (§4.1, §4.2); then the
+  // shard's text, once the start screen is ready and idle
+  await expect.poll(async () => (await loadsOf(page)).length).toBe(4);
+  const loads = await loadsOf(page);
+
+  expect(loads.slice(0, 3).map((load) => load.path).sort()).toEqual(['daily/2026-11.json', 'manifest.json', 'stats.json']);
+  expect(loads.slice(0, 3).every((load) => load.ready === '' && load.phase === 'boot')).toBe(true);
+  expect(loads[3]).toEqual({ path: mini.shardUrl, ready: '1', phase: 'start' });
   await page.keyboard.press('Enter');
 
   for (const [k, key] of KEYS.entries()) {
@@ -148,7 +149,7 @@ test('with Save-Data on, the start screen fetches no shard', async ({ page }) =>
   await openPaused(page, `./?pool=season&date=${mini.date}`);
   await page.clock.runFor(PAST_IDLE_MS);
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
-  expect(asked).toEqual(['manifest.json', 'daily/2026-11.json']);
+  expect([...asked].sort()).toEqual(['daily/2026-11.json', 'manifest.json', 'stats.json']);
 });
 
 test("without requestIdleCallback, as in Safari, a Play before the 2 s stand-in fetches no shard during the pitch", async ({ page }) => {

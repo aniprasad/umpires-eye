@@ -55,6 +55,9 @@ async function boot(): Promise<void> {
 
   try {
     const source = await openSource(sourceIdOf(POOL), import.meta.env.BASE_URL);
+
+    // The stats load alongside today's files (§4.1). Play never waits for them; T11 shows the figure.
+    void source.umpFigure();
     const today = await source.today(DATE ?? dateKeyOf(new Date()));
 
     if (today.kind === 'none') throw new LoadError('data', `There's no Today's Ten for ${today.dateKey}.`);

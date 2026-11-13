@@ -196,13 +196,18 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   }
 
   async function loadMonth(month: string): Promise<MonthFile> {
-    const meta = (await theManifest()).daily.files.find((f) => f.month === month);
     const what = `the pitches for ${monthLabel(month)}`;
     const read = async (file: string): Promise<MonthFile> => readMonth(await get(file, what, 'no-cache'), what);
+    // data:daily names a month file by its month (DATA.md), so it loads alongside the manifest rather than after it
+    const guess = `daily/${month}.json`;
+    const early = read(guess);
+
+    early.catch(() => undefined);
+    const meta = (await theManifest()).daily.files.find((f) => f.month === month);
 
     if (!meta) throw broken(MANIFEST, `lists no month file for ${month}, though its schedule covers it`);
 
-    return sameBuild(await read(meta.file), (fresh) => read(versioned(meta.file, fresh.build)), what);
+    return sameBuild(meta.file === guess ? await early : await read(meta.file), (fresh) => read(versioned(meta.file, fresh.build)), what);
   }
 
   function monthFile(month: string, signal?: AbortSignal): Promise<MonthFile> {
@@ -217,23 +222,28 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   }
 
   async function today(dateKey: string, signal?: AbortSignal): Promise<TodayResult> {
-    const { daily } = await theManifest(signal);
+    const month = monthOf(dateKey);
+    const known = theManifest(signal);
 
-    // the manifest decides: past the schedule's ends, no month file is read (§4.1)
+    // The month file loads alongside the manifest (§4.1), but the manifest decides: past the schedule's ends, the month
+    // file's answer is ignored, errors included.
+    monthFile(month).catch(() => undefined);
+    const { daily } = await known;
+
     if (dateKey < daily.first || dateKey > daily.last) return { kind: 'none', dateKey, reason: 'outside-horizon' };
-    const what = `the pitches for ${monthLabel(monthOf(dateKey))}`;
-    const month = await monthFile(monthOf(dateKey), signal);
-    const day = dayOf(month, dateKey, what);
+    const what = `the pitches for ${monthLabel(month)}`;
+    const file = await monthFile(month, signal);
+    const day = dayOf(file, dateKey, what);
 
     if (!day) throw broken(what, `have no entry for ${dateKey}, though the schedule runs from ${daily.first} to ${daily.last}`);
     if (!day.available) return { kind: 'none', dateKey, reason: 'unavailable' };
     const pitches = day.ids.map((id, i): Pitch => {
-      const row = month.byId.get(id);
+      const row = file.byId.get(id);
 
       if (!row) throw broken(what, `have no row for ${id}, one of the ten for ${dateKey}`);
 
       // in play order, calibrator first
-      return month.reader.pitch(row, i);
+      return file.reader.pitch(row, i);
     });
 
     return { kind: 'ten', dateKey, pitches };

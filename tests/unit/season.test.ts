@@ -192,13 +192,38 @@ describe('the season source', () => {
     expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache']);
   });
 
-  it('has no ten past either end of the schedule, without asking for a month file, and none on an unavailable day', async () => {
+  it('has no ten past either end of the schedule, whatever its month file says, and none on an unavailable day', async () => {
     const { source, asked } = serve();
 
     expect(await source.today('2026-11-13')).toEqual({ kind: 'none', dateKey: '2026-11-13', reason: 'outside-horizon' });
     expect(await source.today('2026-11-16')).toEqual({ kind: 'none', dateKey: '2026-11-16', reason: 'outside-horizon' });
-    expect(asked).toEqual(['manifest.json no-cache']);
+    // there's no December file, and past the schedule that's no error
+    expect(await source.today('2026-12-01')).toEqual({ kind: 'none', dateKey: '2026-12-01', reason: 'outside-horizon' });
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'daily/2026-12.json no-cache']);
     expect(await source.today(mini.unavailableDate)).toEqual({ kind: 'none', dateKey: mini.unavailableDate, reason: 'unavailable' });
+  });
+
+  it("asks for the date's month file alongside the manifest, not after it (§4.1)", async () => {
+    const { held, open } = gate();
+    const { source, asked } = serve(mini.files, undefined, undefined, (path) => (path === 'manifest.json' ? held() : Promise.resolve()));
+    const today = source.today(mini.date);
+
+    await vi.waitFor(() => expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache']));
+    open();
+    expect((await today).kind).toBe('ten');
+    expect(asked).toHaveLength(2);
+  });
+
+  it('reads the month file the manifest lists, when it has another name', async () => {
+    const daily = manifest.daily as { files: Record<string, unknown>[] };
+    const renamed = { ...manifest, daily: { ...daily, files: daily.files.map((f) => ({ ...f, file: 'daily/november.json' })) } };
+    const files = new Map([...withFile('manifest.json', renamed), ['daily/november.json', mini.files.get('daily/2026-11.json')]]);
+
+    files.delete('daily/2026-11.json');
+    const { source, asked } = serve(files);
+
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'daily/november.json no-cache']);
   });
 
   it('calls a month file missing inside the schedule missing, and a manifest without a schedule, or of another version, broken', async () => {
