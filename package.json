@@ -16,7 +16,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
-    "assets": "node scripts/build-assets.mjs"
+    "assets": "node scripts/build-assets.mjs",
+    "data:fetch": "node tools/data/fetch.ts",
+    "data:build": "node tools/data/build.ts",
+    "data:validate": "node tools/data/validate.ts",
+    "data:test": "node --test \"tools/data/test/*.test.ts\"",
+    "data:typecheck": "tsc -p tools/data/tsconfig.json"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
