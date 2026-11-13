@@ -1,7 +1,8 @@
-import { BALL_R, TRAIL } from '../math/constants';
+import { posAt, type Vec3 } from '../core/kinematics.ts';
+import { BALL_R } from '../core/rules.ts';
+import { TRAIL } from '../math/constants';
 import { sphereOutline, type Cam, type Projected } from '../math/geometry';
-import { ballT, posAt, type PreparedPitch } from '../math/kinematics';
-import type { Vec3 } from '../math/types';
+import { ballT, type PreparedPitch } from '../math/kinematics';
 import { capPath, tracePoly } from './paint';
 
 /** The ball's outline at its true size: the exact projected silhouette once it's big enough to show one. */

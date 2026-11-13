@@ -1,24 +1,9 @@
+import { absJudge, inDealBox } from '../../../src/core/abs.ts';
+import { crossing, quickEnough, TRAJ_KEYS, type Traj } from '../../../src/core/kinematics.ts';
 import type { Family, RoleCode, Row } from '../../../src/core/schema.ts';
-import { absJudge, crossing, inDealBox, quickEnough, TRAJ_KEYS, type Traj } from './physics.ts';
 import type { Judged } from './judge.ts';
 import type { Role } from './plays.ts';
 import type { Game } from './schedule.ts';
-
-// The formats and field lists are core's, shared with the app's reader.
-export {
-  CHALLENGE_FIELDS,
-  FORMAT_VERSION,
-  GAME_FIELDS,
-  MANIFEST_FORMAT,
-  NAME_FIELDS,
-  PITCH_FIELDS,
-  PLAYER_FIELDS,
-  SHARD_FORMAT,
-  STATS_FORMAT,
-  type Cell,
-  type Family,
-  type Row,
-} from '../../../src/core/schema.ts';
 
 export const ROLE_CODE: Record<Role, RoleCode> = { batter: 'B', pitcher: 'P', catcher: 'C' };
 

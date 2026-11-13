@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { MAX_FLIGHT_S, MID_Y } from '../lib/constants.ts';
-import { dealTen, deckOf, tenProblems } from '../lib/deal.ts';
+import { dealTen, deckOf, tenProblems } from '../../../src/core/deal.ts';
+import { tAtY } from '../../../src/core/kinematics.ts';
+import { mulberry32 } from '../../../src/core/rng.ts';
+import { MAX_FLIGHT_S, MID_Y } from '../../../src/core/rules.ts';
 import { judge, type Judged } from '../lib/judge.ts';
-import { tAtY } from '../lib/physics.ts';
 import { makeShards, selectPool, spreadSample, stratumOf, type Pool } from '../lib/pool.ts';
-import { mulberry32 } from '../lib/rng.ts';
 import { umpVsAbs } from '../lib/stats.ts';
 import { judged } from './fixtures.ts';
 

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { decodeGames, decodePitches, type ShardDoc } from '../lib/decode.ts';
+import { decodeGames, decodePitches } from '../../../src/core/decode.ts';
+import type { ShardDoc } from '../../../src/core/schema.ts';
 import type { PlayByPlay, ScheduleResponse } from '../lib/mlb.ts';
 import { buildDataset, OUT_DIR, REPORT_PATH } from '../lib/pipeline.ts';
 import { AWAY, challenge, HOME, person, peopleOf, pitch, play, xForMargin } from './fixtures.ts';

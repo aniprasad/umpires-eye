@@ -1,7 +1,8 @@
+import type { Vec3 } from '../core/kinematics.ts';
+import { hash32, mulberry32, type Rand } from '../core/rng.ts';
 import { EYE, STANCE, STANCE_MAX } from './constants';
-import { hash32, rng, type Rand } from './rng';
 import { clamp } from './util';
-import type { Pitch, Side, Vec3 } from './types';
+import type { Pitch, Side } from './types';
 
 /** The nominal slot for a batter side: toward the batter, behind the plate. */
 export function eyeFor(side: Side): Vec3 {
@@ -20,8 +21,8 @@ export function stanceOf(P: Pitch): Vec3 {
   const hit = STANCES.get(P);
 
   if (hit) return hit;
-  const pa = rng(hash32('stance|' + P.id.split('-').slice(0, 2).join('-')));
-  const ps = rng(hash32('settle|' + P.id));
+  const pa = mulberry32(hash32('stance|' + P.id.split('-').slice(0, 2).join('-')));
+  const ps = mulberry32(hash32('settle|' + P.id));
   const u = (r: Rand): number => 2 * r() - 1;
   const hf = clamp((P.batter.heightFt - 6.1) / 0.45, -1, 1);
   const x = STANCE.paX * u(pa);

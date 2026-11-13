@@ -1,13 +1,15 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
+import { absJudge } from '../../../src/core/abs.ts';
+import { dealTen, deckOf, tenProblems, type Card } from '../../../src/core/deal.ts';
+import { crossing } from '../../../src/core/kinematics.ts';
+import { hash32, mulberry32 } from '../../../src/core/rng.ts';
 import {
   BALL_RADIUS_IN,
   CALIBRATOR_MIN_IN,
   CLOSE_IN,
   CREDIT,
   DEAL_BOX,
-  GAME_TYPE_NAMES,
-  GAME_TYPES,
   MAX_FLIGHT_S,
   MID_Y,
   NEAR_IN,
@@ -16,37 +18,28 @@ import {
   RUBBER_Y,
   SEASON,
   SEED,
-  SESSION_BUDGET_GZIP,
   TRUTH_NOTE,
-} from './constants.ts';
-import { deckOf, dealTen, tenProblems, type Card } from './deal.ts';
+} from '../../../src/core/rules.ts';
 import {
   CHALLENGE_FIELDS,
-  familyOf,
   FORMAT_VERSION,
   GAME_FIELDS,
-  gameRow,
   MANIFEST_FORMAT,
   NAME_FIELDS,
   PITCH_FIELDS,
   PLAYER_FIELDS,
-  pitchRow,
-  quantize,
-  round,
-  rowsJson,
   SHARD_FORMAT,
   STATS_FORMAT,
-  type Quantized,
   type Row,
-} from './format.ts';
+} from '../../../src/core/schema.ts';
+import { GAME_TYPE_NAMES, GAME_TYPES, SESSION_BUDGET_GZIP } from './constants.ts';
+import { familyOf, gameRow, pitchRow, quantize, round, rowsJson, type Quantized } from './format.ts';
 import { countPossible, judge, type Judged } from './judge.ts';
 import { ALLOWED, FAILING_KINDS, judgeFindings, type FailingKind } from './integrity.ts';
 import type { PlayByPlay, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import type { Person } from './people.ts';
-import { absJudge, crossing } from './physics.ts';
 import { addChecks, emptyChecks, extractGame, type Checks } from './plays.ts';
 import { band, makeShards, PER_CLOSE, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
-import { hash32, mulberry32 } from './rng.ts';
 import { parseSchedule, parseTeams, type Game, type Named } from './schedule.ts';
 import {
   byGameType,

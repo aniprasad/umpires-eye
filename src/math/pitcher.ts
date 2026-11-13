@@ -1,8 +1,9 @@
-import { MOUND_H, RUBBER_Y } from './constants';
+import type { Vec3 } from '../core/kinematics.ts';
+import { RUBBER_Y } from '../core/rules.ts';
+import { MOUND_H } from './constants';
 import { groundZ } from './geometry';
 import type { PreparedPitch } from './kinematics';
 import { clamp } from './util';
-import type { Vec3 } from './types';
 
 /**
  * One generic delivery for every pitcher, mirrored for lefties. Local frame: u = throwing-arm side, v = toward the

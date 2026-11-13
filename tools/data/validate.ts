@@ -5,14 +5,25 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { absJudge, inDealBox } from '../../src/core/abs.ts';
+import { dealableCards } from '../../src/core/deal.ts';
+import { decodeTables, type DecodedTables } from '../../src/core/decode.ts';
+import { crossing, flightTime } from '../../src/core/kinematics.ts';
+import {
+  CALIBRATOR_MIN_IN,
+  CLOSE_IN,
+  CREDIT,
+  MAX_FLIGHT_S,
+  NEAR_IN,
+  SEASON,
+  SEED,
+  TRUTH_NOTE,
+} from '../../src/core/rules.ts';
+import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT, type ShardDoc } from '../../src/core/schema.ts';
 import { cacheDir, openCache } from './lib/cache.ts';
-import { CALIBRATOR_MIN_IN, CLOSE_IN, CREDIT, MAX_FLIGHT_S, NEAR_IN, SEASON, SEED, SESSION_BUDGET_GZIP, TRUTH_NOTE } from './lib/constants.ts';
-import { dealableCards } from './lib/deal.ts';
-import { decodeTables, type DecodedTables, type ShardDoc } from './lib/decode.ts';
-import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './lib/format.ts';
+import { SESSION_BUDGET_GZIP } from './lib/constants.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
-import { absJudge, crossing, flightTime, inDealBox } from './lib/physics.ts';
 import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, REPORT_PATH, sessionSizes, sha256 } from './lib/pipeline.ts';
 import { compareGames } from './lib/schedule.ts';
 import type { Tally } from './lib/stats.ts';

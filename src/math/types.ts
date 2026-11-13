@@ -3,8 +3,6 @@
 
 import type { Traj } from '../core/kinematics.ts';
 
-export type { Traj, Vec3 } from '../core/kinematics.ts';
-
 export type Side = 'L' | 'R';
 export type Call = 'ball' | 'strike';
 

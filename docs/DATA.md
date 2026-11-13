@@ -367,4 +367,4 @@ The code lives in `tools/data/`, and in `src/core/`, which it shares with the ap
   - `integrity.ts`: the allowlist and the per-pitch checks `data:validate` runs;
   - `stats.ts`: totals and the validation report;
   - `pipeline.ts`: the build.
-- `src/core/`: the rules (`rules.ts`), the seeded draws (`rng.ts`), the trajectory (`kinematics.ts`), the ABS rule and deal box (`abs.ts`), the file formats and field lists (`schema.ts`) with their reader (`decode.ts`), and the round of ten (`deal.ts`), which deals only rows whose stored `dealable` flag is set. The tools import these files as they are, under Node. `lib/constants.ts`, `rng.ts`, `physics.ts`, `decode.ts` and `deal.ts` re-export them, and so does `format.ts` for the field lists.
+- `src/core/`: the rules (`rules.ts`), the seeded draws (`rng.ts`), the trajectory (`kinematics.ts`), the ABS rule and deal box (`abs.ts`), the file formats and field lists (`schema.ts`) with their reader (`decode.ts`), and the round of ten (`deal.ts`), which deals only rows whose stored `dealable` flag is set. The tools import these files as they are, under Node; `lib/constants.ts` keeps only the tools' own settings.

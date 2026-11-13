@@ -1,6 +1,6 @@
+import type { Vec3 } from '../core/kinematics.ts';
 import { projPoly, type Cam, type Projected, type Pt } from '../math/geometry';
 import { clamp, lerp } from '../math/util';
-import type { Vec3 } from '../math/types';
 
 export type Paint = string | CanvasGradient | CanvasPattern;
 

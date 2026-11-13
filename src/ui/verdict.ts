@@ -1,6 +1,6 @@
+import { BALL_R, MID_Y, PLATE_HALF } from '../core/rules.ts';
 import { curP, world } from '../game/state';
 import { batterBody } from '../math/batter';
-import { BALL_R, MID_Y, PLATE_HALF } from '../math/constants';
 import type { Pt, Rect } from '../math/geometry';
 import type { PreparedPitch } from '../math/kinematics';
 import { crossRect } from '../math/mask';

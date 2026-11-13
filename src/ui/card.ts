@@ -1,6 +1,6 @@
+import { PLATE_HALF } from '../core/rules.ts';
 import { REDUCED } from '../game/params';
 import { G, world } from '../game/state';
-import { PLATE_HALF } from '../math/constants';
 import { cardStateResults } from '../math/flow';
 import { clamp } from '../math/util';
 import { resultText, toughest, type Result } from '../math/words';

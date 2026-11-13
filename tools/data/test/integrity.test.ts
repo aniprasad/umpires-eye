@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { decodePitches, type ShardDoc, type StoredPitch } from '../lib/decode.ts';
-import { CHALLENGE_FIELDS, PITCH_FIELDS, pitchRow, quantize, rowsJson } from '../lib/format.ts';
+import { decodePitches } from '../../../src/core/decode.ts';
+import { CHALLENGE_FIELDS, PITCH_FIELDS, type ShardDoc, type StoredPitch } from '../../../src/core/schema.ts';
+import { pitchRow, quantize, rowsJson } from '../lib/format.ts';
 import { findingId, judgeFindings, pitchProblems, type ShardIndex } from '../lib/integrity.ts';
 import { judged } from './fixtures.ts';
 

@@ -1,8 +1,8 @@
-import { BALL_R, MID_Y, PLATE_HALF } from '../math/constants';
+import { posAt, type Vec3 } from '../core/kinematics.ts';
+import { BALL_R, MID_Y, PLATE_HALF } from '../core/rules.ts';
 import { centroid, sphereOutline, type Cam, type Projected } from '../math/geometry';
-import { ballT, posAt, type PreparedPitch } from '../math/kinematics';
+import { ballT, type PreparedPitch } from '../math/kinematics';
 import { clamp, easeOut3, lerp, ramp } from '../math/util';
-import type { Vec3 } from '../math/types';
 import { drawBall } from './ball';
 import { tracePoly } from './paint';
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { crossing } from '../lib/physics.ts';
+import { crossing } from '../../../src/core/kinematics.ts';
 import { trajThrough } from './fixtures.ts';
 
 // The math itself is src/core's, tested in tests/unit/core.

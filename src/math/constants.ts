@@ -1,6 +1,6 @@
-// Field geometry, the ump's slot and the game's timing. Feet and seconds unless the name says otherwise.
+// Field geometry, the ump's slot and the game's timing. Feet and seconds unless the name says otherwise. The plate, the
+// ball and the deal box are in src/core/rules.ts, shared with the data tools.
 
-export { BALL_R, DEAL_BOX as PLAY, MID_Y, PLATE_FRONT_Y as PLATE_FRONT, PLATE_HALF, RUBBER_Y } from '../core/rules.ts';
 export const MOUND_H = 10 / 12;
 export const MOUND_C = { x: 0, y: 59 } as const;
 export const MOUND_R = 9;

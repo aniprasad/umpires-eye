@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { absJudge } from '../../src/math/abs';
+import { absJudge } from '../../src/core/abs.ts';
 import { LOOK_Y } from '../../src/math/constants';
 import { makeCam } from '../../src/math/geometry';
 import { prep } from '../../src/math/kinematics';

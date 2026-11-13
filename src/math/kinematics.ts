@@ -1,10 +1,8 @@
 import { absJudge, type AbsJudgement } from '../core/abs.ts';
-import { posAt, tAtY } from '../core/kinematics.ts';
+import { posAt, tAtY, type Vec3 } from '../core/kinematics.ts';
 import { MID_Y, PLATE_FRONT_Y, RUBBER_Y } from '../core/rules.ts';
 import { CATCH_Y } from './constants';
-import type { Pitch, Vec3 } from './types';
-
-export { posAt, tAtY } from '../core/kinematics.ts';
+import type { Pitch } from './types';
 
 export interface Kinematics {
   tRel: number;

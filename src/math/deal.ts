@@ -6,8 +6,6 @@ import { CLOSE_IN } from '../core/rules.ts';
 import type { PlayPoint } from './lens';
 import type { Pitch } from './types';
 
-export { CLOSE_IN } from '../core/rules.ts';
-
 /**
  * The World Series pool has no stored dealable flag, so the game deals the pitches it can show as they happened: the
  * mid-plate crossing is in the deal box, and the pitch is quick enough to stay in frame (every one of the 742 is). The

@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { PLATE_HALF } from '../../src/core/rules.ts';
 import { fromPoolFile, WS_LABEL, WS_TODAY_IDS } from '../../src/data/ws2026';
 import { fmtHeight, marginPhrase, resultText, toughest } from '../../src/math/words';
 import { judged } from '../../src/math/flow';
 import { prep } from '../../src/math/kinematics';
-import { PLATE_HALF } from '../../src/math/constants';
 import { synthPitch } from './fixtures';
 
 const game = { gamePk: 1, gameNumber: 1, away: 'AWY', home: 'HOM' };

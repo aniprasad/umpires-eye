@@ -1,18 +1,18 @@
 // The mockup's ?selftest=1 guarantees, as pure checks. Vitest runs each one; the page prints them at ?selftest=1.
-import { absJudge } from '../math/abs';
+import { absJudge } from '../core/abs.ts';
+import { posAt } from '../core/kinematics.ts';
+import { mulberry32 } from '../core/rng.ts';
+import { BALL_R, CLOSE_IN, DEAL_BOX, MID_Y, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from '../core/rules.ts';
 import { batterDof, batterRig, headSpan } from '../math/batter';
 import { catcherRig, frameOf, frameShift, mittBox, mittProgress, mittState } from '../math/catcher';
-import {
-  BALL_R, CATCH_Y, CROSS_PAD, FRAME, MID_Y, MOUND_H, PLATE_FRONT, PLATE_HALF, PLAY, RUBBER_Y, STANCE, STANCE_MAX,
-} from '../math/constants';
-import { CLOSE_IN, listJoin, pickPoolTen, playPoints, playable } from '../math/deal';
+import { CATCH_Y, CROSS_PAD, FRAME, MOUND_H, STANCE, STANCE_MAX } from '../math/constants';
+import { listJoin, pickPoolTen, playPoints, playable } from '../math/deal';
 import { DOF, dofBlur } from '../math/dof';
 import { makeCam, sphereOutline, vfovDeg, withUnion, type LensCam } from '../math/geometry';
-import { ballT, posAt, prep, type PreparedPitch } from '../math/kinematics';
+import { ballT, prep, type PreparedPitch } from '../math/kinematics';
 import { createLens, type Lens } from '../math/lens';
 import { maskGeom, maskSamples } from '../math/mask';
 import { pitcherPose } from '../math/pitcher';
-import { rng } from '../math/rng';
 import { eyeOf, stanceCorners, stanceOf } from '../math/stance';
 import type { Call, Pitch, Side } from '../math/types';
 import { lastName } from '../math/words';
@@ -72,7 +72,7 @@ function checkPitch(p: Pitch): Checked {
   const truth: Call = k.judge.strike ? 'strike' : 'ball';
   const dm = k.judge.marginIn - p.edgeMarginIn;
   // the renderer's clock: at s = flight the ball must sit on the front plane, at s = toMid on the ABS plane
-  const yFront = posAt(p.traj, ballT(P, k.flight)).y - PLATE_FRONT;
+  const yFront = posAt(p.traj, ballT(P, k.flight)).y - PLATE_FRONT_Y;
   const yMidR = posAt(p.traj, ballT(P, k.toMid)).y - MID_Y;
   const ok = Math.abs(dmx) <= 0.01 && Math.abs(dmz) <= 0.01 && Math.abs(yAtMid) < 1e-9 && truth === p.absTruth
     && Math.abs(dm) <= 0.011 && Math.abs(yFront) < 1e-9 && Math.abs(yMidR) < 1e-9 && dRel <= 0.01
@@ -349,7 +349,7 @@ function camera(ctx: SelfTestCtx): CheckResult {
   const PLAYP = ctx.pool.filter(playable).map(prep);
   const never = ctx.pool.filter((p) => !playable(p));
   const closestNever = Math.min(...never.map((p) => Math.abs(p.edgeMarginIn)));
-  const lines = [`[DEALT] Today's Ten and every "another ten" come from the ${PLAYP.length} of ${ctx.pool.length} pool pitches that cross mid-plate at z ${PLAY.zMin}-${PLAY.zMax} ft, |x| < ${PLAY.xMax} ft (Today's Ten all among them: ${ctx.today.every(playable) ? 'yes' : 'NO'}); never dealt: ${never.length}, closest of those to flipping ${closestNever.toFixed(1)} in`];
+  const lines = [`[DEALT] Today's Ten and every "another ten" come from the ${PLAYP.length} of ${ctx.pool.length} pool pitches that cross mid-plate at z ${DEAL_BOX.zMin}-${DEAL_BOX.zMax} ft, |x| < ${DEAL_BOX.xMax} ft (Today's Ten all among them: ${ctx.today.every(playable) ? 'yes' : 'NO'}); never dealt: ${never.length}, closest of those to flipping ${closestNever.toFixed(1)} in`];
   const failures: string[] = [];
   const stats: Record<string, number> = { dealt: PLAYP.length, neverDealt: never.length, closestNeverIn: closestNever, outOwn: 0, outExtreme: 0, capMinPct: 1e9, helmetMin: 1e9 };
 
@@ -594,7 +594,7 @@ function picker(ctx: SelfTestCtx): CheckResult {
   let pickGames = 0;
   let cbMin = 9;
   let cbMax = 0;
-  const pr = rng(20261031);
+  const pr = mulberry32(20261031);
   const todayIds = new Set(ctx.today.map((p) => p.id));
 
   for (let r = 0; r < 200; r++) {
