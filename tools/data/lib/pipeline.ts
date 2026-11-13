@@ -315,6 +315,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
       calls: 'ump is the plate umpire\'s original call, final the call after any ABS challenge, abs our reconstruction; S = strike, B = ball',
       marginIn: 'how far the ball would have to move to flip abs, rounded to 0.01 in; positive for strikes; abs is authoritative when it rounds to 0',
       bases: 'bitmask of occupied bases before the pitch: 1 = first, 2 = second, 4 = third',
+      games: 'venue and umpire are ids into the venues and umpires tables; umpire is the plate umpire the schedule lists',
       flags: 'top, dealable and challenge.overturned are 1 or 0; challenge.role is B (batter), P (pitcher) or C (catcher)',
       id: 'a pitch is gamePk-atBat-pitch',
     },

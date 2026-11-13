@@ -34,4 +34,4 @@ export const SESSION_BUDGET_GZIP = 300_000;
 export const CREDIT =
   'MLB Stats API, \u00a9 MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.';
 export const TRUTH_NOTE =
-  "absTruth is our reconstruction of the 2026 ABS zone from the feed's tracking, not MLB's official ABS output.";
+  "abs and marginIn are our reconstruction of the 2026 ABS call from the feed's tracking, not MLB's official ABS output.";
