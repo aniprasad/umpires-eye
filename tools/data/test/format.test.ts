@@ -68,7 +68,18 @@ test('a game row decodes back with its venue and plate umpire', () => {
   ) as ShardDoc;
 
   assert.deepEqual(decodeGames(doc), [
-    { gamePk: 900001, date: '2026-05-01', gameType: 'W', away: 'AWY', home: 'HOM', series: 'World Series', seriesGame: 5, venue: 32, umpire: 70 },
+    {
+      gamePk: 900001,
+      date: '2026-05-01',
+      start: '2026-05-01T23:05:00Z',
+      gameType: 'W',
+      away: 'AWY',
+      home: 'HOM',
+      series: 'World Series',
+      seriesGame: 5,
+      venue: 32,
+      umpire: 70,
+    },
   ]);
   assert.equal(decodeNames(doc, 'umpires').get(70), 'Plate Ump');
   assert.equal(decodeNames(doc, 'venues').get(32), 'A Park');

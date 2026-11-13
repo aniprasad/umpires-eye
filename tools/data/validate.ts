@@ -12,6 +12,7 @@ import { FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT } from './l
 import { loadInputs } from './lib/inputs.ts';
 import { absJudge, crossing, inDealBox, TRAJ_KEYS } from './lib/physics.ts';
 import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, SEED, sessionSizes, sha256 } from './lib/pipeline.ts';
+import { compareGames } from './lib/schedule.ts';
 import type { Tally } from './lib/stats.ts';
 
 interface ShardMeta {
@@ -143,9 +144,7 @@ for (const meta of manifest.shards) {
   for (const [k, g] of games.entries()) {
     const before = games[k - 1];
 
-    if (before && (before.date > g.date || (before.date === g.date && before.gamePk >= g.gamePk))) {
-      fail(`${meta.file}: games table out of order at ${g.gamePk}`);
-    }
+    if (before && compareGames(before, g) >= 0) fail(`${meta.file}: games table out of order at ${g.gamePk}`);
     if ((g.venue !== null && !venues.has(g.venue)) || (g.umpire !== null && !umpires.has(g.umpire))) {
       fail(`${meta.file}: game ${g.gamePk} names a venue or umpire missing from its tables`);
     }

@@ -8,7 +8,7 @@ export const SHARD_FORMAT = 'umpires-eye.season-shard';
 export const MANIFEST_FORMAT = 'umpires-eye.season-manifest';
 export const STATS_FORMAT = 'umpires-eye.season-stats';
 
-export const GAME_FIELDS = ['gamePk', 'date', 'gameType', 'away', 'home', 'series', 'seriesGame', 'venue', 'umpire'] as const;
+export const GAME_FIELDS = ['gamePk', 'date', 'start', 'gameType', 'away', 'home', 'series', 'seriesGame', 'venue', 'umpire'] as const;
 export const NAME_FIELDS = ['id', 'name'] as const;
 export const PLAYER_FIELDS = ['id', 'name', 'heightIn'] as const;
 export const CHALLENGE_FIELDS = ['by', 'team', 'role', 'overturned'] as const;
@@ -114,6 +114,7 @@ export function gameRow(g: Game, teamAbbr: (id: number) => string): Row {
   return [
     g.gamePk,
     g.date,
+    g.start,
     g.gameType,
     teamAbbr(g.awayId),
     teamAbbr(g.homeId),

@@ -12,6 +12,7 @@ export const HOME = 2;
 export const GAME: Game = {
   gamePk: 900001,
   date: '2026-05-01',
+  start: '2026-05-01T23:05:00Z',
   gameType: 'R',
   awayId: AWAY,
   homeId: HOME,

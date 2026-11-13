@@ -59,6 +59,7 @@ export interface StoredPitch {
 export interface StoredGame {
   gamePk: number;
   date: string;
+  start: string;
   gameType: string;
   away: string;
   home: string;
@@ -90,6 +91,7 @@ export function decodeGames(doc: ShardDoc): StoredGame[] {
     return {
       gamePk: get('gamePk') as number,
       date: get('date') as string,
+      start: get('start') as string,
       gameType: get('gameType') as string,
       away: get('away') as string,
       home: get('home') as string,

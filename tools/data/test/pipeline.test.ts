@@ -35,6 +35,7 @@ const schedule: ScheduleResponse = {
         {
           gamePk: 900001,
           gameType: 'R',
+          gameDate: '2026-05-01T23:05:00Z',
           officialDate: '2026-05-01',
           status: { abstractGameState: 'Final', codedGameState: 'F', detailedState: 'Final' },
           teams: { away: { team: { id: AWAY } }, home: { team: { id: HOME } } },
@@ -73,8 +74,8 @@ test('a synthetic season builds into a manifest, stats, one dealable shard and a
   assert.ok(pitches.every((p) => p.dealable));
   assert.deepEqual(shard.players.map((r) => r[0]).sort(), [11, 20, 30]);
   assert.deepEqual(
-    decodeGames(shard).map((g) => [g.venue, g.umpire]),
-    [[32, 70]],
+    decodeGames(shard).map((g) => [g.start, g.venue, g.umpire]),
+    [['2026-05-01T23:05:00Z', 32, 70]],
   );
   assert.deepEqual([shard.venues, shard.umpires], [[[32, 'A Park']], [[70, 'Plate Ump']]]);
   assert.match(shard.credit, /Not affiliated with MLB/);

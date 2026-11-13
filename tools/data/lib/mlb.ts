@@ -22,6 +22,7 @@ export interface ScheduleGame {
   gamePk: number;
   gameType?: string;
   season?: string;
+  gameDate?: string;
   officialDate?: string;
   status?: { abstractGameState?: string; codedGameState?: string; detailedState?: string };
   teams?: { away?: { team?: Ref }; home?: { team?: Ref } };

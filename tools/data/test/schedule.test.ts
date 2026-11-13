@@ -7,6 +7,7 @@ import { parseSchedule, parseTeams } from '../lib/schedule.ts';
 const listing = (gamePk: number, date: string, coded: string, extra: Partial<ScheduleGame> = {}): ScheduleGame => ({
   gamePk,
   gameType: 'R',
+  gameDate: `${date}T23:05:00Z`,
   officialDate: date,
   status: { abstractGameState: 'Final', codedGameState: coded, detailedState: coded === 'F' ? 'Final' : coded === 'D' ? 'Postponed' : 'Cancelled' },
   teams: { away: { team: { id: 1 } }, home: { team: { id: 2 } } },
@@ -42,6 +43,51 @@ test('parseSchedule keeps each completed game once, from its final listing, in d
     ],
   );
   assert.deepEqual(skipped, { Cancelled: 1, 'game type S': 1 });
+});
+
+test('parseSchedule orders a day by scheduled start, then gamePk, and keeps the start in ISO UTC', () => {
+  // A doubleheader whose second game has the lower gamePk, and a West Coast game that starts after UTC midnight.
+  const { games } = parseSchedule([
+    {
+      dates: [
+        {
+          games: [
+            listing(12, '2026-04-02', 'F', { gameDate: '2026-04-02T17:05:00Z' }),
+            listing(11, '2026-04-02', 'F', { gameDate: '2026-04-02T21:10:00Z' }),
+            listing(10, '2026-04-02', 'F', { gameDate: '2026-04-03T02:10:00Z' }),
+            listing(13, '2026-04-02', 'F', { gameDate: '2026-04-02T21:10:00Z' }),
+          ],
+        },
+      ],
+    },
+  ]);
+
+  assert.deepEqual(
+    games.map((g) => [g.gamePk, g.start]),
+    [
+      [12, '2026-04-02T17:05:00Z'],
+      [11, '2026-04-02T21:10:00Z'],
+      [13, '2026-04-02T21:10:00Z'],
+      [10, '2026-04-03T02:10:00Z'],
+    ],
+  );
+});
+
+test('a suspended game resumed later keeps its original start', () => {
+  // The feed lists a resumed game as final twice: on the day it began and on the day it was finished.
+  const { games } = parseSchedule([
+    {
+      dates: [
+        { games: [listing(20, '2026-06-16', 'F', { gameDate: '2026-06-17T18:00:00Z' })] },
+        { games: [listing(20, '2026-06-16', 'F', { gameDate: '2026-06-16T23:15:00Z' })] },
+      ],
+    },
+  ]);
+
+  assert.deepEqual(
+    games.map((g) => [g.gamePk, g.date, g.start]),
+    [[20, '2026-06-16', '2026-06-16T23:15:00Z']],
+  );
 });
 
 test('parseSchedule takes the venue and the home-plate umpire when the schedule lists them', () => {
