@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { dealTen, deckOf, tenProblems, type Card } from '../lib/deal.ts';
-import type { Judged } from '../lib/judge.ts';
+import { judge, type Judged } from '../lib/judge.ts';
 import { CALIBRATOR_SHARE, makeShards, selectPool, stratumOf } from '../lib/pool.ts';
 import { mulberry32 } from '../lib/rng.ts';
 import { judged } from './fixtures.ts';
@@ -24,7 +24,7 @@ describe('selectPool', () => {
       judged({ seq: 1, marginIn: -3 }),
       judged({ seq: 2, marginIn: 5 }),
       judged({ seq: 3, marginIn: 0.2, dealable: false }),
-      judged({ seq: 4, marginIn: -0.3, renderable: false }),
+      judged({ seq: 4, marginIn: -0.3, showable: false }),
       judged({ seq: 5, marginIn: -20, dealable: false, challenged: true }),
       ...Array.from({ length: 30 }, (_, k) => judged({ seq: 10 + k, marginIn: k % 2 ? 1 : -1 })),
       ...Array.from({ length: 50 }, (_, k) => judged({ seq: 100 + k, marginIn: 8 })),
@@ -38,9 +38,20 @@ describe('selectPool', () => {
     assert.equal(bySeq.has(3), false);
     assert.equal(bySeq.has(4), false);
     assert.deepEqual([bySeq.get(5)?.bucket, bySeq.get(5)?.dealable], ['challenge', false]);
-    assert.deepEqual(pool.undrawable, { close: 1, near: 0 });
+    assert.deepEqual(pool.notShowable, { close: 1, near: 0 });
     assert.equal(pool.entries.filter((e) => e.bucket === 'calibrator').length, Math.round(32 * CALIBRATOR_SHARE));
     assert.deepEqual(selectPool(all, 'seed'), pool);
+  });
+
+  test('leaves out a pitch whose count before it is impossible', () => {
+    const fine = judge(judged({ seq: 0, marginIn: 0.4 }).p, 0);
+    const broken = judge({ ...fine.p, id: '900001-1-1', atBat: 1, balls: 2, strikes: 3 }, 1);
+
+    assert.deepEqual([fine.showable, broken.showable], [true, false]);
+    assert.deepEqual(
+      selectPool([fine, broken], 'seed').entries.map((e) => e.j.seq),
+      [0],
+    );
   });
 });
 

@@ -35,7 +35,7 @@ import {
   type Quantized,
   type Row,
 } from './format.ts';
-import { judge, type Judged } from './judge.ts';
+import { countPossible, judge, type Judged } from './judge.ts';
 import type { PlayByPlay, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import type { Person } from './people.ts';
 import { absJudge, crossing } from './physics.ts';
@@ -376,7 +376,8 @@ export function buildDataset(inputs: Inputs): BuildResult {
   }
 
   const mismatches = challengeMismatches(all, inputs.people, games);
-  const geometricOnly = all.filter((j) => j.dealable && !j.renderable);
+  const geometricOnly = all.filter((j) => j.dealable && !j.showable);
+  const impossible = all.filter((j) => !countPossible(j.p)).map((j) => `${j.p.id}: ${j.p.balls}-${j.p.strikes} before the pitch`);
   const report = {
     note: 'Written by npm run data:build from the cached MLB Stats API responses. Deterministic: rebuilding gives the same file.',
     season: SEASON,
@@ -392,6 +393,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
       outsMismatches: sample(checks.outsMismatches),
       scoreMismatches: sample(checks.scoreMismatches),
       runnersMismatches: sample(checks.runnersMismatches),
+      impossibleCounts: sample(impossible),
       challengesOnExcludedPitches: sample(checks.challengesOnExcluded),
       orphanChallenges: sample(checks.orphanReviews),
       challengeRoleAnomalies: sample(checks.roleAnomalies),
@@ -421,8 +423,8 @@ export function buildDataset(inputs: Inputs): BuildResult {
     umpVsAbs: ump,
     dealableRule: {
       geometric: all.filter((j) => j.dealable).length,
-      geometricButNotDrawable: geometricOnly.length,
-      geometricButNotDrawableInPoolRange: pool.undrawable,
+      geometricButNotShowable: geometricOnly.length,
+      geometricButNotShowableInPoolRange: pool.notShowable,
     },
     storedPrecision: { decimalsUsed: decimals, maxMarginDriftIn: round(marginDrift, 4) },
     pool: composition,
@@ -454,7 +456,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `ump vs ABS: overall ${ump.overall.agree}/${ump.overall.total} (${ump.overall.pct}%), within ${CLOSE_IN} in ${ump.close.agree}/${ump.close.total} (${ump.close.pct}%)`,
     `pool ${composition.pitches}: close ${composition.close}, near ${composition.near}, calibrators ${composition.calibrators}, challenged ${composition.challenged}`,
     `shards ${count}: ${kb(Math.min(...sizes.shardBytes))}-${kb(Math.max(...sizes.shardBytes))} raw, ${kb(Math.min(...sizes.shardGzipBytes))}-${kb(Math.max(...sizes.shardGzipBytes))} gzipped; largest session ${kb(sizes.largestSessionGzipBytes)} of ${kb(SESSION_BUDGET_GZIP)}`,
-    `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}`,
+    `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${impossible.length} called pitches with an impossible count (not dealable)`,
   ];
 
   return { files, summary, sizes };

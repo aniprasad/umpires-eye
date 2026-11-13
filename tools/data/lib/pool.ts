@@ -7,14 +7,14 @@ export type Bucket = 'challenge' | 'close' | 'near' | 'calibrator';
 export interface PoolEntry {
   j: Judged;
   bucket: Bucket;
-  // What the app may deal: the mockup's crossing rule, and only for pitches it can draw.
+  // What the app may deal: the mockup's crossing rule, and only for pitches it can show as they happened.
   dealable: boolean;
 }
 
 export interface Pool {
   entries: PoolEntry[];
   clearEligible: number;
-  undrawable: { close: number; near: number };
+  notShowable: { close: number; near: number };
 }
 
 // One calibrator for every nine other dealable pitches, the proportion a round of ten uses them in.
@@ -35,16 +35,16 @@ export function band(j: Judged): 'close' | 'near' | 'mid' | 'clear' {
 export function selectPool(all: readonly Judged[], seed: string): Pool {
   const entries: PoolEntry[] = [];
   const clear: Judged[] = [];
-  const undrawable = { close: 0, near: 0 };
+  const notShowable = { close: 0, near: 0 };
 
   for (const j of all) {
     const b = band(j);
-    const dealable = j.dealable && j.renderable;
+    const dealable = j.dealable && j.showable;
 
     if (j.p.challenge) entries.push({ j, bucket: 'challenge', dealable });
     else if (b === 'close' || b === 'near') {
       if (dealable) entries.push({ j, bucket: b, dealable });
-      else if (j.dealable) undrawable[b]++;
+      else if (j.dealable) notShowable[b]++;
     } else if (b === 'clear' && dealable) clear.push(j);
   }
 
@@ -57,7 +57,7 @@ export function selectPool(all: readonly Judged[], seed: string): Pool {
   for (const { j } of ranked.slice(0, want)) entries.push({ j, bucket: 'calibrator', dealable: true });
   entries.sort((a, b) => a.j.seq - b.j.seq);
 
-  return { entries, clearEligible: clear.length, undrawable };
+  return { entries, clearEligible: clear.length, notShowable };
 }
 
 export function stratumOf(e: PoolEntry): string {

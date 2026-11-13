@@ -10,9 +10,12 @@ export interface Judged {
   marginIn: number;
   // The mockup's crossing rule, judged at full precision.
   dealable: boolean;
-  // The app can draw it: release extension and speed are known, and so are the batter and pitcher.
-  renderable: boolean;
+  // The app can show it as it happened: release extension and speed are known, so are the batter and pitcher, and the
+  // count before the pitch is one that can occur (a feed scoring error can make it 0-3).
+  showable: boolean;
 }
+
+export const countPossible = (p: CalledPitch): boolean => p.balls <= 3 && p.strikes <= 2;
 
 export function judge(p: CalledPitch, seq: number): Judged {
   const mid = crossing(p.traj, MID_Y);
@@ -25,6 +28,6 @@ export function judge(p: CalledPitch, seq: number): Judged {
     truth: j.strike ? 'S' : 'B',
     marginIn: j.marginIn,
     dealable: isDealable(mid),
-    renderable: p.extension !== null && p.mph !== null && p.attribution !== 'uncertain',
+    showable: p.extension !== null && p.mph !== null && p.attribution !== 'uncertain' && countPossible(p),
   };
 }

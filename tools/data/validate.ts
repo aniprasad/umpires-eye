@@ -66,7 +66,9 @@ function pitchProblems(p: StoredPitch, games: Map<number, number>, players: Set<
   if (p.challenge && !players.has(p.challenge.by)) out.push('challenger missing from the players table');
   if (p.type !== null && !types.has(p.type)) out.push(`pitch type ${p.type} missing from pitchTypes`);
   if (!(p.inning >= 1 && isInt(p.inning)) || !inRange(p.outs, 0, 2)) out.push('bad inning or outs');
-  if (!inRange(p.balls, 0, 3) || !inRange(p.strikes, 0, 2)) out.push(`impossible count ${p.balls}-${p.strikes}`);
+  if (!inRange(p.balls, 0, 9) || !inRange(p.strikes, 0, 9)) out.push(`bad count ${p.balls}-${p.strikes}`);
+  // A feed scoring error can leave an impossible count; such a pitch may sit in the pool only as an undealable challenge.
+  if (p.dealable && (p.balls > 3 || p.strikes > 2)) out.push(`dealable with an impossible count ${p.balls}-${p.strikes}`);
   if (!inRange(p.awayScore, 0, 99) || !inRange(p.homeScore, 0, 99) || !inRange(p.bases, 0, 7)) out.push('bad score or bases');
   if (!['L', 'R'].includes(p.bats) || !['L', 'R'].includes(p.throws)) out.push('bad batter side or pitcher hand');
   if (![p.ump, p.final, p.abs].every((c) => c === 'S' || c === 'B')) out.push('bad call code');
@@ -111,7 +113,7 @@ const texts: string[] = [];
 const table: string[] = [];
 const totals = { pitches: 0, dealable: 0, close: 0, near: 0, calibrators: 0, challenged: 0, agree: 0, overturned: 0 };
 let maxDrift = 0;
-let undealableButDrawable = 0;
+let heldBack = 0;
 
 for (const meta of manifest.shards) {
   const text = read(`${OUT_DIR}/${meta.file}`);
@@ -162,7 +164,7 @@ for (const meta of manifest.shards) {
     maxDrift = Math.max(maxDrift, Math.abs(judged.marginIn - p.marginIn));
     if (Math.abs(judged.marginIn - p.marginIn) > MARGIN_TOLERANCE_IN) fail(`${where}: margin drifts ${judged.marginIn} vs ${p.marginIn}`);
     if (p.dealable && !drawable) fail(`${where}: dealable but outside the crossing box or missing release data`);
-    if (!p.dealable && drawable) undealableButDrawable++;
+    if (!p.dealable && drawable) heldBack++;
     if (!p.challenge && !(p.dealable && (m <= NEAR_IN || m >= CALIBRATOR_MIN_IN))) fail(`${where}: does not belong in the pool`);
 
     totals.pitches++;
@@ -216,7 +218,7 @@ console.log(
 );
 console.log(`largest play session: ${kb(sizes.largestSessionGzipBytes)} gzipped (budget ${kb(SESSION_BUDGET_GZIP)})`);
 console.log(
-  `challenges: ABS reconstruction = final call on ${totals.agree}/${totals.challenged}; max stored-margin drift ${maxDrift.toFixed(4)} in; ${undealableButDrawable} drawable pitches held back (uncertain batter or pitcher)`,
+  `challenges: ABS reconstruction = final call on ${totals.agree}/${totals.challenged}; max stored-margin drift ${maxDrift.toFixed(4)} in; ${heldBack} drawable pitches held back (uncertain batter or pitcher, or an impossible count)`,
 );
 
 if (rebuild) {

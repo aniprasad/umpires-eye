@@ -138,7 +138,7 @@ export interface JudgedSpec {
   bats?: Side;
   challenged?: boolean;
   dealable?: boolean;
-  renderable?: boolean;
+  showable?: boolean;
 }
 
 // A judged pitch with only the fields the pool, shards and dealer look at filled in meaningfully.
@@ -185,6 +185,6 @@ export function judged(s: JudgedSpec): Judged {
     truth,
     marginIn: s.marginIn,
     dealable: s.dealable ?? true,
-    renderable: s.renderable ?? true,
+    showable: s.showable ?? true,
   };
 }
