@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { seasonMini } from '../fixtures/season-mini';
 import { activeId, callPitch, trackErrors } from './helpers';
-import { loadsOf, saveData, serveSeason, shards, watchLoads } from './season-data';
+import { loadsOf, PAST_IDLE_MS, parsesOf, saveData, serveSeason, shards, textsOf, watchLoads } from './season-data';
 
 const cal = seasonMini({ calendar: true });
 const tenOf = (date: string): string => {
@@ -162,7 +162,7 @@ test.describe('in Tokyo', () => {
 });
 
 test.describe('NoToday', () => {
-  test('past the schedule, the start screen offers Another ten, loads its deck at once, and plays it', async ({ page }) => {
+  test('past the schedule, the start screen offers Another ten, loads its shard at once, and plays it', async ({ page }) => {
     const errors: string[] = [];
     const notFound: string[] = [];
     const app = page.locator('#app');
@@ -188,7 +188,7 @@ test.describe('NoToday', () => {
     await expect(page.locator('.indicator')).toBeHidden();
     await expect(page.locator('#btnStrike')).toBeHidden();
     await expect(page.locator('#err')).toBeHidden();
-    // Another ten is all there is to play, so its deck loads before the press (§4.1)
+    // Another ten is all there is to play, so its shard loads before the press (§4.1)
     await expect.poll(() => shards(asked)).toEqual([cal.shardUrl]);
     expect(dailyAsked(asked)).toEqual(['daily/2027-01.json']);
     await page.keyboard.press('Enter');
@@ -208,6 +208,24 @@ test.describe('NoToday', () => {
     await expect(page.locator('html')).toHaveAttribute('data-ready', 'none');
     await expect(page.locator('#startLede')).toHaveText("There's no Today's Ten for November 15, 2026. Another ten deals fresh pitches from the 2026 season.");
     await expect(page.locator('#err')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test('NoToday parses the shard it loaded only when Play another ten is pressed, so the parse never holds up its first paint', async ({ page }) => {
+    const errors = trackErrors(page);
+    const asked = await serveSeason(page, cal);
+
+    await watchLoads(page);
+    await openAt(page, '2026-11-15T12:00:00Z', `?date=${cal.unavailableDate}`);
+    await expect(page.locator('html')).toHaveAttribute('data-ready', 'none');
+    await expect.poll(() => textsOf(page)).toEqual(['start']);
+    // the text is in and the page has had time to be idle, yet nothing has parsed it
+    await page.clock.runFor(PAST_IDLE_MS);
+    expect(await parsesOf(page)).toEqual([]);
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+    expect(await parsesOf(page)).toEqual(['start']);
+    expect(shards(asked)).toEqual([cal.shardUrl]);
     expect(errors).toEqual([]);
   });
 

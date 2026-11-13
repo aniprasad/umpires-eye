@@ -428,8 +428,9 @@ function showStart(): void {
   } else {
     UI.startLede.textContent = noTodayLede(dateLabel(w.dateKey), w.source.label);
     UI.btnPlay.textContent = 'Play another ten';
-    // Another ten is all there is to play, so its deck loads at once (§4.1)
-    if (!saveData()) w.another.ready().catch(() => undefined);
+    // Another ten is all there is to play, so its shard loads at once (§4.1). The press parses it, so the parse never
+    // holds up this screen's first paint.
+    if (!saveData()) w.source.prefetch?.();
   }
   if (!SELFTEST) UI.btnPlay.focus({ preventScroll: true });
   document.documentElement.dataset.ready = w.today.length ? '1' : 'none';
