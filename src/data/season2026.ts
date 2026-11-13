@@ -1,14 +1,14 @@
 // The 2026 season (docs/M2-DESIGN.md §4): Today's Ten from a month file, Another ten from a shard, and the ump figure
-// from stats.json. Nothing loads before the game asks: today() reads the manifest and one month file, the first deck()
-// one shard, and umpFigure() the stats.
-import { isDailyReserve, monthOf, type DailyDay, type DailyFileMeta, type ManifestDaily } from '../core/daily.ts';
+// from stats.json. Nothing loads before the game asks: today() reads the manifest and one month file, prefetch() the
+// text of one shard, the first deck() parses it, and umpFigure() reads the stats.
+import { isDailyReserve, monthOf, type DailyDay } from '../core/daily.ts';
 import { DecodeError, decodeTables, type DecodedTables } from '../core/decode.ts';
 import type { Rand } from '../core/rng.ts';
-import { DAILY_FORMAT, FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT, type ShardFileMeta, type StoredPitch } from '../core/schema.ts';
+import { DAILY_FORMAT, FORMAT_VERSION, MANIFEST_FORMAT, SHARD_FORMAT, STATS_FORMAT, type ManifestDoc, type StoredPitch } from '../core/schema.ts';
 import type { Pitch } from '../math/types';
 import { boxLensPoints, rowReader, type RowReader } from './adapter';
 import { isDateKey, monthLabel } from './dates';
-import { fetchJson, matchBuild, versioned, type Built, type Net } from './fetch';
+import { fetchJson, fetchText, matchBuild, parseJson, versioned, type Built, type Net } from './fetch';
 import { LoadError, type Deck, type PitchSource, type TodayResult, type UmpFigure } from './source';
 
 export const SEASON_LABEL = '2026 season';
@@ -17,12 +17,13 @@ const MANIFEST = 'the season manifest';
 const STATS = 'the season stats';
 const MORE = 'the pitches for Another ten';
 
-type MonthMeta = Pick<DailyFileMeta, 'month' | 'file'>;
-type ShardMeta = Pick<ShardFileMeta, 'file' | 'sha256'>;
+type Schedule = NonNullable<ManifestDoc['daily']>;
+type MonthMeta = Pick<Schedule['files'][number], 'month' | 'file'>;
+type ShardMeta = Pick<ManifestDoc['shards'][number], 'file' | 'sha256'>;
 
-/** What the app reads from manifest.json. */
-interface Manifest extends Built {
-  readonly daily: Pick<ManifestDaily, 'first' | 'last'> & { readonly files: readonly MonthMeta[] };
+/** What the app reads from manifest.json: core's ManifestDoc, cut down to the build, the schedule and the shards. */
+interface Manifest extends Pick<ManifestDoc, 'build'> {
+  readonly daily: Pick<Schedule, 'first' | 'last'> & { readonly files: readonly MonthMeta[] };
   readonly shards: readonly ShardMeta[];
 }
 
@@ -141,7 +142,7 @@ export interface SeasonOptions {
   /** The dataset's folder, ending in a slash: "<base>data/season-2026/". */
   readonly root: string;
   readonly net?: Net;
-  /** Picks the shard Another ten deals from. */
+  /** Picks the shards Another ten deals from. */
   readonly rand?: Rand;
 }
 
@@ -149,6 +150,9 @@ export interface SeasonOptions {
 export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): PitchSource {
   let manifest: Promise<Manifest> | null = null;
   const months = new Map<string, (signal?: AbortSignal) => Promise<MonthFile>>();
+  // The shards this page has dealt from, or is about to. Another ten never goes back to one (§3).
+  const used = new Set<number>();
+  const texts = new Map<number, (signal?: AbortSignal) => Promise<string>>();
   const get = (file: string, what: string, cache: RequestCache, signal?: AbortSignal): Promise<unknown> => fetchJson(root + file, { what, cache, signal, net });
   const fetchManifest = async (cache: RequestCache, signal?: AbortSignal): Promise<Manifest> => readManifest(await get('manifest.json', MANIFEST, cache, signal));
   // The manifest the page goes by, until a build check brings a newer one.
@@ -215,21 +219,70 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     return { kind: 'ten', dateKey, pitches };
   }
 
-  const deck = shared(async (signal): Promise<Deck> => {
-    const { shards } = await theManifest(signal);
-    // any shard will do for now; which ones a page has used, and the next when a deck runs dry, are §3's to settle
-    const at = Math.floor(rand() * shards.length);
-    const read = async (meta: ShardMeta): Promise<Rows> => readRows(await get(versioned(meta.file, meta.sha256.slice(0, 12)), MORE, 'force-cache', signal), SHARD_FORMAT, MORE);
-    const rows = await sameBuild(await read(shards[at]), (fresh) => {
-      const meta = fresh.shards[at];
+  /** A shard this page hasn't used, at random, now marked used; null once every one has been. */
+  async function unusedShard(signal?: AbortSignal): Promise<number | null> {
+    const free = (await theManifest(signal)).shards.map((_, at) => at).filter((at) => !used.has(at));
+    const at = free[Math.floor(rand() * free.length)];
 
-      return meta ? read(meta) : Promise.reject(broken(MANIFEST, `no longer lists shard ${at}`));
-    }, MORE, signal);
+    if (at === undefined) return null;
+    used.add(at);
+
+    return at;
+  }
+
+  // Picked once, by prefetch() or the first deck(), whichever asks first.
+  const firstShard = shared(async (signal): Promise<number> => {
+    const at = await unusedShard(signal);
+
+    // readManifest refuses a manifest without shards, and nothing is used before this pick
+    if (at === null) throw broken(MANIFEST, 'lists no shards');
+
+    return at;
+  });
+
+  const metaOf = (m: Manifest, at: number): ShardMeta => {
+    const meta = m.shards[at];
+
+    if (!meta) throw broken(MANIFEST, `no longer lists shard ${at}`);
+
+    return meta;
+  };
+  const shardText = (meta: ShardMeta, signal?: AbortSignal): Promise<string> =>
+    fetchText(root + versioned(meta.file, meta.sha256.slice(0, 12)), { what: MORE, cache: 'force-cache', signal, net });
+
+  /** A shard's text, loaded once for prefetch() and deck() both. A failed load is dropped, so the next ask tries again. */
+  function textOf(at: number): (signal?: AbortSignal) => Promise<string> {
+    let load = texts.get(at);
+
+    if (!load) {
+      load = shared(async (signal) => shardText(metaOf(await theManifest(signal), at), signal));
+      texts.set(at, load);
+    }
+
+    return load;
+  }
+
+  /** The deck from one shard: its text parsed, matched to the manifest's build, and cut to what Another ten may deal. */
+  async function shardDeck(at: number, signal?: AbortSignal): Promise<Deck> {
+    const read = (text: string): Rows => readRows(parseJson(text, MORE), SHARD_FORMAT, MORE);
+    const rows = await sameBuild(read(await textOf(at)(signal)), async (fresh) => read(await shardText(metaOf(fresh, at), signal)), MORE, signal);
     // dealable rows only, in the file's played order, and none held back for Today's Ten
     const pitches = rows.tables.pitches.flatMap((row, i) => (row.dealable && !isDailyReserve(row.id) ? [rows.reader.pitch(row, i)] : []));
+    // chosen once, so a next deck that fails to load is tried again from the same shard
+    let nextAt: number | null | undefined;
+    const next = shared(async (signal): Promise<Deck | null> => {
+      nextAt ??= await unusedShard(signal);
 
-    return { pitches, next: () => Promise.resolve(null) };
-  });
+      return nextAt === null ? null : shardDeck(nextAt, signal);
+    });
+
+    return { pitches, next };
+  }
+
+  const deck = shared(async (signal): Promise<Deck> => shardDeck(await firstShard(signal), signal));
+
+  // A failed load is only dropped here: deck() asks for it again.
+  const prefetch = (): void => void firstShard().then((at) => textOf(at)()).catch(() => undefined);
 
   const figure = shared(async (): Promise<UmpFigure> => {
     const read = async (file: string): Promise<Stats> => readStats(await get(file, STATS, 'no-cache'));
@@ -248,6 +301,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     label: SEASON_LABEL,
     lensPoints: boxLensPoints(),
     today,
+    prefetch,
     deck,
     // play never waits for the stats: without them, the copy leaves the figure out (§5.4)
     umpFigure: () => figure().catch(() => null),

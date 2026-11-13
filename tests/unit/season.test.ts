@@ -28,9 +28,9 @@ function read(rows: readonly PitchCells[], over: Record<string, unknown> = {}) {
 
 /**
  * Serves the season's files under ROOT, the query ignored, unless `answer` has something else to say for an address.
- * It records what each request asked for and how.
+ * It records what each request asked for and how. `rand` picks the shards.
  */
-function serve(files: ReadonlyMap<string, unknown> = mini.files, answer: (path: string) => Response | undefined = () => undefined) {
+function serve(files: ReadonlyMap<string, unknown> = mini.files, answer: (path: string) => Response | undefined = () => undefined, rand: () => number = () => 0) {
   const asked: string[] = [];
   const net: Net = {
     onLine: () => true,
@@ -44,12 +44,21 @@ function serve(files: ReadonlyMap<string, unknown> = mini.files, answer: (path: 
     },
   };
 
-  return { source: seasonSource({ root: ROOT, net, rand: () => 0 }), asked };
+  return { source: seasonSource({ root: ROOT, net, rand }), asked };
 }
 
 /** The fixture's files with one replaced. */
 const withFile = (path: string, body: unknown): Map<string, unknown> => new Map([...mini.files, [path, body]]);
 const manifest = mini.files.get('manifest.json') as Record<string, unknown>;
+const shardsAsked = (asked: readonly string[]): string[] => asked.filter((a) => a.startsWith('shards/'));
+
+/** The fixture with its one shard served under three names, as shards 00, 01 and 02. */
+function threeShards(): Map<string, unknown> {
+  const [meta] = manifest.shards as Record<string, unknown>[];
+  const shards = ['00', '01', '02'].map((n) => ({ ...meta, file: `shards/${n}.json` }));
+
+  return new Map([...mini.files, ['manifest.json', { ...manifest, shards }], ['shards/01.json', mini.files.get('shards/00.json')], ['shards/02.json', mini.files.get('shards/00.json')]]);
+}
 
 describe('the season adapter (rows to pitches)', () => {
   it('reads the moment before the pitch: half, count, outs, score, runners, players and their sides', () => {
@@ -149,6 +158,7 @@ describe('which season rows reach a deck (§7.1)', () => {
 describe('the season source', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("serves a date's ten from its month file, in play order, and loads no shard for it", async () => {
@@ -214,6 +224,65 @@ describe('the season source', () => {
     await expect(source.deck()).rejects.toMatchObject({ kind: 'missing' });
     expect((await source.deck()).pitches.length).toBe(mini.deckIds.length);
     expect(asked.filter((a) => a.startsWith('shards/'))).toHaveLength(2);
+  });
+
+  it('prefetch() loads the first shard as text, and deck() parses that text once, without asking for it again', async () => {
+    const parse = vi.spyOn(JSON, 'parse');
+    const shardParses = (): number => parse.mock.calls.filter(([text]) => typeof text === 'string' && text.includes(SHARD_FORMAT)).length;
+    const { source, asked } = serve();
+
+    source.prefetch?.();
+    await vi.waitFor(() => expect(shardsAsked(asked)).toEqual([`${mini.shardUrl} force-cache`]));
+    expect(shardParses()).toBe(0);
+    const deck = await source.deck();
+
+    // a prefetch that parsed would have done so before deck() could
+    expect(shardParses()).toBe(1);
+    expect(deck.pitches.map((p) => p.id)).toEqual(mini.deckIds);
+    expect(asked).toEqual(['manifest.json no-cache', `${mini.shardUrl} force-cache`]);
+  });
+
+  it('prefetch() never rejects: a shard that failed to load is asked for again by deck()', async () => {
+    const unhandled: unknown[] = [];
+    const note = (e: unknown): void => {
+      unhandled.push(e);
+    };
+    let refusals = 1;
+    const { source, asked } = serve(mini.files, (path) => (path.startsWith('shards/') && refusals-- > 0 ? new Response('', { status: 404 }) : undefined));
+
+    process.on('unhandledRejection', note);
+    try {
+      source.prefetch?.();
+      await vi.waitFor(() => expect(shardsAsked(asked)).toHaveLength(1));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', note);
+    }
+    expect((await source.deck()).pitches).toHaveLength(mini.deckIds.length);
+    expect(shardsAsked(asked)).toHaveLength(2);
+  });
+
+  it("takes each next deck from a shard the page hasn't used, picked at random, until none is left", async () => {
+    const picks = [0.9, 0.5, 0];
+    const { source, asked } = serve(threeShards(), undefined, () => picks.shift() ?? 0);
+    const first = await source.deck();
+    const second = await first.next();
+    const third = await second?.next();
+
+    expect(await third?.next()).toBeNull();
+    expect(await first.next()).toBe(second);
+    expect(shardsAsked(asked).map((a) => a.split('?')[0])).toEqual(['shards/02.json', 'shards/01.json', 'shards/00.json']);
+  });
+
+  it('tries the same shard again when a next deck failed to load', async () => {
+    let refusals = 1;
+    const { source, asked } = serve(threeShards(), (path) => (path.startsWith('shards/01.json') && refusals-- > 0 ? new Response('', { status: 404 }) : undefined));
+    const first = await source.deck();
+
+    await expect(first.next()).rejects.toMatchObject({ kind: 'missing' });
+    expect((await first.next())?.pitches).toHaveLength(mini.deckIds.length);
+    expect(shardsAsked(asked).map((a) => a.split('?')[0])).toEqual(['shards/00.json', 'shards/01.json', 'shards/01.json']);
   });
 
   it('gives the ump figure from the stats, to one decimal and labelled season overall, or null without them', async () => {
