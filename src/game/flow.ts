@@ -1,4 +1,5 @@
 import { prep } from '../math/kinematics';
+import type { Deck } from '../data/source';
 import { BEAT, FIRST_BEAT, REPLAY_RATE, WINDUP } from '../math/constants';
 import { pickPoolTen, todayLede } from '../math/deal';
 import { callWindowEnd, clockLeft, countAfter, judged, replayLength, revealAt, urlStateResult } from '../math/flow';
@@ -13,7 +14,7 @@ import { drawPitcher } from '../render/pitcher';
 import { drawReveal, RV, type SceneState } from '../render/reveal';
 import { ensureStatic, invalidateStatic, paintAhead, scene } from '../render/scene';
 import { bootCard, copyResult, showCards } from '../ui/card';
-import { CARD, UI } from '../ui/dom';
+import { CARD, fail, UI } from '../ui/dom';
 import { announce, fillMatchup, setIndicator, setPhase, toast, updateScore } from '../ui/hud';
 import { fillVerdict, placeVerdict } from '../ui/verdict';
 import { Q, REDUCED, SELFTEST, STATE } from './params';
@@ -193,11 +194,29 @@ export function startGame(): void {
   beginPitch(0, { first: true });
 }
 
-/** "Play another ten": a fresh deal from the whole pool, never repeating Today's Ten. */
-export function playAnother(): void {
-  const w = world();
+let dealing = false;
 
-  G.set = pickPoolTen(w.deck.pitches, w.today, Math.random).map(prep);
+/**
+ * "Play another ten": a fresh deal from the source's deck, never repeating Today's Ten. The deck loads when it's first
+ * asked for, so the season's shard waits until the player wants more than Today's Ten (§4.2).
+ */
+export async function playAnother(): Promise<void> {
+  const w = world();
+  let deck: Deck;
+
+  // one deal per press, however long the deck takes
+  if (dealing) return;
+  dealing = true;
+  try {
+    deck = await w.source.deck();
+  } catch (e) {
+    fail(`More pitches didn't load: ${e instanceof Error ? e.message : String(e)}`);
+
+    return;
+  } finally {
+    dealing = false;
+  }
+  G.set = pickPoolTen(deck.pitches, w.today, Math.random).map(prep);
   G.mode = 'pool';
   G.results = [];
   G.i = 0;
@@ -297,7 +316,7 @@ export function wireInput(): void {
   UI.btnNext.addEventListener('click', nextPitch);
   UI.btnPlay.addEventListener('click', startGame);
   CARD.copy.addEventListener('click', () => void copyResult());
-  CARD.again.addEventListener('click', playAnother);
+  CARD.again.addEventListener('click', () => void playAnother());
   window.addEventListener('keydown', onKey);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('resize', onResize);

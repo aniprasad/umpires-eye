@@ -58,7 +58,7 @@ async function boot(): Promise<void> {
     const today = await source.today(dateKeyOf(new Date()));
 
     if (today.kind === 'none') throw new LoadError('data', `There's no Today's Ten for ${today.dateKey}.`);
-    setWorld(createWorld(source, today.pitches, await source.deck()));
+    setWorld(createWorld(source, today.pitches));
   } catch (e) {
     dataFailed(e);
 
