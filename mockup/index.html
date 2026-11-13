@@ -1,0 +1,2336 @@
+<!--
+THESIS: You are the plate umpire. A real World Series pitch arrives at real speed along its tracked path, seen from the umpire's slot, and you call it before the truth appears. Refuses the stats-chart dot, the TV K-Zone 3x3 grid, and neon betting-app chrome.
+OWN-WORLD: Night game under the lights. Batter's-eye green-black, floodlit clay and grass, chalk white, umpire navy, and one magenta signal (#E20074) reserved for ABS truth. The UI lives in the ump's own tools: the palm indicator, chalk lines, and a late-80s umpire card.
+STORY: Feel how fast and hard the call is. Learn that the zone moves with the batter. See that real umps miss. Want one more pitch, then copy your result.
+FIRST VIEWPORT: Full-bleed ump's-eye scene: pitcher small on the mound, batter at true height beside the plate, catcher low and soft, matchup card top-left, indicator bottom-right, Ball/Strike controls at the bottom corners, Start overlay with "Play ball".
+FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geometry canvas foreground. No seed key (impeccable scripts are unavailable on this machine).
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Umpire's Eye: call real World Series pitches</title>
+<meta name="description" content="Be the plate umpire. Real 2026 World Series pitches at real speed from the umpire's slot. Call ball or strike, then see the ABS zone and the real call.">
+<meta name="theme-color" content="#07100c">
+<style>
+@font-face { font-family: "Big Shoulders Display"; src: url("assets/fonts/big-shoulders-display-latin.woff2") format("woff2"); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: "Courier Prime"; src: url("assets/fonts/courier-prime-400-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Courier Prime"; src: url("assets/fonts/courier-prime-700-latin.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+:root {
+  --night: #07100c; --night-2: #0c1913; --night-3: #142219;
+  --navy: #14213d; --navy-2: #1d2f55; --navy-ink: #0b1430; --navy-panel: rgba(11, 20, 44, .92);
+  --chalk: #f3efe4; --chalk-2: rgba(243, 239, 228, .78); --chalk-3: rgba(243, 239, 228, .56); --chalk-line: rgba(243, 239, 228, .2);
+  --clay: #d98a57; --magenta: #e20074; --paper: #d8d0bb; --ink: #29241e;
+  --display: "Big Shoulders Display", "Bahnschrift Condensed", "Bahnschrift", "Arial Narrow", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --type: "Courier Prime", "Courier New", Courier, monospace;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --edge: 24px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--night); color: var(--chalk); font-family: var(--body); -webkit-font-smoothing: antialiased; }
+body { overflow: hidden; }
+button { font: inherit; color: inherit; }
+kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; border-radius: 5px; border: 1px solid currentColor; opacity: .78; text-transform: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.app { position: fixed; inset: 0; overflow: hidden; outline: none; }
+#scene { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+
+/* error surface: never silent */
+#err { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 99; margin: 0; padding: 12px 14px; background: #3a0b12; color: #fff; font: 13px/1.4 var(--type); border-radius: 8px; white-space: pre-wrap; }
+#selftest { position: fixed; inset: 0; z-index: 98; margin: 0; padding: 20px 24px; overflow: auto; background: rgba(5, 10, 8, .96); color: var(--chalk); font: 12px/1.45 var(--type); white-space: pre-wrap; }
+
+/* ---------- matchup card ---------- */
+.matchup { position: absolute; z-index: 5; top: var(--edge); left: var(--edge); width: 304px; padding: 12px 16px 13px; border-radius: 12px; background: var(--navy-panel); border: 1px solid var(--chalk-line); box-shadow: 0 14px 34px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06); }
+.matchup p { margin: 0; }
+.mu-sit { display: flex; align-items: center; gap: 11px; font: 700 14px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--chalk-2); }
+.mu-inning { color: var(--chalk); }
+.mu-outs { display: inline-flex; gap: 4px; }
+.mu-outs i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--chalk-3); }
+.mu-outs i.on { background: var(--chalk); border-color: var(--chalk); }
+.mu-bases { width: 30px; height: 19px; }
+.mu-bases rect { fill: none; stroke: var(--chalk-3); stroke-width: 1.4; }
+.mu-bases rect.on { fill: var(--chalk); stroke: var(--chalk); }
+.mu-score { margin-left: auto; color: var(--chalk); }
+.mu-bat { margin-top: 11px !important; font: 800 30px/.95 var(--display); letter-spacing: .01em; text-transform: uppercase; }
+.mu-bat small, .mu-pit small { margin-left: 4px; font: 700 15px/1 var(--display); letter-spacing: .08em; color: var(--chalk-2); white-space: nowrap; }
+.mu-pit { margin-top: 6px !important; font: 700 19px/1.1 var(--display); letter-spacing: .03em; text-transform: uppercase; }
+.mu-pit .vs { color: var(--chalk-3); }
+.mu-game { margin-top: 10px !important; padding-top: 9px; border-top: 1px solid var(--chalk-line); font: 500 12.5px/1.35 var(--body); color: var(--chalk-2); }
+.matchup.swap .mu-bat, .matchup.swap .mu-pit { animation: swapIn .45s var(--ease-out); }
+@keyframes swapIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- score chip ---------- */
+.score-chip { position: absolute; z-index: 5; top: var(--edge); right: var(--edge); display: grid; justify-items: end; gap: 5px; margin: 0; padding: 10px 16px 10px; border-radius: 14px; background: var(--navy-panel); border: 1px solid var(--chalk-line); box-shadow: 0 10px 26px rgba(0, 0, 0, .4); font: 700 17px/1 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--chalk-2); }
+.score-chip b { color: var(--chalk); font-weight: 800; }
+.matchup.yield, .score-chip.yield { visibility: hidden; }
+.sc-sub { font: 700 15px/1.15 var(--display); letter-spacing: .03em; text-transform: none; color: var(--chalk-3); }
+.sc-short { display: none; }
+.score-chip.tick { animation: chipTick .5s var(--ease-out); }
+@keyframes chipTick { 30% { transform: scale(1.05); border-color: var(--chalk-3); } }
+
+/* ---------- palm indicator (the ump's own tool) ---------- */
+.indicator { position: absolute; z-index: 5; right: var(--edge); bottom: 106px; width: 196px; padding: 17px 21px 17px; border-radius: 44px; background: linear-gradient(180deg, #27396b 0%, #1a2a52 48%, #0f1b39 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), inset 0 -3px 0 rgba(0, 0, 0, .35), 0 18px 34px rgba(0, 0, 0, .5); }
+.indicator::before, .indicator::after { content: ""; position: absolute; top: -9px; width: 22px; height: 12px; border-radius: 4px 4px 2px 2px; background: linear-gradient(#2d4074, #17264b); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22); }
+.indicator::before { left: 50px; }
+.indicator::after { right: 50px; }
+.ind-wheels { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ind-wheels::before, .ind-wheels::after { content: ""; position: absolute; top: 31px; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #8b98b4, #26324f 72%); }
+.ind-wheels::before { left: -15px; }
+.ind-wheels::after { right: -15px; }
+.wheel { display: grid; justify-items: center; gap: 5px; }
+.wheel .lbl { font: 700 13px/1 var(--display); letter-spacing: .16em; color: var(--chalk-2); }
+.wheel .win { display: block; width: 40px; height: 44px; overflow: hidden; border-radius: 8px; background: #0a1226; box-shadow: inset 0 2px 5px rgba(0, 0, 0, .7), 0 1px 0 rgba(255, 255, 255, .08); }
+.wheel .digits { display: flex; flex-direction: column; transform: translateY(calc(var(--n, 0) * -44px)); transition: transform .42s var(--ease-out); }
+.wheel .digits span { display: block; height: 44px; font: 800 34px/44px var(--display); text-align: center; color: var(--chalk); }
+.ind-foot { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 9px; border-top: 1px solid rgba(243, 239, 228, .16); font: 700 13px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--chalk-2); }
+.ind-foot b { color: var(--chalk); font-weight: 800; }
+.ind-clock { position: absolute; left: 28px; right: 28px; bottom: 7px; height: 3px; border-radius: 2px; background: rgba(243, 239, 228, .1); overflow: hidden; }
+.ind-clock i { display: block; height: 100%; background: var(--chalk); transform-origin: left center; }
+
+/* ---------- controls: bottom corners ---------- */
+.ctl { position: absolute; z-index: 6; bottom: var(--edge); display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-width: 196px; padding: 18px 26px 17px; border-radius: 14px; border: 1.5px solid rgba(243, 239, 228, .62); background: rgba(9, 16, 34, .74); color: var(--chalk); font: 800 28px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; box-shadow: 0 6px 14px rgba(0, 0, 0, .45); transition: background-color .15s, border-color .15s, color .15s, transform .12s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ctl-l { left: var(--edge); }
+.ctl-r { right: var(--edge); }
+.ctl:hover { background: rgba(22, 35, 64, .92); border-color: var(--chalk); }
+.ctl:active { transform: translateY(1px) scale(.99); }
+.ctl:focus-visible, .btn-play:focus-visible, .card-btn:focus-visible { outline: 3px solid var(--chalk); outline-offset: 4px; }
+.ctl.is-called { background: var(--chalk); color: var(--navy-ink); border-color: var(--chalk); }
+.ctl:disabled { opacity: .45; cursor: default; }
+.ctl-quiet { min-width: 0; font-size: 22px; padding: 16px 22px 15px; border-color: rgba(243, 239, 228, .4); }
+.ctl[hidden] { display: none; }
+
+/* ---------- verdict: top centre, never over the zone or path ---------- */
+.verdict { position: absolute; z-index: 7; top: var(--edge); left: 50%; width: min(680px, calc(100% - 2 * (304px + var(--edge) + 18px))); transform: translateX(-50%); }
+.verdict[hidden] { display: none; }
+.verdict p { margin: 0; }
+.v-chip { display: inline-flex !important; align-items: baseline; gap: 9px; padding: 10px 15px 8px; border-radius: 10px 10px 0 0; background: var(--navy-panel); border: 1px solid var(--chalk-line); border-bottom: 0; font: 700 14px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--chalk-2); opacity: 0; transform: translateY(-6px); transition: opacity .22s var(--ease-out), transform .32s var(--ease-out); }
+.v-chip b { font-size: 19px; font-weight: 800; letter-spacing: .08em; color: var(--chalk); }
+.verdict.show-chip .v-chip { opacity: 1; transform: none; }
+.v-body { padding: 16px 20px 17px; border-radius: 0 12px 12px 12px; background: var(--navy-panel); border: 1px solid var(--chalk-line); box-shadow: 0 18px 40px rgba(0, 0, 0, .5); clip-path: inset(0 0 100% 0); transition: clip-path .45s var(--ease-out); }
+.verdict.show-body .v-body { clip-path: inset(0 0 0 0); }
+.v-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font: 800 32px/1.05 var(--display); letter-spacing: .04em; text-transform: uppercase; }
+.v-line .seg { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.v-line svg { width: .62em; height: .62em; flex: none; }
+.v-line .dot { color: var(--chalk-3); }
+.v-line .bad, .v-line .miss { color: var(--clay); }
+.v-line .abs { color: var(--magenta); }
+.v-ctx { margin-top: 10px !important; font: 500 15.5px/1.45 var(--body); color: var(--chalk); text-wrap: pretty; }
+.v-meta { margin-top: 3px !important; font: 400 14px/1.4 var(--body); color: var(--chalk-2); }
+.verdict.tight .v-line { font-size: 26px; }
+.verdict.tight .v-ctx { font-size: 14.5px; }
+.verdict.narrow .v-line { flex-direction: column; align-items: flex-start; gap: 3px; }
+.verdict.narrow .v-line .dot { display: none; }
+.v-score { display: none; margin-top: 8px !important; font: 700 16px/1.35 var(--display); letter-spacing: .03em; color: var(--chalk-2); }
+
+.toast { position: absolute; z-index: 8; left: 50%; bottom: 44px; margin: 0; padding: 9px 14px 8px; border-radius: 8px; background: var(--navy-panel); border: 1px solid var(--chalk-line); font: 700 15px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; opacity: 0; transform: translate(-50%, 8px); transition: opacity .18s, transform .25s var(--ease-out); pointer-events: none; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- start overlay over the dimmed live scene ---------- */
+.start { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 32px 24px 96px; background: radial-gradient(110% 85% at 50% 46%, rgba(4, 9, 7, .64) 0%, rgba(4, 9, 7, .86) 68%, rgba(4, 9, 7, .95) 100%); transition: opacity .38s var(--ease-out); }
+.start[hidden] { display: none; }
+.start.leaving { opacity: 0; pointer-events: none; }
+.start-card { max-width: 660px; text-align: center; }
+.wordmark { display: flex; align-items: center; justify-content: center; gap: .26em; margin: 0; font: 900 clamp(54px, 8.2vw, 96px)/.9 var(--display); letter-spacing: .01em; text-transform: uppercase; color: var(--chalk); text-wrap: balance; }
+.wordmark svg { width: .66em; height: .66em; flex: none; }
+.hook { margin: 24px 0 0; font: 800 clamp(24px, 2.6vw, 32px)/1.12 var(--display); letter-spacing: .03em; text-transform: uppercase; text-wrap: balance; }
+.lede { margin: 14px auto 0; max-width: 46ch; font: 400 18px/1.5 var(--body); color: var(--chalk-2); text-wrap: pretty; }
+.keys { display: flex; justify-content: center; gap: 30px; margin: 26px 0 0; padding: 0; list-style: none; font: 700 18px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.keys li { display: inline-flex; align-items: center; gap: 7px; }
+.keys kbd { font-size: 14px; padding: 6px 9px 5px; opacity: .9; }
+.keys span { margin-left: 4px; }
+.btn-play { display: inline-flex; align-items: center; gap: 12px; margin-top: 32px; padding: 19px 42px 18px; border: 0; border-radius: 14px; background: var(--chalk); color: var(--navy-ink); font: 900 30px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; box-shadow: 0 16px 36px rgba(0, 0, 0, .5), inset 0 -3px 0 rgba(0, 0, 0, .12); transition: transform .15s var(--ease-out), box-shadow .15s; }
+.btn-play:hover { transform: translateY(-1px); box-shadow: 0 20px 40px rgba(0, 0, 0, .55), inset 0 -3px 0 rgba(0, 0, 0, .12); }
+.btn-play:disabled { opacity: .6; cursor: progress; transform: none; }
+.footnote { position: absolute; left: 50%; bottom: 22px; width: min(520px, calc(100% - 48px)); margin: 0; transform: translateX(-50%); font: 12.5px/1.5 var(--body); color: var(--chalk-3); text-align: center; text-wrap: balance; }
+
+/* ---------- phases ---------- */
+.app[data-phase="card"] .hud, .app[data-phase="card"] .indicator, .app[data-phase="card"] .ctl, .app[data-phase="card"] .verdict { display: none; }
+
+@media (max-width: 1180px) and (min-width: 641px) {
+  .verdict { left: var(--edge); transform: none; width: min(640px, calc(100% - 2 * var(--edge))); }
+  .v-score { display: block; }
+  .app[data-phase="reveal"] .matchup, .app[data-phase="replay"] .matchup, .app[data-phase="reveal"] .score-chip, .app[data-phase="replay"] .score-chip { visibility: hidden; }
+}
+@media (max-height: 760px) and (min-width: 641px) {
+  .v-line { font-size: 27px; }
+  .v-body { padding: 13px 18px 14px; }
+  .v-ctx { font-size: 14.5px; margin-top: 8px !important; }
+}
+@media (max-width: 640px) {
+  :root { --edge: 10px; }
+  .matchup { width: auto; right: calc(var(--edge) + 126px); padding: 9px 12px 10px; border-radius: 10px; }
+  .mu-sit { gap: 8px; font-size: 12px; }
+  .mu-bases { display: none; }
+  .mu-bat { margin-top: 8px !important; font-size: 21px; }
+  .mu-bat small, .mu-pit small { font-size: 12px; }
+  .mu-pit { margin-top: 4px !important; font-size: 14px; }
+  .mu-game { display: none; }
+  .score-chip { width: 118px; justify-items: center; gap: 4px; padding: 8px 9px; border-radius: 10px; font-size: 13px; line-height: 1.15; text-align: center; }
+  .sc-sub { font-size: 12.5px; }
+  /* phone: a short form that stacks phrase by phrase instead of wrapping mid-phrase */
+  .sc-long, .sc-dot { display: none; }
+  .sc-short { display: inline; }
+  .sc-ph { display: block; white-space: nowrap; }
+  .indicator { right: 50%; bottom: 84px; transform: translateX(50%) scale(.8); transform-origin: 50% 100%; }
+  .ctl { bottom: calc(var(--edge) + env(safe-area-inset-bottom, 0px)); width: calc(50% - 15px); min-width: 0; padding: 19px 10px 18px; font-size: 25px; }
+  .ctl kbd { display: none; }
+  .ctl-quiet { font-size: 20px; }
+  .verdict { top: var(--edge); left: var(--edge); width: auto; right: var(--edge); transform: none; }
+  .v-chip { font-size: 12px; padding: 8px 12px 7px; }
+  .v-chip b { font-size: 16px; }
+  .v-body { padding: 12px 14px 13px; }
+  .v-line { font-size: 22px; gap: 2px 8px; }
+  .v-ctx { margin-top: 7px !important; font-size: 13.5px; line-height: 1.4; }
+  .v-meta { font-size: 12.5px; }
+  .v-score { display: block; margin-top: 7px !important; font-size: 14px; }
+  .app[data-phase="reveal"] .matchup, .app[data-phase="replay"] .matchup, .app[data-phase="reveal"] .score-chip, .app[data-phase="replay"] .score-chip { visibility: hidden; }
+  .start { display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 24px 18px calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .start-card { margin-top: auto; }
+  .wordmark { font-size: 50px; }
+  .hook { margin-top: 18px; font-size: 23px; }
+  .lede { font-size: 16px; }
+  .keys { gap: 22px; font-size: 16px; }
+  .btn-play { margin-top: 26px; font-size: 26px; padding: 17px 34px 16px; }
+  .footnote { position: static; width: auto; max-width: 40ch; margin: 30px 0 auto; transform: none; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-chip, .v-body, .wheel .digits, .start, .toast, .ctl, .btn-play, .score-chip, .matchup .mu-bat, .matchup .mu-pit { transition: none !important; animation: none !important; }
+}
+/* ---------- the umpire card ---------- */
+.cards { position: absolute; inset: 0; z-index: 30; overflow-y: auto; background: radial-gradient(85% 65% at 50% 42%, #16291f 0%, #0d1a13 55%, #060d09 100%); }
+.cards[hidden] { display: none; }
+/* felt: long fibres plus a slow mottle, laid over the green */
+.cards::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .55; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95 .22' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.6'/%3E%3C/svg%3E"); }
+.cards-inner { position: relative; min-height: 100%; display: grid; justify-items: center; align-content: center; padding: 44px 24px 40px; }
+/* letterpress: worn ink between two rules */
+.cards-title { display: flex; align-items: center; gap: .32em; margin: 0; font: 900 clamp(44px, 5.4vw, 68px)/.9 var(--display); letter-spacing: .03em; text-transform: uppercase; color: #e9e2cf; }
+.cards-title::before, .cards-title::after { content: ""; flex: none; width: clamp(36px, 6vw, 92px); height: 3px; border-radius: 2px; background: currentColor; opacity: .7; }
+.cards-title span { padding: .04em .02em 0; color: #ebe4d1; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.6 0 0 0 2.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E"); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.6 0 0 0 2.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E"); filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .55)) drop-shadow(-1px 0 0 rgba(190, 170, 130, .22)); }
+.cards-sum { margin: 14px 0 0; max-width: 54ch; font: 400 18px/1.5 var(--body); color: var(--chalk-2); text-align: center; text-wrap: balance; }
+.cards-sum b { color: var(--chalk); font-weight: 600; }
+.cards-row { display: flex; align-items: center; justify-content: center; gap: 56px; margin-top: 34px; }
+.ucard { position: relative; width: 312px; height: 452px; margin: 0; border-radius: 14px; }
+/* printed stock: fine grain over everything, and worn, lifted edges and corners */
+.ucard::before { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1.5px rgba(255, 251, 238, .42), inset 0 0 10px 2px rgba(64, 50, 36, .42); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='e'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.09' numOctaves='3' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3.2 -1.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23e)'/%3E%3C/svg%3E"); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='e'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.09' numOctaves='3' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3.2 -1.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23e)'/%3E%3C/svg%3E"); }
+.ucard::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none; opacity: .5; mix-blend-mode: multiply; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .5 0 0 0 0 .42 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E"); }
+.ucard-front::after { opacity: .3; }
+.ucard-front { padding: 7px 7px 28px; background: linear-gradient(160deg, #f1e9d5, #e1d6bb); box-shadow: 0 32px 60px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .5); transform: rotate(-3deg); }
+.uc-frame { position: relative; height: 100%; overflow: hidden; border: 6px solid var(--navy); border-radius: 14px; outline: 2px solid #c9bc9c; background: var(--navy); }
+.uc-frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
+.uc-badge { position: absolute; left: 8px; bottom: 10px; display: flex; align-items: baseline; justify-content: center; width: 104px; height: 86px; padding-top: 12px; background: var(--navy); color: #f2ead6; clip-path: polygon(22% 0, 78% 0, 100% 24%, 100% 76%, 78% 100%, 22% 100%, 0 76%, 0 24%); font: 900 62px/1 var(--display); letter-spacing: -.01em; }
+.uc-badge small { font-size: 22px; font-weight: 800; margin-left: 1px; }
+.uc-plate { position: absolute; left: 104px; right: 8px; bottom: 22px; display: grid; place-items: center; height: 46px; border-radius: 0 8px 8px 0; background: #f1e9d5; color: var(--navy-ink); font: 900 34px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; box-shadow: 0 6px 14px rgba(0, 0, 0, .35); }
+.uc-set { position: absolute; left: 0; right: 0; bottom: 11px; display: flex; justify-content: space-between; padding: 0 16px; font: 800 12px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--navy-ink); }
+.ucard-back { display: flex; flex-direction: column; padding: 20px 22px 16px; color: var(--ink); font-family: var(--type); transform: rotate(2.5deg); box-shadow: 0 32px 60px rgba(0, 0, 0, .62); background: radial-gradient(120% 90% at 30% 20%, #e3dcc9 0%, #d3cab3 60%, #c2b89e 100%); }
+.ub-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); font: 700 18px/1 var(--type); text-transform: uppercase; }
+.ub-head > span:first-child { white-space: nowrap; }
+.ub-head span + span { max-width: 132px; font-size: 12px; line-height: 1.25; font-weight: 400; letter-spacing: 0; text-transform: none; text-align: right; }
+.ub-stats { display: grid; gap: 4px; margin: 11px 0 0; font: 400 14.5px/1.2 var(--type); text-transform: uppercase; }
+.ub-stats div { display: flex; align-items: baseline; gap: 6px; }
+.ub-stats dt { flex: none; }
+.ub-stats i { flex: 1; min-width: 12px; border-bottom: 2px dotted rgba(41, 36, 30, .55); transform: translateY(-3px); }
+.ub-stats dd { margin: 0; font-weight: 700; text-align: right; }
+.ub-stats dd.long { font-size: 11.5px; max-width: 150px; line-height: 1.15; }
+.ub-map { margin: 10px 0 0; padding-top: 9px; border-top: 2px solid var(--ink); color: var(--ink); }
+.ub-map-title { margin: 0; font: 700 13px/1 var(--type); letter-spacing: .06em; text-transform: uppercase; }
+#ubMap { display: block; width: 100%; height: auto; margin-top: 4px; }
+.ub-legend { margin: 2px 0 0; font: 400 11px/1.3 var(--type); color: #4e473d; }
+.ub-legend .lx { color: var(--magenta); font-weight: 700; font-size: 12px; }
+.ub-legend .ld { color: var(--ink); }
+.ub-foot { margin: auto 0 0; padding-top: 8px; font: 400 11px/1.3 var(--type); color: #4e473d; }
+.cards-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-top: 40px; }
+.card-btn { min-width: 240px; padding: 17px 30px 16px; border-radius: 10px; border: 1.5px solid rgba(243, 239, 228, .7); background: transparent; color: var(--chalk); font: 800 25px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: background-color .15s, color .15s, transform .12s; }
+.card-btn:hover { background: rgba(243, 239, 228, .08); }
+.card-btn:active { transform: translateY(1px); }
+.card-btn-solid { border-color: var(--chalk); background: var(--chalk); color: var(--night); }
+.card-btn-solid:hover { background: #fffaf0; }
+.cards-foot { max-width: 520px; margin: 30px 0 0; font: 12.5px/1.5 var(--body); color: var(--chalk-3); text-align: center; text-wrap: balance; }
+.cards.enter .ucard-front { animation: dealFront .7s var(--ease-out) both; }
+.cards.enter .ucard-back { animation: dealBack .7s .08s var(--ease-out) both; }
+@keyframes dealFront { from { opacity: 0; transform: translate(40px, 30px) rotate(4deg); } }
+@keyframes dealBack { from { opacity: 0; transform: translate(-40px, 30px) rotate(-4deg); } }
+@media (max-width: 760px) {
+  .cards-inner { align-content: start; padding: 28px 16px 32px; }
+  .cards-title { font-size: 44px; }
+  .cards-sum { font-size: 16px; }
+  .cards-row { flex-direction: column; gap: 30px; margin-top: 26px; }
+  .ucard-front { transform: rotate(-1.5deg); }
+  .ucard-back { transform: rotate(1.5deg); }
+  .cards-actions { width: 100%; margin-top: 30px; }
+  .card-btn { width: 100%; min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .cards.enter .ucard-front, .cards.enter .ucard-back, .card-btn { animation: none !important; transition: none !important; } }
+/*@@CSS@@*/
+</style>
+</head>
+<body>
+<div class="app" id="app" tabindex="-1" data-phase="boot">
+  <canvas id="scene" role="img" aria-label="Umpire's view from behind home plate"></canvas>
+
+  <header class="hud">
+    <section class="matchup" id="matchup" aria-label="Matchup">
+      <div class="mu-sit">
+        <span class="mu-inning" id="muInning">Top 1</span>
+        <span class="mu-outs" id="muOuts"><i></i><i></i></span>
+        <svg class="mu-bases" id="muBases" viewBox="0 0 34 22" aria-hidden="true"><rect x="22" y="9" width="7" height="7" transform="rotate(45 25.5 12.5)"/><rect x="13.5" y="1" width="7" height="7" transform="rotate(45 17 4.5)"/><rect x="5" y="9" width="7" height="7" transform="rotate(45 8.5 12.5)"/></svg>
+        <span class="mu-score" id="muScore">MIL 0 · TB 0</span>
+      </div>
+      <p class="mu-bat"><span id="muBatter">Batter</span> <small id="muBatterMeta">Bats R</small></p>
+      <p class="mu-pit"><span class="vs">vs</span> <span id="muPitcher">Pitcher</span> <small id="muPitcherMeta">RHP</small></p>
+      <p class="mu-game" id="muGame">2026 World Series</p>
+    </section>
+    <p class="score-chip" id="scoreChip"><span class="sc-main" id="scMain">Today's Ten</span><span class="sc-sub" id="scSub"><span class="sc-long">Close calls · MLB umps ≈ 94%</span><span class="sc-short"><span class="sc-ph">Close calls</span><span class="sc-ph">MLB ≈ 94%</span></span></span></p>
+  </header>
+
+  <div class="indicator" id="indicator" role="group" aria-label="Umpire indicator">
+    <div class="ind-wheels">
+      <div class="wheel"><span class="lbl">B</span><span class="win"><span class="digits" id="wB"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
+      <div class="wheel"><span class="lbl">S</span><span class="win"><span class="digits" id="wS"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
+      <div class="wheel"><span class="lbl">O</span><span class="win"><span class="digits" id="wO"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
+    </div>
+    <div class="ind-foot"><span>Pitch</span><b id="indPitch">1/10</b></div>
+    <div class="ind-clock" aria-hidden="true"><i id="indClock"></i></div>
+    <span class="sr-only" id="indText">Count 0 and 0, 0 outs</span>
+  </div>
+
+  <button class="ctl ctl-l" id="btnBall" type="button" aria-keyshortcuts="B ArrowLeft" aria-label="Call ball (B or left arrow)"><span>Ball</span><kbd>B</kbd></button>
+  <button class="ctl ctl-r" id="btnStrike" type="button" aria-keyshortcuts="S ArrowRight" aria-label="Call strike (S or right arrow)"><span>Strike</span><kbd>S</kbd></button>
+  <button class="ctl ctl-l ctl-quiet" id="btnReplay" type="button" aria-keyshortcuts="R" hidden><span>Watch it slow</span><kbd>R</kbd></button>
+  <button class="ctl ctl-r" id="btnNext" type="button" aria-keyshortcuts="Space" hidden><span id="nextLabel">Next pitch</span><kbd>Space</kbd></button>
+
+  <section class="verdict" id="verdict" aria-label="Verdict" hidden>
+    <p class="v-chip">Ump called it <b id="vUmp">Ball</b></p>
+    <div class="v-body">
+      <p class="v-line" id="vLine"></p>
+      <p class="v-ctx" id="vCtx"></p>
+      <p class="v-meta" id="vMeta"></p>
+      <p class="v-score" id="vScore"></p>
+    </div>
+  </section>
+
+  <p class="toast" id="toast" role="status"></p>
+
+  <section class="start" id="start" aria-labelledby="startTitle">
+    <div class="start-card">
+      <h1 class="wordmark" id="startTitle">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 15c0-6 7-10 15-10s15 4 15 10v11c0 10-7 17-15 18-8-1-15-8-15-18z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M9.5 21h29M10 30h28M14 38h20M24 5v39" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        <span>Umpire's Eye</span>
+      </h1>
+      <h2 class="hook">MLB umpires get about 94% of calls right. Can you?</h2>
+      <p class="lede" id="startLede">Today's Ten: real pitches from Games 1, 2 and 5 of the 2026 World Series, 8 of them close calls within 1.5 in of the zone, at real speed, from the plate umpire's eye.</p>
+      <ul class="keys" aria-label="Controls">
+        <li><kbd>S</kbd><kbd>→</kbd><span>Strike</span></li>
+        <li><kbd>B</kbd><kbd>←</kbd><span>Ball</span></li>
+      </ul>
+      <button class="btn-play" id="btnPlay" type="button" disabled>Loading the ballpark</button>
+    </div>
+    <p class="footnote">Real pitches: MLB Stats API (statsapi.mlb.com). Personal, non-commercial mockup. ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series. Players, field and catch are illustrations.</p>
+  </section>
+  <section class="cards" id="cards" aria-labelledby="cardsTitle" hidden>
+    <div class="cards-inner">
+      <h2 class="cards-title" id="cardsTitle"><span>Umpire's Eye</span></h2>
+      <p class="cards-sum" id="cardsSum">Round complete.</p>
+      <div class="cards-row">
+        <figure class="ucard ucard-front" aria-label="Your umpire card, front">
+          <div class="uc-frame">
+            <img src="assets/card-art.png" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
+            <div class="uc-badge" aria-label="Accuracy"><span id="ucNum">0</span><small>%</small></div>
+            <div class="uc-plate">You</div>
+          </div>
+          <figcaption class="uc-set"><span>Umpire's Eye</span><span>2026 World Series</span></figcaption>
+        </figure>
+        <section class="ucard ucard-back" aria-label="Your umpire card, back">
+          <header class="ub-head"><span>Umpire's Eye</span><span id="ubSet">2026 World Series Set</span></header>
+          <dl class="ub-stats">
+            <div><dt>Pitches</dt><i></i><dd id="ubPitches">10</dd></div>
+            <div><dt>Correct</dt><i></i><dd id="ubCorrect">0</dd></div>
+            <div><dt>The real ump</dt><i></i><dd id="ubUmp">6/10</dd></div>
+            <div><dt>MLB umps</dt><i></i><dd>≈ 94%</dd></div>
+            <div><dt>Toughest</dt><i></i><dd id="ubTough">None</dd></div>
+          </dl>
+          <figure class="ub-map">
+            <p class="ub-map-title">Miss map</p>
+            <svg id="ubMap" viewBox="0 6 240 140" role="img" aria-label="Miss map"></svg>
+            <figcaption class="ub-legend"><span class="lx">×</span> missed &nbsp;<span class="ld">●</span> right &nbsp;· catcher's view</figcaption>
+          </figure>
+          <footer class="ub-foot">MLB umps ≈ 94%: UmpScorecards via mlb.com. The real ump: original calls vs ABS on these pitches.</footer>
+        </section>
+      </div>
+      <div class="cards-actions">
+        <button class="card-btn card-btn-solid" id="btnCopy" type="button">Copy result</button>
+        <button class="card-btn" id="btnAgain" type="button">Play another ten</button>
+      </div>
+      <p class="cards-foot">Real pitches: MLB Stats API (statsapi.mlb.com). Personal, non-commercial mockup. ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series. Players, field and catch are illustrations.</p>
+    </div>
+  </section>
+  <p id="live" class="sr-only" aria-live="polite"></p>
+</div>
+<pre id="err" hidden></pre>
+<pre id="selftest" hidden></pre>
+<noscript><p style="padding:24px">Umpire's Eye needs JavaScript to replay the pitches.</p></noscript>
+<script src="data/ten.js"></script>
+<script src="data/pool.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ============================================================
+   0. Boot, errors, params
+   ============================================================ */
+const $ = (s) => document.querySelector(s);
+const errBox = $('#err');
+function fail(msg) { errBox.hidden = false; errBox.textContent += msg + '\n'; }
+window.addEventListener('error', (e) => fail(`Error: ${e.message} (line ${e.lineno})`));
+window.addEventListener('unhandledrejection', (e) => fail(`Error: ${(e.reason && e.reason.message) || e.reason}`));
+
+const TEN = window.UE_TEN, POOL = window.UE_POOL;
+if (!TEN || !POOL) { fail('Pitch data is missing. Run "pwsh -File build-data.ps1" next to index.html, then reload.'); return; }
+const Q = new URLSearchParams(location.search);
+const STATE = Q.get('state');
+const SELFTEST = Q.get('selftest') === '1';
+
+/* ============================================================
+   1. Constants (PITCHf/x feet, catcher's view: +x = 1B side,
+      y toward the pitcher, y = 0 at the back tip of the plate)
+   ============================================================ */
+const BALL_R = 1.45 / 12;          // ball radius, ft
+const PLATE_HALF = 8.5 / 12;       // zone half-width, ft
+const PLATE_FRONT = 17 / 12;       // front edge of the plate
+const MID_Y = 8.5 / 12;            // ABS plane (mid-plate)
+const RUBBER_Y = 60.5;             // front of the rubber
+const MOUND_H = 10 / 12;           // mound top above the plate
+const MOUND_C = { x: 0, y: 59 };   // mound centre (18 ft circle)
+const MOUND_R = 9;
+const CATCH_Y = -1.5;              // where the mitt meets the ball (tunable)
+const EYE = { x: 0.62, y: -3.7, z: 4.15 };   // ump's eye in the slot; x sign follows the batter
+// the ump's stance is never quite the same: he re-sets every plate appearance (eye height loosely following the
+// batter's) and re-settles a little every pitch. Inches, uniform within these bounds; x toward the batter, y toward
+// the mound, z up. The lens is fitted once to cover the corners of this box; only the eye moves between pitches.
+const STANCE = { paX: 2, paY: 3, paZ: 2, follow: 0.75, pitch: 0.75 };
+const STANCE_MAX = { x: (STANCE.paX + STANCE.pitch) / 12, y: (STANCE.paY + STANCE.pitch) / 12, z: (STANCE.paZ + STANCE.pitch) / 12 };
+const LOOK_Y = 30;                 // camera yaw aims at (0, LOOK_Y)
+const ZONE_REF = { top: 3.2, bottom: 1.62 }; // fixed framing reference (never per batter)
+const PLAY = { zMin: 0.9, zMax: 4.5, xMax: 1.5 };   // crossings the game deals (ft); all others are >= 6.6 in off the zone
+const CROSS_PAD = 0.06;            // ft of air kept around every crossing ball inside the frame
+const PITCHER_ROOM = 0.05;         // sky kept above the pitcher's cap (tan units)
+const HUD = { side: 24 + 244 + 12 };   // desktop: bottom-corner controls and indicator column, px
+const WINDUP = 1.15;               // set -> release, s
+const BEAT = 0.9, FIRST_BEAT = 1.25;
+const CALL_AFTER_CATCH = 1.5;      // a real ump calls it about a second after the pop
+const MITT_MOVE = 0.05;            // the glove reacts in the last 50 ms (ease-in): it never leads the ball
+const MITT_SETUP_Z = 1.85;         // ft: the catcher's target is held low and still until the ball is on him
+// framing, after the catch only: borderline pitches (strike or ball, within `band` in of the ABS edge) are, more
+// often than not, eased toward the zone by 1-4 in over 150-250 ms once the pop is absorbed, then held
+const FRAME = { band: 3.5, p: 0.65, minIn: 1, maxIn: 4, t0: 0.03, durMin: 0.15, durMax: 0.25 };
+const TRAIL = 0.010;               // speed trail length, s
+const REPLAY_RATE = 0.25;
+const NEAR = 0.2;
+// depth of field, one lens for the whole scene: blur sigma (px) = F x aperture x |1/depth - 1/focus|.
+// Focused on the mound; at 1440x900 the batter's parts 3-6 ft out land near 20-10 px, the catcher far more
+// (the aperture is set for the stance-covering lens, F ~ 827 px at 1440x900).
+// The pitcher sits in the focal plane and the ball is never blurred (the eye tracks it).
+const DOF = { ap: 0.077, focus: 60 };
+const dofBlur = (cam, depth) => cam.F * DOF.ap * Math.abs(1 / Math.max(depth, 0.3) - 1 / DOF.focus);
+// photographic batter, keyed offline from assets/batter-src.png (anchors in batter.png pixels): helmet top,
+// mean sole line, the stance centre between the cleats, and each cleat's centre; one image, mirrored for lefties
+const BATTER_IMG = { src: 'assets/batter.png', top: 123, sole: 1424.5, footX: 404, backX: 72, frontX: 736, stance: 0.9 };
+
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut3 = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+const ramp = (x, a, b) => clamp((x - a) / (b - a), 0, 1);
+
+/* ============================================================
+   2. Physics: p(t) = p0 + v0 t + a t^2 / 2, t = 0 at y0 = 50 ft
+   ============================================================ */
+function posAt(tr, t) {
+  return {
+    x: tr.x0 + tr.vX0 * t + 0.5 * tr.aX * t * t,
+    y: tr.y0 + tr.vY0 * t + 0.5 * tr.aY * t * t,
+    z: tr.z0 + tr.vZ0 * t + 0.5 * tr.aZ * t * t,
+  };
+}
+// root of y(t) = Y nearest 0 (negative when Y > y0)
+function tAtY(tr, Y) {
+  const c = tr.y0 - Y;
+  return 2 * c / (-tr.vY0 + Math.sqrt(tr.vY0 * tr.vY0 - 2 * tr.aY * c));
+}
+// ABS: strike if any part of the ball touches the 17 in x [bottom, top] rectangle (exact disc geometry)
+function absJudge(x, z, top, bottom) {
+  const dx = Math.abs(x) - PLATE_HALF;
+  const dz = Math.max(bottom - z, z - top);
+  const d = (dx > 0 || dz > 0) ? Math.hypot(Math.max(dx, 0), Math.max(dz, 0)) : Math.max(dx, dz);
+  return { strike: d <= BALL_R, marginIn: (BALL_R - d) * 12, dx, dz };
+}
+function prep(p) {
+  const tr = p.traj;
+  const k = {};
+  k.tRel = tAtY(tr, RUBBER_Y - p.extension);
+  k.tMid = tAtY(tr, MID_Y);
+  k.tFront = tAtY(tr, PLATE_FRONT);
+  k.tCatch = tAtY(tr, CATCH_Y);
+  k.rel = posAt(tr, k.tRel);
+  k.mid = posAt(tr, k.tMid);
+  k.front = posAt(tr, k.tFront);
+  k.catchP = posAt(tr, k.tCatch);
+  k.flight = k.tFront - k.tRel;   // release -> front of the plate
+  k.toMid = k.tMid - k.tRel;
+  k.toCatch = k.tCatch - k.tRel;
+  k.judge = absJudge(k.mid.x, k.mid.z, p.zone.top, p.zone.bottom);
+  return { ...p, k };
+}
+// The renderer's only clock -> trajectory mapping: s = real seconds since release.
+const ballT = (P, s) => P.k.tRel + s;
+
+/* ============================================================
+   3. Camera: one pinhole, level optical axis, yaw toward the
+      mound, principal point shifted (a crop of one pinhole image)
+   ============================================================ */
+function makeCam(eye, yaw, F, cx, cy, W, H) {
+  const sn = Math.sin(yaw), cs = Math.cos(yaw);
+  const cam = { eye, yaw, F, cx, cy, W, H };
+  cam.c = (p) => { const dx = p.x - eye.x, dy = p.y - eye.y; return [dx * cs - dy * sn, p.z - eye.z, dx * sn + dy * cs]; };
+  cam.pc = (xc, yc, zc) => { const k = F / zc; return { x: cx + xc * k, y: cy - yc * k, d: zc, k }; };
+  cam.p = (p) => { const c = cam.c(p); return cam.pc(c[0], c[1], c[2]); };
+  return cam;
+}
+function eyeFor(side) { const s = side === 'R' ? -1 : 1; return { x: s * EYE.x, y: EYE.y, z: EYE.z }; }
+// this pitch's stance (ft), seeded by plate appearance (gamePk-atBat) and by pitch, so the reveal, the replay, the
+// URL states and the self-test all see the same eye
+function stanceOf(P) {
+  if (P._stance) return P._stance;
+  const pa = rng(hash32('stance|' + P.id.split('-').slice(0, 2).join('-'))), ps = rng(hash32('settle|' + P.id));
+  const u = (r) => 2 * r() - 1, hf = clamp((P.batter.heightFt - 6.1) / 0.45, -1, 1);
+  const x = STANCE.paX * u(pa), y = STANCE.paY * u(pa), z = STANCE.follow * hf + (STANCE.paZ - STANCE.follow) * u(pa);
+  return (P._stance = { x: (x + STANCE.pitch * u(ps)) / 12, y: (y + STANCE.pitch * u(ps)) / 12, z: (z + STANCE.pitch * u(ps)) / 12 });
+}
+function eyeOf(P) {
+  const n = eyeFor(P.batter.side), st = stanceOf(P), s = P.batter.side === 'R' ? -1 : 1;
+  return { x: n.x + s * st.x, y: n.y + st.y, z: n.z + st.z };
+}
+function stanceCorners(side) {
+  const n = eyeFor(side), out = [];
+  for (const a of [-1, 1]) for (const b of [-1, 1]) for (const c of [-1, 1]) out.push({ x: n.x + a * STANCE_MAX.x, y: n.y + b * STANCE_MAX.y, z: n.z + c * STANCE_MAX.z });
+  return out;
+}
+// unit-camera extent of every crossing the game can deal, ball and air included (independent of the screen)
+const EXT = new Map();
+function crossExt(u) {
+  const key = `${u.eye.x}|${u.eye.y}|${u.eye.z}|${u.yaw}`;
+  if (EXT.has(key)) return EXT.get(key);
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const c of PLAY_PTS) {
+    const q = u.p({ x: c.x, y: MID_Y, z: c.z }), r = (BALL_R + CROSS_PAD) * q.k;
+    x0 = Math.min(x0, q.x - r); x1 = Math.max(x1, q.x + r); y0 = Math.min(y0, q.y - r); y1 = Math.max(y1, q.y + r);
+  }
+  const e = { x0, x1, y0, y1 };
+  EXT.set(key, e);
+  return e;
+}
+// screen band (px) the crossings live in: clear of the HUD that sits over the scene
+function camBand(W, H) {
+  if (W / H < 0.9) return { portrait: true, t: Math.max(0.2 * H, 180), b: H - 234, l: 6, r: W - 6 };   // phone: under the verdict, over the indicator
+  const sd = Math.min(HUD.side, 0.2 * W);
+  return { portrait: false, t: 6, b: H - 6, l: sd, r: W - sd };
+}
+// One hard constraint sets the lens: every crossing the game can deal (plus the ball and a little air) is in frame,
+// from every stance the ump can take (the 8 corners of the stance box). The frame's top is the higher of the highest
+// crossing and the pitcher's cap plus a little sky. Level axis, yaw toward the mound from the nominal slot; the
+// principal point is shifted (a crop of one pinhole image). Fitted once per viewport and side: F, the principal
+// point and the yaw stay put, and each pitch moves only the eye (camFor).
+const CAMS = new Map();
+function fitCam(W, H, side) {
+  const key = `${W}|${H}|${side}`;
+  if (CAMS.has(key)) return CAMS.get(key);
+  const eye = eyeFor(side);
+  const yaw = Math.atan2(-eye.x, LOOK_Y - eye.y);
+  const u = makeCam(eye, yaw, 1, 0, 0, W, H), us = stanceCorners(side).map((c) => makeCam(c, yaw, 1, 0, 0, W, H));
+  const es = us.map(crossExt), B = camBand(W, H);
+  const e = { x0: Math.min(...es.map((q) => q.x0)), x1: Math.max(...es.map((q) => q.x1)), y0: Math.min(...es.map((q) => q.y0)), y1: Math.max(...es.map((q) => q.y1)) };
+  const capY = Math.min(...us.map((c) => c.p({ x: 0, y: RUBBER_Y - 0.75, z: MOUND_H + 6.2 }).y));
+  const top = Math.min(e.y0, capY - PITCHER_ROOM), bot = e.y1;
+  const F = Math.min((B.b - B.t) / (bot - top), (B.r - B.l) / (e.x1 - e.x0));
+  const cy = B.t + ((B.b - B.t) - F * (bot - top)) / 2 - F * top;
+  const zc = u.p({ x: 0, y: MID_Y, z: 2.4 }), pit = u.p({ x: 0, y: RUBBER_Y, z: MOUND_H + 3 });
+  const want = B.portrait ? (B.l + B.r) / 2 - F * (e.x0 + e.x1) / 2 : W / 2 - F * (zc.x + pit.x) / 2;
+  const cx = clamp(want, B.l - F * e.x0, B.r - F * e.x1);
+  const cam = makeCam(eye, yaw, F, cx, cy, W, H);
+  // what any stance can put on screen, in px: the mask (it rides on the ump's head) keeps clear of all of it
+  let zl = 1e9, zr = -1e9, zt = 1e9, zb = -1e9;
+  for (const c of us) for (const [x, z] of [[-PLATE_HALF, 3.4], [PLATE_HALF, 3.4], [-PLATE_HALF, 1.5], [PLATE_HALF, 1.5]]) {
+    const q = c.p({ x, y: MID_Y, z }); zl = Math.min(zl, q.x); zr = Math.max(zr, q.x); zt = Math.min(zt, q.y); zb = Math.max(zb, q.y);
+  }
+  cam.U = {
+    cross: { l: cx + F * e.x0, r: cx + F * e.x1, t: cy + F * e.y0, b: cy + F * e.y1 },
+    zone: { l: cx + F * zl, r: cx + F * zr, t: cy + F * zt, b: cy + F * zb },
+  };
+  CAMS.set(key, cam);
+  return cam;
+}
+// the camera for one pitch: the viewport's lens, this pitch's eye
+function camFor(W, H, P) {
+  const b = fitCam(W, H, P.batter.side), cam = makeCam(eyeOf(P), b.yaw, b.F, b.cx, b.cy, W, H);
+  cam.U = b.U;
+  return cam;
+}
+const vfovDeg = (cam) => (Math.atan(cam.cy / cam.F) + Math.atan((cam.H - cam.cy) / cam.F)) * 180 / Math.PI;
+// screen extent of a batter's helmet, brim included
+function headSpan(cam, R) {
+  const h = R.j.head, pts = sphereOutline(cam, h, R.headR, 24) || [cam.p(h)];
+  pts.push(cam.p({ x: h.x + R.px * 0.56 * R.s, y: h.y, z: h.z - 0.1 * R.s }));
+  const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+  return { l: Math.min(...xs), r: Math.max(...xs), t: Math.min(...ys), b: Math.max(...ys) };
+}
+
+/* polygon projection with near-plane clipping (camera space) */
+function projPoly(cam, pts) {
+  const n = pts.length, cs = pts.map(cam.c), out = [];
+  for (let i = 0; i < n; i++) {
+    const a = cs[i], b = cs[(i + 1) % n];
+    const ai = a[2] >= NEAR, bi = b[2] >= NEAR;
+    if (ai) out.push(cam.pc(a[0], a[1], a[2]));
+    if (ai !== bi) {
+      const t = (NEAR - a[2]) / (b[2] - a[2]);
+      out.push(cam.pc(a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), NEAR));
+    }
+  }
+  return out;
+}
+function tracePoly(g, sp) { g.moveTo(sp[0].x, sp[0].y); for (let i = 1; i < sp.length; i++) g.lineTo(sp[i].x, sp[i].y); g.closePath(); }
+function fillPoly(g, cam, pts, style) {
+  const sp = projPoly(cam, pts);
+  if (sp.length < 3) return null;
+  g.beginPath(); tracePoly(g, sp); g.fillStyle = style; g.fill();
+  return sp;
+}
+function ringPts(cx, cy, r, z = 0, n = 96) {
+  const pts = [];
+  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a), z }); }
+  return pts;
+}
+function bandPts(ax, ay, bx, by, w, z = 0.004) {
+  const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), nx = (-dy / L) * w / 2, ny = (dx / L) * w / 2;
+  return [{ x: ax + nx, y: ay + ny, z }, { x: bx + nx, y: by + ny, z }, { x: bx - nx, y: by - ny, z }, { x: ax - nx, y: ay - ny, z }];
+}
+// exact silhouette of a sphere: the tangent circle seen from the eye, projected
+function sphereOutline(cam, C, r, n = 40) {
+  const E = cam.eye, vx = C.x - E.x, vy = C.y - E.y, vz = C.z - E.z;
+  const d2 = vx * vx + vy * vy + vz * vz, d = Math.sqrt(d2);
+  if (d <= r * 1.02) return null;
+  const f = (r * r) / d2, rho = r * Math.sqrt(1 - f);
+  const ox = C.x - f * vx, oy = C.y - f * vy, oz = C.z - f * vz;
+  const nx = vx / d, ny = vy / d, nz = vz / d;
+  let ax = 0, ay = 0, az = 1; if (Math.abs(nz) > 0.9) { ax = 1; az = 0; }
+  let ux = ay * nz - az * ny, uy = az * nx - ax * nz, uz = ax * ny - ay * nx;
+  const ul = Math.hypot(ux, uy, uz); ux /= ul; uy /= ul; uz /= ul;
+  const wx = ny * uz - nz * uy, wy = nz * ux - nx * uz, wz = nx * uy - ny * ux;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2, ca = Math.cos(a) * rho, sa = Math.sin(a) * rho;
+    pts.push(cam.p({ x: ox + ux * ca + wx * sa, y: oy + uy * ca + wy * sa, z: oz + uz * ca + wz * sa }));
+  }
+  return pts;
+}
+function centroid(sp) { let x = 0, y = 0; for (const p of sp) { x += p.x; y += p.y; } return { x: x / sp.length, y: y / sp.length }; }
+// tapered capsule between two screen circles (union-friendly, clockwise)
+function capPath(g, a, ra, b, rb) {
+  const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+  if (d < 1e-3 || d <= Math.abs(ra - rb)) {
+    const [c, r] = ra >= rb ? [a, ra] : [b, rb];
+    g.moveTo(c.x + r, c.y); g.arc(c.x, c.y, r, 0, Math.PI * 2); return;
+  }
+  const ang = Math.atan2(dy, dx), off = Math.acos(clamp((ra - rb) / d, -1, 1));
+  g.moveTo(a.x + ra * Math.cos(ang + off), a.y + ra * Math.sin(ang + off));
+  g.arc(a.x, a.y, ra, ang + off, ang - off + Math.PI * 2);
+  g.arc(b.x, b.y, rb, ang - off, ang + off);
+  g.closePath();
+}
+function hull(pts) {
+  const p = pts.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+  if (p.length < 3) return p;
+  const cr = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  up.pop(); lo.pop(); return lo.concat(up);
+}
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mix(a, b, t) { const A = hexRgb(a), B = hexRgb(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`; }
+function groundZ(x, y) { const r = Math.hypot(x - MOUND_C.x, y - MOUND_C.y); return MOUND_H * clamp((MOUND_R - r) / 7.5, 0, 1); }
+
+/* ============================================================
+   4. Data
+   ============================================================ */
+const GAMES = new Map(POOL.games.map((g) => [g.gamePk, g]));
+const gameOf = (p) => GAMES.get(p.gamePk) || TEN.game;
+const BY_ID = new Map(POOL.pitches.map((p) => [p.id, p]));
+// Today's Ten: one easy calibrator first, then eight close calls within 1.5 in of the ABS edge (four balls, four
+// strikes; the real ump right on five, near the 63% umps managed on pitches this close all Series), then the
+// Series' last called strike three. Game 5 supplies what it can; Games 1 and 2 add the breaking and offspeed
+// pitches Game 5 has none of this close. Calibrator first, the rest in Series order. (ten.json keeps the
+// original all-Game 5 round.)
+const TODAY_IDS = ['849799-1-1', '849805-40-6', '849802-14-2', '849802-31-5', '849799-5-4',
+  '849799-9-1', '849799-13-2', '849799-31-1', '849799-51-1', '849799-65-7'];
+const TODAY = TODAY_IDS.every((id) => BY_ID.has(id)) ? TODAY_IDS.map((id) => BY_ID.get(id)) : TEN.pitches;
+const TODAY_SET = TODAY.map(prep);
+// the game deals Today's Ten plus every pool pitch whose crossing is within reach of a call; the rest (bounced,
+// wild, far off the plate) are never dealt, and the lens is fitted to keep every dealt crossing in frame
+const playable = (p) => p.mid.z > PLAY.zMin && p.mid.z < PLAY.zMax && Math.abs(p.mid.x) < PLAY.xMax;
+const PLAY_PTS = [...TODAY, ...POOL.pitches.filter(playable)].map((p) => ({ x: p.mid.x, z: p.mid.z }));
+const CLOSE_IN = 1.5;              // a close call: within 1.5 in of flipping
+const listJoin = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+function todayLede() {
+  const games = [...new Set(TODAY.map((p) => p.gameNumber))].sort((a, b) => a - b);
+  const close = TODAY.filter((p) => Math.abs(p.edgeMarginIn) <= CLOSE_IN).length;
+  return `Today's Ten: real pitches from Game${games.length > 1 ? 's' : ''} ${listJoin(games)} of the 2026 World Series, ${close} of them close calls within ${CLOSE_IN} in of the zone, at real speed, from the plate umpire's eye.`;
+}
+
+/* ============================================================
+   5. Assets, canvases
+   ============================================================ */
+const IMG = { backdrop: new Image(), card: new Image(), bat: new Image() };
+const loadImg = (img, src) => new Promise((res, rej) => {
+  img.onload = () => res(img); img.onerror = () => rej(new Error('Could not load ' + src)); img.src = src;
+});
+const view = $('#scene'), vctx = view.getContext('2d');
+const LAY = { back: document.createElement('canvas'), front: document.createElement('canvas'), sA: document.createElement('canvas'), sB: document.createElement('canvas'), sC: document.createElement('canvas') };
+let DPR = 1, VW = 1, VH = 1;
+function sizeCanvases() {
+  DPR = clamp(window.devicePixelRatio || 1, 1, 3);
+  VW = Math.max(1, Math.round(window.innerWidth)); VH = Math.max(1, Math.round(window.innerHeight));
+  const w = Math.round(VW * DPR), h = Math.round(VH * DPR);
+  for (const c of [view, LAY.back, LAY.front, LAY.sA, LAY.sB, LAY.sC, NEXT.back, NEXT.front]) { if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; }
+}
+let NOISE = null;
+function makeNoise() {
+  const mk = (size, amp) => {
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    const x = c.getContext('2d'), id = x.createImageData(size, size);
+    for (let i = 0; i < id.data.length; i += 4) { const v = 128 + (Math.random() - 0.5) * amp; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; }
+    x.putImageData(id, 0, 0); return c;
+  };
+  const fine = mk(256, 255);
+  const small = mk(96, 255);
+  const coarse = document.createElement('canvas'); coarse.width = coarse.height = 96 * 7;
+  const cx = coarse.getContext('2d'); cx.imageSmoothingEnabled = true; cx.drawImage(small, 0, 0, coarse.width, coarse.height);
+  // alpha noise for chalk: fine dropouts plus a coarse patchiness
+  const amk = (size, f) => {
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    const x = c.getContext('2d'), id = x.createImageData(size, size);
+    for (let i = 0; i < id.data.length; i += 4) id.data[i + 3] = f(Math.random());
+    x.putImageData(id, 0, 0); return c;
+  };
+  const grain = amk(128, (r) => (r < 0.22 ? 255 : r < 0.5 ? 110 : 0));
+  const blot = amk(48, (r) => Math.round(255 * Math.pow(r, 2.2)));
+  const patchy = document.createElement('canvas'); patchy.width = patchy.height = 48 * 9;
+  const px = patchy.getContext('2d'); px.imageSmoothingEnabled = true; px.drawImage(blot, 0, 0, patchy.width, patchy.height);
+  return { fine, coarse, grain, patchy };
+}
+
+/* ============================================================
+   6. Static scene: backdrop + infield in exact perspective
+   ============================================================ */
+const COL = {
+  dirtFar: '#8c5233', dirt: '#a8633b', dirtNear: '#b56e44',
+  chalk: 'rgba(245,242,233,0.92)',
+};
+// far background: 45 ft of batter's eye + wall at 400 ft sets the scale (true angular size, no cheat);
+// metrics measured on each image (rows/columns in image px)
+const BACKDROPS = {
+  wide: { src: 'assets/backdrop-wide.png', wallRow: 502.5, eyeTop: 378, cx: 766, ft: 45, towers: [[88, 125], [387, 222], [1137, 223], [1442, 121]] },
+  old: { src: 'assets/backdrop.png', wallRow: 478, cover: true, towers: [[232, 78], [1303, 78]] },
+};
+function drawBackdrop(g, cam) {
+  const img = IMG.backdrop, bd = IMG.bd;
+  if (!img.naturalWidth || !bd) return;
+  const wall = cam.p({ x: 0, y: 400, z: 0 });           // centre-field wall base
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  let s, left, top;
+  if (bd.cover) {                                      // fallback art: cover-fit on the wall line
+    const WALL_ROW = bd.wallRow * ih / 1024, CXI = iw / 2;
+    s = Math.max(cam.W / iw, wall.y / WALL_ROW, wall.x / CXI, (cam.W - wall.x) / (iw - CXI));
+    left = wall.x - CXI * s; top = wall.y - WALL_ROW * s;
+  } else {
+    const D = Math.hypot(cam.eye.x, 400 - cam.eye.y);
+    s = cam.F * bd.ft / (D * (bd.wallRow - bd.eyeTop));
+    left = wall.x - bd.cx * s; top = wall.y - bd.wallRow * s;
+  }
+  const W = iw * s, Hh = ih * s;
+  g.save();
+  g.filter = `blur(${(0.002 * cam.F).toFixed(2)}px)`;   // the stands sit far outside the depth of field
+  g.drawImage(img, left, top, W, Hh);
+  // wider than the art: the stands continue as mirrored copies, a touch darker toward the frame edge
+  if (left > 0) { g.save(); g.translate(left, 0); g.scale(-1, 1); g.drawImage(img, 0, top, W, Hh); g.restore(); }
+  if (left + W < cam.W) { g.save(); g.translate(left + W, 0); g.scale(-1, 1); g.drawImage(img, -W, top, W, Hh); g.restore(); }
+  g.filter = 'none';
+  if (left > 0) { const sh = g.createLinearGradient(left, 0, 0, 0); sh.addColorStop(0, 'rgba(4,8,14,0)'); sh.addColorStop(1, 'rgba(4,8,14,0.35)'); g.fillStyle = sh; g.fillRect(0, 0, left, wall.y); }
+  if (left + W < cam.W) { const sh = g.createLinearGradient(left + W, 0, cam.W, 0); sh.addColorStop(0, 'rgba(4,8,14,0)'); sh.addColorStop(1, 'rgba(4,8,14,0.35)'); g.fillStyle = sh; g.fillRect(left + W, 0, cam.W - left - W, wall.y); }
+  // floodlight bloom: the towers sit above the frame at true scale, their light spills in
+  g.globalCompositeOperation = 'screen';
+  const heads = [];
+  for (const [tx, ty] of bd.towers) {
+    const x = left + tx * s, y = top + ty * s;
+    heads.push([x, y]);
+    if (left > 0) heads.push([2 * left - x, y]);
+    if (left + W < cam.W) heads.push([2 * (left + W) - x, y]);
+  }
+  const R = Math.max(cam.W, cam.H) * 0.5;
+  for (const [x, y] of heads) {
+    if (x < -0.4 * cam.W || x > 1.4 * cam.W) continue;
+    const rg = g.createRadialGradient(x, y, 0, x, y, R);
+    rg.addColorStop(0, 'rgba(255,248,232,0.55)'); rg.addColorStop(0.18, 'rgba(255,242,218,0.17)'); rg.addColorStop(0.5, 'rgba(255,236,206,0.04)'); rg.addColorStop(1, 'rgba(255,236,206,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, cam.W, wall.y + 40);
+    if (y < 0) {          // a head above the frame: its glare and haze pour in over the top edge
+      const R2 = Math.max(cam.W, cam.H) * 0.85, gl = g.createRadialGradient(x, y, 0, x, y, R2);
+      gl.addColorStop(0, 'rgba(255,244,222,0.42)'); gl.addColorStop(0.2, 'rgba(255,238,210,0.15)'); gl.addColorStop(0.55, 'rgba(255,232,200,0.035)'); gl.addColorStop(1, 'rgba(255,232,200,0)');
+      g.fillStyle = gl; g.fillRect(0, 0, cam.W, wall.y + 40);
+    }
+  }
+  g.restore();
+}
+function grassStripes(g, cam) {
+  const S2 = Math.SQRT2;
+  for (let fam = 0; fam < 2; fam++) {
+    for (let k = -18; k < 36; k++) {
+      if ((k & 1) === 0) continue;
+      const q0 = k * 15, q1 = q0 + 15, p0 = -60, p1 = 560;
+      const pts = [[p0, q0], [p1, q0], [p1, q1], [p0, q1]].map(([p, q]) => fam === 0
+        ? { x: (p - q) / S2, y: (p + q) / S2, z: 0 } : { x: (q - p) / S2, y: (p + q) / S2, z: 0 });
+      fillPoly(g, cam, pts, fam === 0 ? 'rgba(232,255,196,0.07)' : 'rgba(0,24,0,0.09)');
+    }
+  }
+}
+function drawGround(g, cam) {
+  const far = cam.p({ x: 0, y: 400, z: 0 }).y;
+  const gg = g.createLinearGradient(0, far, 0, cam.H);
+  gg.addColorStop(0, '#46733a'); gg.addColorStop(0.06, '#4f863c'); gg.addColorStop(0.3, '#5a9142'); gg.addColorStop(1, '#447a35');
+  const groundPts = [{ x: -2000, y: EYE.y + 0.3, z: 0 }, { x: 2000, y: EYE.y + 0.3, z: 0 }, { x: 2000, y: 400, z: 0 }, { x: -2000, y: 400, z: 0 }];
+  const gsp = fillPoly(g, cam, groundPts, gg);
+  if (gsp) { g.save(); g.beginPath(); tracePoly(g, gsp); g.clip(); grassStripes(g, cam); g.restore(); }
+
+  const dg = g.createLinearGradient(0, far, 0, cam.H);
+  dg.addColorStop(0, COL.dirtFar); dg.addColorStop(0.25, COL.dirt); dg.addColorStop(1, COL.dirtNear);
+  // infield skin: the 95 ft arc around the rubber
+  const arc = [];
+  for (let i = 0; i <= 64; i++) { const th = (-80 + (160 * i) / 64) * Math.PI / 180; arc.push({ x: 95 * Math.sin(th), y: RUBBER_Y + 95 * Math.cos(th), z: 0 }); }
+  arc.push({ x: 0, y: 30, z: 0 });
+  fillPoly(g, cam, arc, dg);
+  // infield grass square (inset so the base paths stay dirt)
+  const sq = [{ x: 0, y: 6.4, z: 0 }, { x: 57.3, y: 63.64, z: 0 }, { x: 0, y: 120.9, z: 0 }, { x: -57.3, y: 63.64, z: 0 }];
+  const ssp = fillPoly(g, cam, sq, gg);
+  if (ssp) { g.save(); g.beginPath(); tracePoly(g, ssp); g.clip(); grassStripes(g, cam); g.restore(); }
+  // home circle, base paths, base cut-outs
+  fillPoly(g, cam, ringPts(0, MID_Y, 13), dg);
+  for (const s of [-1, 1]) {
+    fillPoly(g, cam, bandPts(0, 0, s * 63.64, 63.64, 6, 0), dg);
+    fillPoly(g, cam, ringPts(s * 62.6, 63.4, 12, 0, 56), dg);
+  }
+}
+function drawMound(g, cam) {
+  const N = 10;
+  // soft contact shadow ring where the mound meets the grass
+  fillPoly(g, cam, ringPts(MOUND_C.x, MOUND_C.y, MOUND_R + 0.6, 0, 72), 'rgba(40,24,14,0.35)');
+  for (let i = 0; i <= N; i++) {
+    const r = MOUND_R - i * (7.5 / N);
+    const h = MOUND_H * clamp((MOUND_R - r) / 7.5, 0, 1);
+    fillPoly(g, cam, ringPts(MOUND_C.x, MOUND_C.y, r, h, 72), mix('#8d5131', '#c27c4b', Math.pow(i / N, 0.8)));
+  }
+  const z = MOUND_H + 0.02;
+  fillPoly(g, cam, [{ x: -1, y: 60.5, z }, { x: 1, y: 60.5, z }, { x: 1, y: 61, z }, { x: -1, y: 61, z }], '#f4f1e8');
+}
+function drawChalk(g, cam) {
+  const W3 = 0.25, C1 = COL.chalk;
+  for (const s of [-1, 1]) {
+    fillPoly(g, cam, bandPts(s * 3.71, 3.71, s * 300, 300, 0.3), C1);
+    const xi = s * 1.208, xo = s * 5.208, yb = -2.29, yf = 3.71;
+    fillPoly(g, cam, bandPts(xi, yb, xi, yf, W3), C1);
+    fillPoly(g, cam, bandPts(xo, yb, xo, yf, W3), C1);
+    fillPoly(g, cam, bandPts(xi - s * W3 / 2, yf, xo + s * W3 / 2, yf, W3), C1);
+    fillPoly(g, cam, bandPts(xi - s * W3 / 2, yb, xo + s * W3 / 2, yb, W3), C1);
+    const bx = s * 63.64, by = 63.64, b = 1.06;
+    fillPoly(g, cam, [{ x: bx, y: by, z: 0.05 }, { x: bx - s * b, y: by + b, z: 0.05 }, { x: bx - s * 2 * b, y: by, z: 0.05 }, { x: bx - s * b, y: by - b, z: 0.05 }], '#f6f3ea');
+  }
+  fillPoly(g, cam, [{ x: 0, y: 127.28, z: 0.05 }, { x: 1.06, y: 128.34, z: 0.05 }, { x: 0, y: 129.4, z: 0.05 }, { x: -1.06, y: 128.34, z: 0.05 }], '#f6f3ea');
+}
+// home plate: whitened rubber, kept crisp (it is the reference the eye uses)
+function drawPlate(g, cam) {
+  const z = 0.02;
+  fillPoly(g, cam, [{ x: -PLATE_HALF, y: PLATE_FRONT, z }, { x: PLATE_HALF, y: PLATE_FRONT, z }, { x: PLATE_HALF, y: MID_Y, z }, { x: 0, y: 0, z }, { x: -PLATE_HALF, y: MID_Y, z }], '#f6f3ea');
+}
+// chalk is laid on its own sheet, grained (fine dropouts, coarse patchiness, soft edges), then put down on the dirt
+function chalkSheet(g, cam) {
+  if (!NOISE) NOISE = makeNoise();
+  const C = LAY.sC, c = C.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.filter = 'none'; c.clearRect(0, 0, C.width, C.height);
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawChalk(c, cam);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.globalCompositeOperation = 'destination-out';
+  c.globalAlpha = 0.5; c.fillStyle = c.createPattern(NOISE.grain, 'repeat'); c.fillRect(0, 0, C.width, C.height);
+  c.globalAlpha = 0.32; c.fillStyle = c.createPattern(NOISE.patchy, 'repeat'); c.fillRect(0, 0, C.width, C.height);
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.filter = `blur(${(0.4 * DPR).toFixed(2)}px)`; g.drawImage(C, 0, 0); g.restore();
+}
+function groundTexture(g, cam, wallY) {
+  if (!NOISE) NOISE = makeNoise();
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const y0 = Math.max(0, Math.floor(wallY * DPR)), w = g.canvas.width, h = g.canvas.height - y0;
+  g.globalCompositeOperation = 'overlay'; g.globalAlpha = 0.10;
+  g.fillStyle = g.createPattern(NOISE.fine, 'repeat'); g.fillRect(0, y0, w, h);
+  g.globalCompositeOperation = 'soft-light'; g.globalAlpha = 0.16;
+  g.fillStyle = g.createPattern(NOISE.coarse, 'repeat'); g.fillRect(0, y0, w, h);
+  g.restore();
+}
+function groundLight(g, cam, wallY) {
+  g.save();
+  // night: the field steps down a touch so the pools of light read
+  g.globalCompositeOperation = 'multiply';
+  g.fillStyle = 'rgb(200,200,210)'; g.fillRect(0, wallY, cam.W, cam.H - wallY);
+  // pools of light from the towers: overlapping ellipses on the ground, brightest on the mound and the plate
+  g.globalCompositeOperation = 'screen';
+  const pool = (x, y, r, a) => {
+    const c = cam.p({ x, y, z: 0 }), ex = cam.p({ x: x + r, y, z: 0 }), ey = cam.p({ x, y: y + r, z: 0 });
+    if (c.d < 2 || ey.d < 2) return;
+    g.save(); g.transform(ex.x - c.x, ex.y - c.y, ey.x - c.x, ey.y - c.y, c.x, c.y);
+    const rg = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+    rg.addColorStop(0, `rgba(255,236,204,${a})`); rg.addColorStop(0.5, `rgba(255,236,204,${(a * 0.45).toFixed(3)})`); rg.addColorStop(1, 'rgba(255,236,204,0)');
+    g.fillStyle = rg; g.fillRect(-1, -1, 2, 2); g.restore();
+  };
+  pool(0, 60, 24, 0.2); pool(-40, 84, 34, 0.12); pool(40, 84, 34, 0.12); pool(0, 128, 42, 0.1);
+  pool(-130, 235, 95, 0.08); pool(130, 235, 95, 0.08); pool(0, 300, 110, 0.06);
+  const pc = cam.p({ x: 0, y: 3, z: 0 }), rp = Math.max(cam.W, cam.H) * 0.62;
+  g.save(); g.translate(pc.x, pc.y); g.scale(1, 0.45);
+  const pg = g.createRadialGradient(0, 0, 0, 0, 0, rp);
+  pg.addColorStop(0, 'rgba(255,238,210,0.2)'); pg.addColorStop(0.5, 'rgba(255,238,210,0.07)'); pg.addColorStop(1, 'rgba(255,238,210,0)');
+  g.fillStyle = pg; g.fillRect(-rp, -rp, 2 * rp, 2 * rp); g.restore();
+  g.globalCompositeOperation = 'source-over';
+  const hz = g.createLinearGradient(0, wallY - 24, 0, wallY + 28);
+  hz.addColorStop(0, 'rgba(110,130,140,0)'); hz.addColorStop(0.5, 'rgba(110,130,140,0.12)'); hz.addColorStop(1, 'rgba(110,130,140,0)');
+  g.fillStyle = hz; g.fillRect(0, wallY - 24, cam.W, 52);
+  const fg = g.createLinearGradient(0, cam.H * 0.72, 0, cam.H);
+  fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,0,0,0.3)');
+  g.fillStyle = fg; g.fillRect(0, cam.H * 0.72, cam.W, cam.H * 0.28);
+  const vg = g.createRadialGradient(cam.W / 2, cam.H * 0.46, Math.min(cam.W, cam.H) * 0.38, cam.W / 2, cam.H * 0.46, Math.hypot(cam.W, cam.H) * 0.62);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.5)');
+  g.fillStyle = vg; g.fillRect(0, 0, cam.W, cam.H);
+  // the floods above the frame veil its top edge
+  g.globalCompositeOperation = 'screen';
+  const vh = Math.max(70, wallY * 1.15), vt = g.createLinearGradient(0, 0, 0, vh);
+  vt.addColorStop(0, 'rgba(255,240,214,0.13)'); vt.addColorStop(1, 'rgba(255,240,214,0)');
+  g.fillStyle = vt; g.fillRect(0, 0, cam.W, vh);
+  g.restore();
+}
+// light towers (x, y, height ft): four beyond the outfield, two behind home plate (out of view)
+const TOWERS = [[-330, 280, 130], [-170, 430, 120], [170, 430, 120], [330, 280, 130], [-250, -150, 140], [250, -150, 140]];
+// soft multi-tower shadows: one faint tapered shadow per tower, laid on the ground (mound slope included)
+function castShadows(g, cam, fx, fy, h, alpha) {
+  for (const [tx, ty, tz] of TOWERS) {
+    let dx = fx - tx, dy = fy - ty; const dist = Math.hypot(dx, dy); dx /= dist; dy /= dist;
+    const L = Math.min(h * dist / Math.max(tz - h, 1), 4.2 * h), nx = -dy, ny = dx, w0 = 0.5, w1 = 0.95;
+    const at = (x, y) => ({ x, y, z: groundZ(x, y) + 0.015 });
+    const pts = [at(fx + nx * w0, fy + ny * w0), at(fx + dx * L + nx * w1, fy + dy * L + ny * w1), at(fx + dx * L - nx * w1, fy + dy * L - ny * w1), at(fx - nx * w0, fy - ny * w0)];
+    const a = cam.p(at(fx, fy)), b = cam.p(at(fx + dx * L * 0.7, fy + dy * L * 0.7));
+    if (a.d < NEAR || b.d < NEAR) continue;
+    const lg = g.createLinearGradient(a.x, a.y, b.x, b.y);
+    lg.addColorStop(0, `rgba(12,7,4,${alpha})`); lg.addColorStop(1, 'rgba(12,7,4,0)');
+    fillPoly(g, cam, pts, lg);
+  }
+}
+/* ---------- batter: generic rim-lit silhouette, true height, correct box ---------- */
+function batterRig(P) {
+  const H = P.batter.heightFt, s = H / 6.1;
+  const px = P.batter.side === 'R' ? 1 : -1;            // +a points from the batter toward the plate
+  const bx = -px * 2.75, by = 1.2;                       // RHB stands on -x (catcher's left)
+  const J = (a, b, f) => ({ x: bx + px * a * s, y: by + b * s, z: f * H });
+  const j = {
+    heelB: J(-0.20, -1.10, 0.012), toeB: J(0.40, -1.00, 0.012),
+    heelF: J(-0.18, 0.92, 0.012), toeF: J(0.42, 1.10, 0.012),
+    ankB: J(-0.06, -1.04, 0.05), ankF: J(-0.04, 0.98, 0.05),
+    knB: J(0.30, -0.80, 0.265), knF: J(0.33, 0.76, 0.265),
+    hipB: J(-0.12, -0.38, 0.465), hipF: J(-0.06, 0.36, 0.465),
+    waistB: J(0.02, -0.30, 0.58), waistF: J(0.08, 0.30, 0.58),
+    shB: J(0.26, -0.64, 0.745), shF: J(0.42, 0.50, 0.732),
+    neck: J(0.36, -0.04, 0.795), head: J(0.42, 0.06, 0.858),
+    elB: J(0.08, -1.08, 0.705), elF: J(0.80, -0.10, 0.62),
+    hands: J(0.64, -0.58, 0.75),
+  };
+  const d = { a: -0.22, b: -0.48, z: 0.85 }, dl = Math.hypot(d.a, d.b, d.z);
+  const along = (len) => ({ x: j.hands.x + px * d.a / dl * len, y: j.hands.y + d.b / dl * len, z: j.hands.z + d.z / dl * len });
+  j.knob = along(-0.25 * s); j.batTip = along(2.75 * s);
+  return { j, s, px, H, headR: 0.38 * s, bx, by };
+}
+function addPart(c, p) {
+  if (p.t === 'cap') capPath(c, p.A, p.ra, p.B, p.rb);
+  else if (p.t === 'dot') { c.moveTo(p.c.x + p.r, p.c.y); c.arc(p.c.x, p.c.y, p.r, 0, Math.PI * 2); }
+  else tracePoly(c, p.pts);
+}
+function batterParts(cam, P) {
+  const R = batterRig(P), j = R.j, s = R.s, px = R.px, H = R.H;
+  const parts = [];
+  const cap = (a, b, ra, rb, col) => { const A = cam.p(a), B = cam.p(b); parts.push({ t: 'cap', A, B, ra: ra * s * A.k, rb: rb * s * B.k, col, d: (A.d + B.d) / 2 }); };
+  const blob = (ws, col, dBias = 0) => { const sp = ws.map(cam.p); parts.push({ t: 'hull', pts: hull(sp), col, d: sp.reduce((m, q) => m + q.d, 0) / sp.length + dBias, round: 0.07 * s * sp[0].k }); };
+  const off = (p, a, dz = 0) => ({ x: p.x + px * a * s, y: p.y, z: p.z + dz });
+  // chest (shoulders -> waist, tapering), then the pelvis below the belt line
+  blob([off(j.shB, 0.30), off(j.shB, -0.32), off(j.shF, 0.28), off(j.shF, -0.30),
+    off(j.waistB, 0.24), off(j.waistB, -0.27), off(j.waistF, 0.24), off(j.waistF, -0.26)], 'jersey');
+  blob([off(j.waistB, 0.24), off(j.waistB, -0.28), off(j.waistF, 0.24), off(j.waistF, -0.27),
+    off(j.hipB, 0.24, -0.04 * H), off(j.hipB, -0.33, -0.03 * H), off(j.hipF, 0.22, -0.04 * H), off(j.hipF, -0.30, -0.03 * H)], 'pants', 0.05);
+  cap(j.hipB, j.knB, 0.28, 0.21, 'pants'); cap(j.knB, j.ankB, 0.2, 0.13, 'pants');
+  cap(j.hipF, j.knF, 0.28, 0.21, 'pants'); cap(j.knF, j.ankF, 0.2, 0.13, 'pants');
+  cap(j.heelB, j.toeB, 0.1, 0.08, 'shoe'); cap(j.heelF, j.toeF, 0.1, 0.08, 'shoe');
+  cap(j.shB, j.elB, 0.17, 0.13, 'jersey'); cap(j.elB, j.hands, 0.13, 0.11, 'glove');
+  cap(j.shF, j.elF, 0.17, 0.13, 'jersey'); cap(j.elF, j.hands, 0.13, 0.11, 'glove');
+  cap(j.neck, j.head, 0.19, 0.19, 'neck');
+  cap(j.knob, j.batTip, 0.05, 0.105, 'bat');
+  const hq = cam.p(j.head);
+  parts.push({ t: 'poly', pts: sphereOutline(cam, j.head, R.headR, 48), col: 'helmet', d: hq.d - 0.4 });
+  // helmet brim toward the plate
+  const br = [off(j.head, 0.18, -0.06 * s), off(j.head, 0.52, -0.1 * s), off({ x: j.head.x, y: j.head.y + 0.2 * s, z: j.head.z }, 0.46, -0.1 * s), off({ x: j.head.x, y: j.head.y - 0.2 * s, z: j.head.z }, 0.42, -0.1 * s)];
+  blob(br, 'helmet', -0.45);
+  parts.sort((a, b) => b.d - a.d);
+  return { parts, rig: R };
+}
+const BATTER_PAL = {
+  jersey: ['#26355a', '#40568a', '#101829'], pants: ['#80868d', '#adb3ba', '#454a51'], belt: ['#0f141c', '#2a3140', '#07090c'],
+  shoe: ['#1b1e24', '#3d424b', '#08090b'], glove: ['#2c2f35', '#545962', '#121418'], bat: ['#5c4129', '#96724f', '#2c1d11'],
+  helmet: ['#171d29', '#4d5a76', '#06080b'], neck: ['#8f6a52', '#b88f73', '#573f30'],
+};
+/* ---------- batter photo: true stance height on his spot in the box, graded to the night, rim-lit by the towers,
+   then defocused by the scene's own lens (stronger toward the near, back side of the stance) ---------- */
+function batterPlace(cam, P) {
+  const R = batterRig(P), B = BATTER_IMG;
+  const foot = cam.p({ x: R.bx, y: R.by, z: 0 }), head = cam.p({ x: R.bx, y: R.by, z: R.H * B.stance });
+  const s = (foot.y - head.y) / (B.sole - B.top), flip = R.px < 0;     // level axis: verticals stay vertical
+  return { R, s, flip, foot, X: (u) => foot.x + (flip ? -1 : 1) * (u - B.footX) * s, Y: (v) => foot.y + (v - B.sole) * s };
+}
+// screen box of the batter's body, shoulders to knees (the reference the reveal teaches against)
+function batterBody(cam, P) {
+  if (IMG.bat.naturalWidth) {
+    const L = batterPlace(cam, P), xa = L.X(100), xb = L.X(640);
+    return { l: Math.min(xa, xb), r: Math.max(xa, xb), t: L.Y(300), b: L.Y(1130) };
+  }
+  const R = batterRig(P), pts = ['shB', 'shF', 'hipB', 'hipF', 'knB', 'knF', 'hands', 'elB', 'elF'].map((k) => cam.p(R.j[k]));
+  const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+  return { l: Math.min(...xs), r: Math.max(...xs), t: Math.min(...ys), b: Math.max(...ys) };
+}
+function batterDof(cam, P) {
+  const R = batterRig(P), d = (dy) => cam.p({ x: R.bx, y: R.by + dy * R.s, z: R.H * 0.5 }).d;
+  const dN = d(-1.1), dF = d(1.1);
+  return { dN, dF, sN: dofBlur(cam, dN), sF: dofBlur(cam, dF) };
+}
+function drawBatterPhoto(g, cam, P) {
+  const img = IMG.bat, B = BATTER_IMG, L = batterPlace(cam, P), R = L.R;
+  const w = img.naturalWidth * L.s, h = img.naturalHeight * L.s, x0 = L.flip ? L.X(img.naturalWidth) : L.X(0), y0 = L.Y(0);
+  const put = (c, dx = 0, dy = 0) => {
+    if (!L.flip) { c.drawImage(img, x0 + dx, y0 + dy, w, h); return; }
+    c.save(); c.translate(x0 + w + dx, y0 + dy); c.scale(-1, 1); c.drawImage(img, 0, 0, w, h); c.restore();
+  };
+  const sheet = (C) => {
+    const c = C.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.filter = 'none';
+    c.clearRect(0, 0, C.width, C.height); return c;
+  };
+  // soft shadows from every tower and a contact shadow, at the blur of the ground under him
+  g.save(); g.filter = `blur(${(Math.max(2, dofBlur(cam, L.foot.d)) * DPR).toFixed(1)}px)`;
+  castShadows(g, cam, R.bx, R.by, R.H * 0.92, 0.12);
+  fillPoly(g, cam, ringPts(R.bx, R.by, 1.5 * R.s, 0.01, 48), 'rgba(5,7,9,0.45)');
+  g.restore();
+  // 1) graded to the night: darker, cooler and flatter than the studio still
+  const ax = sheet(LAY.sA); ax.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ax.filter = 'brightness(0.72) contrast(1.07) saturate(0.84)'; put(ax); ax.filter = 'none';
+  ax.globalCompositeOperation = 'source-atop';
+  const lg = ax.createLinearGradient(0, L.Y(B.top), 0, L.Y(B.sole));          // floodlight falloff
+  lg.addColorStop(0, 'rgba(255,232,200,0.10)'); lg.addColorStop(0.4, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(3,5,9,0.5)');
+  ax.fillStyle = lg; ax.fillRect(0, 0, cam.W, cam.H);
+  ax.fillStyle = 'rgba(20,34,60,0.12)'; ax.fillRect(0, 0, cam.W, cam.H);
+  // 2) warm rims from the towers above the frame: the light-facing band of the silhouette (outer side strongest)
+  const out = L.flip ? -1 : 1, k = Math.max(4, 20 * L.s);          // wide enough to survive the defocus
+  for (const [lx, ly, a, col] of [[-0.55 * out, -0.84, 0.8, '255,190,128'], [0.6 * out, -0.8, 0.5, '255,214,168']]) {
+    const bc = sheet(LAY.sB); bc.setTransform(DPR, 0, 0, DPR, 0, 0);
+    put(bc);
+    bc.globalCompositeOperation = 'source-in'; bc.fillStyle = `rgb(${col})`; bc.fillRect(0, 0, cam.W, cam.H);
+    bc.globalCompositeOperation = 'destination-out'; put(bc, -lx * k, -ly * k);
+    ax.save(); ax.setTransform(1, 0, 0, 1, 0, 0); ax.globalCompositeOperation = 'screen'; ax.globalAlpha = a; ax.drawImage(LAY.sB, 0, 0); ax.restore();
+  }
+  ax.globalCompositeOperation = 'source-over';
+  // 3) depth of field: the near (back) and far (front) blurs cross-faded across the stance, added premultiplied
+  const D = batterDof(cam, P), xN = L.X(B.backX) * DPR, xF = L.X(B.frontX) * DPR;
+  const level = (C, sig, a0, a1) => {
+    const c = sheet(C);
+    c.filter = `blur(${(sig * DPR).toFixed(1)}px)`; c.drawImage(LAY.sA, 0, 0); c.filter = 'none';
+    c.globalCompositeOperation = 'destination-in';
+    const m = c.createLinearGradient(xN, 0, xF, 0); m.addColorStop(0, `rgba(0,0,0,${a0})`); m.addColorStop(1, `rgba(0,0,0,${a1})`);
+    c.fillStyle = m; c.fillRect(0, 0, C.width, C.height); c.globalCompositeOperation = 'source-over';
+    return c;
+  };
+  const far = level(LAY.sB, D.sF, 0, 1); level(LAY.sC, D.sN, 1, 0);
+  far.globalCompositeOperation = 'lighter'; far.drawImage(LAY.sC, 0, 0); far.globalCompositeOperation = 'source-over';
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(LAY.sB, 0, 0); g.restore();
+}
+function drawBatter(g, cam, P) {
+  if (IMG.bat.naturalWidth) { drawBatterPhoto(g, cam, P); return; }        // the procedural figure is the fallback
+  const { parts, rig } = batterParts(cam, P);
+  const j = rig.j, fx = (j.ankB.x + j.ankF.x) / 2, fy = (j.ankB.y + j.ankF.y) / 2;
+  // soft shadows from every tower, and a contact shadow under the stance
+  g.save(); g.filter = `blur(${Math.max(2, 0.008 * cam.F).toFixed(1)}px)`;
+  castShadows(g, cam, fx, fy, rig.H * 0.92, 0.11);
+  fillPoly(g, cam, ringPts(fx, fy, 1.5 * rig.s, 0.01, 48), 'rgba(5,7,9,0.42)');
+  g.restore();
+  const A = LAY.sA, ax = A.getContext('2d');
+  ax.setTransform(1, 0, 0, 1, 0, 0); ax.globalCompositeOperation = 'source-over'; ax.filter = 'none'; ax.globalAlpha = 1; ax.clearRect(0, 0, A.width, A.height);
+  ax.setTransform(DPR, 0, 0, DPR, 0, 0);
+  for (const p of parts) {
+    const pal = BATTER_PAL[p.col];
+    if (p.t === 'cap') cylFill(ax, p.A, p.ra, p.B, p.rb, pal, false);
+    else if (p.t === 'hull') hullFill(ax, p.pts, p.round, pal, 0.16);
+    else {                                                  // helmet shell: glossy, with one specular from the floods
+      const c = centroid(p.pts); let r = 0; for (const q of p.pts) r = Math.max(r, Math.hypot(q.x - c.x, q.y - c.y));
+      const hg = ax.createRadialGradient(c.x - r * 0.3, c.y - r * 0.35, r * 0.05, c.x, c.y, r * 1.05);
+      hg.addColorStop(0, pal[1]); hg.addColorStop(0.35, pal[0]); hg.addColorStop(1, pal[2]);
+      ax.fillStyle = hg; ax.beginPath(); tracePoly(ax, p.pts); ax.fill();
+      ax.fillStyle = 'rgba(220,230,245,0.28)'; ax.beginPath(); ax.ellipse(c.x - r * 0.32, c.y - r * 0.42, r * 0.28, r * 0.12, -0.5, 0, Math.PI * 2); ax.fill();
+    }
+  }
+  // cloth: knee creases, a crease down the front thigh, folds across the jersey back above the belt
+  const Q = (p) => cam.p(p), off = (p, a, dz = 0) => ({ x: p.x + rig.px * a * rig.s, y: p.y, z: p.z + dz });
+  const crease = (pts, w, a) => {
+    const sp = pts.map(Q); if (sp.some((q) => q.d < NEAR)) return;
+    ax.beginPath(); ax.moveTo(sp[0].x, sp[0].y);
+    if (sp.length === 3) ax.quadraticCurveTo(sp[1].x, sp[1].y, sp[2].x, sp[2].y); else ax.lineTo(sp[1].x, sp[1].y);
+    ax.lineWidth = Math.max(0.8, w * sp[0].k); ax.strokeStyle = `rgba(14,16,20,${a})`; ax.lineCap = 'round'; ax.stroke();
+  };
+  ax.save(); ax.filter = `blur(${Math.max(0.6, 0.0016 * cam.F).toFixed(2)}px)`;
+  for (const K of [j.knB, j.knF]) crease([off(K, -0.16, 0.05), off(K, 0.02, -0.02), off(K, 0.18, 0.04)], 0.035, 0.42);
+  crease([off(j.hipF, 0.1, -0.15), off(j.knF, 0.12, 0.2)], 0.025, 0.25);
+  crease([off(j.shB, -0.05, -0.35), off(j.waistB, 0.02, 0.35), off(j.waistF, -0.1, 0.12)], 0.03, 0.3);
+  crease([off(j.waistB, -0.15, 0.08), off(j.waistF, -0.05, 0.1)], 0.028, 0.32);
+  ax.restore();
+  // floodlight falloff: lit shoulders, legs sinking into the dark of the box
+  const yTop = cam.p({ x: j.head.x, y: j.head.y, z: rig.H }).y, yBot = cam.p(j.ankF).y;
+  ax.globalCompositeOperation = 'source-atop';
+  const lg = ax.createLinearGradient(0, yTop, 0, yBot);
+  lg.addColorStop(0, 'rgba(255,240,215,0.12)'); lg.addColorStop(0.45, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(0,0,0,0.36)');
+  ax.fillStyle = lg; ax.fillRect(0, 0, cam.W, cam.H);
+  ax.globalCompositeOperation = 'source-over';
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(A, 0, 0); g.restore();
+}
+
+/* ---------- catcher: dark, soft-focus, low (never over the zone) ---------- */
+// the ump keys his stance off the catcher (head in the slot, eyes just over the helmet) and the catcher sets up to
+// the batter too: the helmet follows the ump's eye by the share (1 - its depth / mid-plate depth) that moves it on
+// screen with the plate and the zone, so it stays under the zone from every stance; `eye` defaults to the slot
+function catcherRig(side, eye) {
+  const sgn = side === 'R' ? -1 : 1;                     // the ump's side of the plate
+  const n = eyeFor(side), e = eye || n, k = 1 - (-2.3 - EYE.y) / (MID_Y - EYE.y);
+  return { head: { x: -sgn * 0.05 + k * (e.x - n.x), y: -2.3 + k * (e.y - n.y), z: 2.78 + k * (e.z - n.z) }, r: 0.42, sgn };
+}
+function drawCatcher(g, cam, P) {
+  const m = catcherRig(P.batter.side, cam.eye), h = m.head;
+  g.save();
+  g.filter = `blur(${(Math.max(2, dofBlur(cam, cam.p(h).d)) * DPR).toFixed(1)}px)`;   // the scene's lens: closest thing in view
+  const back = '#0b1119';
+  fillPoly(g, cam, [{ x: h.x - 0.95, y: h.y - 0.05, z: h.z - 0.6 }, { x: h.x + 0.95, y: h.y - 0.05, z: h.z - 0.6 },
+    { x: h.x + 1.15, y: h.y - 0.25, z: h.z - 2.4 }, { x: h.x - 1.15, y: h.y - 0.25, z: h.z - 2.4 }], back);
+  for (const sx of [-1, 1]) {
+    const S = cam.p({ x: h.x + sx * 0.82, y: h.y - 0.05, z: h.z - 0.66 });
+    g.beginPath(); g.arc(S.x, S.y, 0.3 * S.k, 0, Math.PI * 2); g.fillStyle = back; g.fill();
+  }
+  const out = sphereOutline(cam, h, m.r, 72);
+  if (out) {
+    const c = centroid(out), rr = 0.42 * cam.p(h).k;
+    const hg = g.createRadialGradient(c.x - rr * 0.3, c.y - rr * 0.62, rr * 0.05, c.x, c.y, rr * 1.15);
+    hg.addColorStop(0, '#2c3749'); hg.addColorStop(0.45, '#121a26'); hg.addColorStop(1, '#080b11');
+    g.beginPath(); tracePoly(g, out); g.fillStyle = hg; g.fill();
+  }
+  g.restore();
+}
+function paintBack(cv, cam, P) {
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const sky = g.createLinearGradient(0, 0, 0, cam.cy);
+  sky.addColorStop(0, '#040912'); sky.addColorStop(1, '#0a1524');
+  g.fillStyle = sky; g.fillRect(0, 0, cam.W, cam.H);
+  drawBackdrop(g, cam);
+  const wallY = cam.p({ x: 0, y: 400, z: 0 }).y;
+  drawGround(g, cam);
+  drawMound(g, cam);
+  groundTexture(g, cam, wallY);
+  chalkSheet(g, cam);
+  drawPlate(g, cam);
+  groundLight(g, cam, wallY);
+  // the catcher's own soft shadows reach forward under the plate (the catcher himself is in the front layer)
+  const cm = catcherRig(P.batter.side, cam.eye);
+  g.save(); g.filter = `blur(${Math.max(2, 0.01 * cam.F).toFixed(1)}px)`;
+  castShadows(g, cam, cm.head.x, cm.head.y + 0.35, 3.0, 0.1);
+  g.restore();
+  if (typeof drawBatter === 'function') drawBatter(g, cam, P);
+}
+function paintFront(cv, cam, P) {
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (typeof drawCatcher === 'function') drawCatcher(g, cam, P);
+  drawMask(g, cam);
+}
+/* ---------- the umpire's mask: dark, defocused cage bars at the bottom corners and up the sides,
+   built to stay clear of every dealt crossing, the zone and the indicator ---------- */
+function indRect(W, H) {   // the indicator's footprint, mirroring its CSS
+  return W <= 640 ? { l: W / 2 - 79, r: W / 2 + 79, t: H - 84 - 113, b: H - 84 } : { l: W - 24 - 196, r: W - 24, t: H - 106 - 140, b: H - 106 };
+}
+function crossRect(cam) {
+  const e = crossExt(makeCam(cam.eye, cam.yaw, 1, 0, 0, cam.W, cam.H));
+  return { l: cam.cx + cam.F * e.x0, r: cam.cx + cam.F * e.x1, t: cam.cy + cam.F * e.y0, b: cam.cy + cam.F * e.y1 };
+}
+// the mask rides on the ump's head, so it sits in the same place for every stance: clear of what any stance shows
+function maskGeom(cam) {
+  const W = cam.W, H = cam.H, t = clamp(0.042 * Math.min(W, H), 14, 42), bl = 0.32 * t, w = t / 2 + 2 * bl + 4;
+  const U = cam.U || fitCam(W, H, cam.eye.x < 0 ? 'R' : 'L').U;
+  const keep = [U.cross, indRect(W, H), U.zone];
+  const dist = (x, y, K) => Math.hypot(Math.max(K.l - x, 0, x - K.r), Math.max(K.t - y, 0, y - K.b));
+  const bars = [];
+  for (const sx of [0, 1]) {
+    const C = { x: sx ? W - 0.6 * t : 0.6 * t, y: H };
+    const room = Math.min(...keep.map((K) => dist(C.x, C.y, K))) - w;
+    const arcs = [];
+    if (room > 2.2 * t) arcs.push(room);
+    if (room - 2.8 * t > 1.6 * t) arcs.push(room - 2.8 * t);
+    for (const rho of arcs) bars.push({ k: 'arc', C, rho, sx });
+    let y0 = 0.3 * H, y1 = H - (arcs[0] || 0);
+    const xl = C.x - w, xr = C.x + w;
+    for (const K of keep) if (K.r > xl && K.l < xr && K.b > y0 && K.t < y1) { if (K.t - y0 > y1 - K.b) y1 = K.t - w; else y0 = K.b + w; }
+    if (y1 - y0 > 3 * t) bars.push({ k: 'side', x: C.x, y0, y1, sx });
+  }
+  return { bars, t, bl, w, keep };
+}
+function maskSamples(b, t) {
+  const out = [];
+  for (let i = 0; i <= 24; i++) {
+    const u = i / 24;
+    if (b.k === 'arc') { const a = b.sx ? Math.PI + u * Math.PI / 2 : 1.5 * Math.PI + u * Math.PI / 2; out.push({ x: b.C.x + b.rho * Math.cos(a), y: b.C.y + b.rho * Math.sin(a) }); }
+    else { const bx = b.x + (b.sx ? -1 : 1) * 0.8 * t, by = (b.y0 + b.y1) / 2, v = 1 - u; out.push({ x: v * v * b.x + 2 * v * u * bx + u * u * b.x, y: v * v * b.y0 + 2 * v * u * by + u * u * b.y1 }); }
+  }
+  return out;
+}
+function drawMask(g, cam) {
+  const { bars, t, bl } = maskGeom(cam);
+  if (!bars.length) return;
+  g.save();
+  g.filter = `blur(${bl.toFixed(1)}px)`;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const trace = (b, inset) => {
+    g.beginPath();
+    if (b.k === 'arc') { const a0 = b.sx ? Math.PI : 1.5 * Math.PI; g.arc(b.C.x, b.C.y, b.rho - inset, a0, a0 + Math.PI / 2); }
+    else { const dx = (b.sx ? -1 : 1) * inset; g.moveTo(b.x + dx, b.y0); g.quadraticCurveTo(b.x + dx + (b.sx ? -1 : 1) * 0.8 * t, (b.y0 + b.y1) / 2, b.x + dx, b.y1); }
+  };
+  for (const b of bars) { trace(b, 0); g.lineWidth = t; g.strokeStyle = 'rgba(3,5,9,0.9)'; g.stroke(); }
+  // the inner face of each bar catches a little of the floods
+  for (const b of bars) { trace(b, 0.3 * t); g.lineWidth = 0.2 * t; g.strokeStyle = 'rgba(150,170,200,0.13)'; g.stroke(); }
+  g.restore();
+}
+let staticKey = '';
+const staticKeyFor = (P) => { const e = eyeOf(P); return [P.batter.side, P.batter.heightFt, e.x, e.y, e.z, VW, VH, DPR, IMG.backdrop.naturalWidth, IMG.bat.naturalWidth].join('|'); };
+// the next pitch's layers are painted ahead while the reveal holds still, so "Next pitch" is a plain cut: a swap
+const NEXT = { key: '', cam: null, back: document.createElement('canvas'), front: document.createElement('canvas') };
+function ensureStatic(P) {
+  const key = staticKeyFor(P);
+  if (key === staticKey && G.cam) return;
+  staticKey = key;
+  if (NEXT.key === key) {
+    [LAY.back, NEXT.back] = [NEXT.back, LAY.back]; [LAY.front, NEXT.front] = [NEXT.front, LAY.front];
+    G.cam = NEXT.cam; NEXT.key = '';
+    return;
+  }
+  G.cam = camFor(VW, VH, P);
+  paintBack(LAY.back, G.cam, P);
+  paintFront(LAY.front, G.cam, P);
+}
+function paintAhead() {
+  if (G.phase !== 'reveal' || G.i + 1 >= G.set.length) return;
+  const P = G.set[G.i + 1], key = staticKeyFor(P);
+  if (key === NEXT.key || key === staticKey) return;
+  const cam = camFor(VW, VH, P);
+  paintBack(NEXT.back, cam, P); paintFront(NEXT.front, cam, P);
+  NEXT.key = key; NEXT.cam = cam;
+}
+
+/* ============================================================
+   7. Dynamic: ball (exact path, real time, true size)
+   ============================================================ */
+function ballShape(g, cam, c) {
+  const q = cam.p(c), rp = BALL_R * q.k;
+  if (rp < 2.5) { g.beginPath(); g.arc(q.x, q.y, Math.max(rp, 0.9), 0, Math.PI * 2); return { q, rp, sp: null }; }
+  const sp = sphereOutline(cam, c, BALL_R, rp > 12 ? 48 : 28);
+  g.beginPath(); tracePoly(g, sp);
+  return { q, rp, sp };
+}
+function drawBall(g, cam, P, s) {
+  if (s < 0 || s > P.k.toCatch) return;
+  const t = ballT(P, s), tr = P.traj;
+  const c = posAt(tr, t);
+  // faint speed trail: the last ~10 ms of the real path
+  const t0 = Math.max(P.k.tRel, t - TRAIL);
+  if (t - t0 > 0.0015) {
+    const a = cam.p(posAt(tr, t0)), b = cam.p(c);
+    const ga = g.createLinearGradient(a.x, a.y, b.x, b.y);
+    ga.addColorStop(0, 'rgba(255,253,246,0)'); ga.addColorStop(1, 'rgba(255,253,246,0.3)');
+    g.beginPath(); capPath(g, a, Math.max(BALL_R * a.k * 0.85, 0.5), b, Math.max(BALL_R * b.k * 0.9, 0.7));
+    g.fillStyle = ga; g.fill();
+  }
+  const { q, rp } = ballShape(g, cam, c);
+  if (rp >= 2.5) {
+    const hl = g.createRadialGradient(q.x - rp * 0.35, q.y - rp * 0.45, rp * 0.1, q.x, q.y, rp * 1.05);
+    hl.addColorStop(0, '#ffffff'); hl.addColorStop(0.55, '#f4f1e9'); hl.addColorStop(1, '#c9c4b8');
+    g.fillStyle = hl;
+  } else g.fillStyle = '#fbfaf5';
+  g.fill();
+}
+/* ---------- pitcher: one generic delivery, mirrored for LHP ----------
+   local frame: u = throwing-arm side, v = toward the plate, w = up from the rubber top */
+const PJ = ['head', 'neck', 'tSh', 'gSh', 'tEl', 'gEl', 'tHa', 'gHa', 'pel', 'tHip', 'gHip', 'tKn', 'gKn', 'tFt', 'gFt'];
+const PT = [-1.15, -0.72, -0.42, -0.13, -0.045, 0, 0.28, 0.75];
+const PK = [
+  /* set    */ [[0.05, 0.75, 5.80], [0.02, 0.70, 5.32], [0.05, 0.10, 5.05], [0.00, 1.25, 5.08], [0.45, 0.25, 4.15], [0.40, 1.15, 4.15], [0.62, 0.68, 4.35], [0.62, 0.78, 4.40], [0.00, 0.70, 3.25], [0.00, 0.32, 3.25], [0.00, 1.08, 3.25], [0.12, 0.30, 1.70], [0.12, 1.25, 1.70], [0.05, 0.10, 0.04], [0.05, 1.45, 0.00]],
+  /* lift   */ [[0.10, 0.55, 5.85], [0.08, 0.50, 5.36], [0.18, -0.05, 5.10], [-0.10, 1.05, 5.12], [0.55, 0.05, 4.25], [0.40, 0.95, 4.30], [0.65, 0.45, 4.55], [0.62, 0.55, 4.60], [0.05, 0.45, 3.30], [0.05, 0.10, 3.30], [0.05, 0.85, 3.32], [0.10, 0.10, 1.75], [0.55, 0.75, 3.55], [0.05, 0.10, 0.04], [0.30, 0.70, 2.15]],
+  /* stride */ [[0.05, 1.30, 5.55], [0.05, 1.25, 5.10], [0.12, 0.65, 4.85], [-0.08, 1.75, 4.90], [0.45, 0.15, 4.20], [0.25, 2.10, 4.50], [0.40, 0.25, 3.90], [0.15, 2.55, 4.55], [0.05, 1.30, 2.95], [0.05, 0.95, 2.95], [0.05, 1.65, 2.97], [0.10, 0.75, 1.45], [0.30, 2.30, 2.45], [0.05, 0.10, 0.04], [0.20, 2.80, 1.10]],
+  /* plant  */ [[0.00, 3.10, 5.05], [0.00, 3.00, 4.62], [0.30, 2.30, 4.45], [-0.35, 3.40, 4.50], [1.10, 1.95, 4.40], [-0.55, 4.15, 4.30], [1.05, 1.55, 5.25], [-0.40, 4.55, 4.05], [0.05, 2.80, 2.55], [0.35, 2.55, 2.55], [-0.25, 3.05, 2.55], [0.30, 1.75, 0.95], [-0.05, 4.65, 1.35], [0.20, 0.55, 0.20], [-0.05, 5.35, -0.30]],
+  /* cocked */ [[0.05, 3.85, 4.75], [0.05, 3.75, 4.35], [0.70, 3.40, 4.30], [-0.55, 3.95, 4.20], [1.35, 3.70, 4.55], [-0.75, 4.55, 3.85], [1.30, 3.30, 5.25], [-0.45, 4.35, 3.70], [0.10, 3.45, 2.45], [0.45, 3.25, 2.45], [-0.30, 3.70, 2.45], [0.40, 2.45, 0.85], [-0.05, 4.95, 1.40], [0.25, 1.05, 0.40], [-0.05, 5.35, -0.30]],
+  /* release*/ [[0.15, 4.45, 4.55], [0.15, 4.35, 4.15], [0.80, 4.30, 4.15], [-0.45, 4.55, 3.95], [1.25, 5.05, 4.55], [-0.70, 4.90, 3.55], [1.10, 6.10, 4.85], [-0.30, 4.55, 3.50], [0.10, 3.90, 2.40], [0.45, 3.70, 2.40], [-0.30, 4.10, 2.40], [0.40, 2.95, 0.85], [-0.05, 5.10, 1.45], [0.30, 1.55, 0.55], [-0.05, 5.35, -0.30]],
+  /* follow */ [[-0.05, 5.05, 4.20], [-0.05, 4.90, 3.85], [0.30, 5.05, 3.75], [-0.80, 4.55, 3.80], [-0.10, 5.65, 2.90], [-1.00, 4.45, 3.30], [-0.75, 5.35, 2.25], [-0.65, 4.65, 3.05], [-0.05, 4.35, 2.35], [0.30, 4.20, 2.40], [-0.40, 4.45, 2.35], [0.45, 3.60, 1.95], [-0.10, 5.30, 1.45], [0.55, 2.70, 2.35], [-0.05, 5.35, -0.30]],
+  /* settle */ [[0.20, 5.35, 5.45], [0.20, 5.25, 5.00], [0.85, 5.20, 4.80], [-0.45, 5.25, 4.80], [0.95, 5.55, 3.95], [-0.55, 5.60, 4.00], [0.55, 5.85, 3.60], [-0.05, 5.90, 3.80], [0.20, 5.15, 2.85], [0.60, 5.10, 2.85], [-0.20, 5.20, 2.85], [0.95, 5.55, 1.45], [-0.40, 5.60, 1.45], [1.00, 5.25, -0.40], [-0.45, 5.40, -0.41]],
+];
+const REL_KEY = PT.indexOf(0), HAND = PJ.indexOf('tHa');
+function pitcherFrame(P) {
+  if (P._pf) return P._pf;
+  const arm = P.pitcher.hand === 'L' ? 1 : -1;            // world x sign of the throwing side
+  const xBody = clamp(P.k.rel.x - arm * 1.10, -1.0, 1.0);  // pivot foot stays on the 24 in rubber
+  const b = PK[REL_KEY][HAND];
+  const hand0 = { x: xBody + arm * b[0], y: RUBBER_Y - b[1], z: MOUND_H + b[2] };
+  const delta = { x: P.k.rel.x - hand0.x, y: P.k.rel.y - hand0.y, z: P.k.rel.z - hand0.z };
+  return (P._pf = { arm, xBody, delta });
+}
+function pitcherPose(P, s) {
+  const T = PT, K = PK, n = T.length, fr = pitcherFrame(P);
+  const sc = clamp(s, T[0], T[n - 1]);
+  let i = 0; while (i < n - 2 && sc > T[i + 1]) i++;
+  const h = T[i + 1] - T[i], u = (sc - T[i]) / h, u2 = u * u, u3 = u2 * u;
+  const h00 = 2 * u3 - 3 * u2 + 1, h10 = u3 - 2 * u2 + u, h01 = -2 * u3 + 3 * u2, h11 = u3 - u2;
+  const tan = (k, j, c) => { const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1); return (K[b][j][c] - K[a][j][c]) / (T[b] - T[a]); };
+  const out = {};
+  for (let j = 0; j < PJ.length; j++) {
+    const v = [0, 1, 2].map((c) => h00 * K[i][j][c] + h10 * h * tan(i, j, c) + h01 * K[i + 1][j][c] + h11 * h * tan(i + 1, j, c));
+    out[PJ[j]] = { x: fr.xBody + fr.arm * v[0], y: RUBBER_Y - v[1], z: MOUND_H + v[2] };
+  }
+  // the hand is pulled onto the real release point, exactly at s = 0
+  const w = Math.exp(-Math.pow(s / 0.14, 2)), d = fr.delta;
+  const add = (name, f) => { const o = out[name]; o.x += d.x * f; o.y += d.y * f; o.z += d.z * f; };
+  add('tHa', w); add('tEl', 0.6 * w); add('tSh', 0.3 * w); add('neck', 0.15 * w); add('head', 0.15 * w); add('gSh', 0.1 * w);
+  for (const f of ['tFt', 'gFt']) out[f].z = Math.max(out[f].z, groundZ(out[f].x, out[f].y) + 0.04);
+  return out;
+}
+// shaded figure palette: [base, lit, shadow]; one generic road uniform, no marks
+const PCOL = {
+  jersey: ['#a9ada6', '#d8dad3', '#676b65'], pants: ['#a2a59e', '#d2d4cd', '#61655e'],
+  skin: ['#ad8264', '#d6a888', '#6e4c39'], trim: ['#1e2840', '#3a4a70', '#0c111c'],
+  shoe: ['#15181d', '#353a43', '#07080a'], glove: ['#4d311e', '#80573a', '#22160c'],
+};
+// cylinder shading across a limb: the floods behind the plate light the side that faces up and toward us
+function cylFill(c, A, ra, B, rb, pal, far) {
+  const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+  const sg = nx * -0.5 + ny * -0.86 >= 0 ? 1 : -1, r = Math.max(ra, rb) * 1.05, mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+  const tone = (h) => (far ? mix(h, pal[2], 0.35) : h);
+  const gr = c.createLinearGradient(mx - sg * nx * r, my - sg * ny * r, mx + sg * nx * r, my + sg * ny * r);
+  gr.addColorStop(0, pal[2]); gr.addColorStop(0.48, tone(pal[0])); gr.addColorStop(0.8, tone(pal[1])); gr.addColorStop(1, tone(pal[0]));
+  c.fillStyle = gr; c.beginPath(); capPath(c, A, ra, B, rb); c.fill();
+}
+function hullFill(c, pts, round, pal, lightUp = 0.3) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const p of pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+  const w = x1 - x0, h = y1 - y0, gr = c.createRadialGradient(x0 + w * 0.38, y0 + h * lightUp, 0, x0 + w * 0.45, y0 + h * 0.45, Math.max(w, h) * 0.85);
+  gr.addColorStop(0, pal[1]); gr.addColorStop(0.45, pal[0]); gr.addColorStop(1, pal[2]);
+  c.fillStyle = gr; c.strokeStyle = gr; c.lineJoin = 'round'; c.lineWidth = round * 2;
+  c.beginPath(); tracePoly(c, pts); c.fill(); c.stroke();
+}
+const FIG = document.createElement('canvas');
+function drawPitcher(g, cam, P, s) {
+  const J = pitcherPose(P, s), q = {};
+  for (const k in J) q[k] = cam.p(J[k]);
+  // shadows from every tower laid on the mound, then a tight contact shadow
+  const fx = (J.tFt.x + J.gFt.x) / 2, fy = (J.tFt.y + J.gFt.y) / 2;
+  castShadows(g, cam, fx, fy, 6.1, 0.15);
+  fillPoly(g, cam, ringPts(fx, fy, 0.75 + Math.abs(J.tFt.y - J.gFt.y) * 0.22, groundZ(fx, fy) + 0.012, 32), 'rgba(30,16,8,0.34)');
+  const parts = [];
+  const cap = (A, B, ra, rb, col, dz = 0) => parts.push({ t: 'cap', A, B, ra: ra * A.k, rb: rb * B.k, col, d: (A.d + B.d) / 2 + dz });
+  const at = (a, b, f) => ({ x: lerp(q[a].x, q[b].x, f), y: lerp(q[a].y, q[b].y, f), k: lerp(q[a].k, q[b].k, f), d: lerp(q[a].d, q[b].d, f) });
+  for (const sd of ['t', 'g']) {
+    cap(q[`${sd}Hip`], q[`${sd}Kn`], 0.29, 0.21, 'pants'); cap(q[`${sd}Kn`], q[`${sd}Ft`], 0.2, 0.13, 'pants');
+    cap(at(`${sd}Kn`, `${sd}Ft`, 0.5), q[`${sd}Ft`], 0.15, 0.12, 'trim', -0.01);          // high socks
+  }
+  cap(q.tSh, q.tEl, 0.165, 0.13, 'trim'); cap(q.tEl, q.tHa, 0.12, 0.085, 'skin');           // undershirt sleeve, bare forearm
+  cap(q.gSh, q.gEl, 0.165, 0.13, 'trim'); cap(q.gEl, q.gHa, 0.125, 0.1, 'trim');
+  parts.push({ t: 'hull', pts: hull([q.tSh, q.gSh, q.gHip, q.tHip, q.neck]), col: 'jersey', d: (q.tSh.d + q.gSh.d + q.tHip.d + q.gHip.d) / 4, round: 0.17 * q.pel.k });
+  cap(q.tHip, q.gHip, 0.3, 0.3, 'pants', 0.02);
+  const up = (p, ft) => ({ x: p.x, y: p.y - ft * p.k, k: p.k, d: p.d });
+  cap(up(q.tHip, 0.24), up(q.gHip, 0.24), 0.065, 0.065, 'trim', -0.03);                    // belt
+  cap(q.neck, q.head, 0.11, 0.11, 'skin');
+  parts.push({ t: 'dot', c: q.tFt, r: 0.17 * q.tFt.k, col: 'shoe', d: q.tFt.d });
+  parts.push({ t: 'dot', c: q.gFt, r: 0.17 * q.gFt.k, col: 'shoe', d: q.gFt.d });
+  parts.push({ t: 'dot', c: q.gHa, r: 0.36 * q.gHa.k, col: 'glove', d: q.gHa.d - 0.02 });
+  parts.sort((a, b) => b.d - a.d);
+  // the figure goes on its own small sheet so the floodlight falloff touches only him
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const k in q) { x0 = Math.min(x0, q[k].x); x1 = Math.max(x1, q[k].x); y0 = Math.min(y0, q[k].y); y1 = Math.max(y1, q[k].y); }
+  const pad = 0.7 * q.pel.k + 4; x0 = Math.floor(x0 - pad); y0 = Math.floor(y0 - pad); x1 = Math.ceil(x1 + pad); y1 = Math.ceil(y1 + pad);
+  const cw = Math.ceil((x1 - x0) * DPR), ch = Math.ceil((y1 - y0) * DPR);
+  if (FIG.width < cw || FIG.height < ch) { FIG.width = Math.max(FIG.width, cw); FIG.height = Math.max(FIG.height, ch); }
+  const c = FIG.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, cw + 2, ch + 2);
+  c.setTransform(DPR, 0, 0, DPR, -x0 * DPR, -y0 * DPR);
+  const ref = q.pel.d;
+  for (const p of parts) {
+    const pal = PCOL[p.col], far = p.d > ref + 0.25;
+    if (p.t === 'cap') cylFill(c, p.A, p.ra, p.B, p.rb, pal, far);
+    else if (p.t === 'hull') hullFill(c, p.pts, p.round, pal, 0.22);
+    else { const rg = c.createRadialGradient(p.c.x - p.r * 0.35, p.c.y - p.r * 0.4, 0, p.c.x, p.c.y, p.r * 1.1); rg.addColorStop(0, pal[1]); rg.addColorStop(0.55, pal[0]); rg.addColorStop(1, pal[2]); c.fillStyle = rg; c.beginPath(); c.arc(p.c.x, p.c.y, p.r, 0, Math.PI * 2); c.fill(); }
+  }
+  // cloth: knee creases and a jersey fold from the throwing shoulder toward the far hip
+  c.lineCap = 'round'; c.strokeStyle = 'rgba(38,38,34,0.32)';
+  for (const sd of ['t', 'g']) {
+    const K = q[`${sd}Kn`], H0 = q[`${sd}Hip`], dx = K.x - H0.x, dy = K.y - H0.y, L = Math.hypot(dx, dy) || 1, r = 0.17 * K.k;
+    c.lineWidth = Math.max(0.6, 0.03 * K.k); c.beginPath(); c.moveTo(K.x - (dy / L) * r, K.y + (dx / L) * r - 0.06 * K.k); c.lineTo(K.x + (dy / L) * r * 0.6, K.y - (dx / L) * r * 0.6 - 0.02 * K.k); c.stroke();
+  }
+  c.lineWidth = Math.max(0.6, 0.03 * q.pel.k); c.beginPath(); c.moveTo(q.tSh.x, q.tSh.y + 0.2 * q.tSh.k); c.quadraticCurveTo(q.pel.x, q.pel.y - 0.6 * q.pel.k, q.gHip.x, q.gHip.y - 0.35 * q.gHip.k); c.stroke();
+  // head: shaded, a navy cap with its brim toward the plate and a brim shadow across the eyes
+  const hc = q.head, hr = 0.33 * hc.k;
+  const hg = c.createRadialGradient(hc.x - hr * 0.35, hc.y - hr * 0.1, hr * 0.1, hc.x, hc.y, hr * 1.1);
+  hg.addColorStop(0, PCOL.skin[1]); hg.addColorStop(0.6, PCOL.skin[0]); hg.addColorStop(1, PCOL.skin[2]);
+  c.fillStyle = hg; c.beginPath(); c.arc(hc.x, hc.y, hr, 0, Math.PI * 2); c.fill();
+  c.save(); c.beginPath(); c.arc(hc.x, hc.y, hr * 1.07, 0, Math.PI * 2); c.clip();
+  c.fillStyle = 'rgba(40,22,14,0.4)'; c.fillRect(hc.x - 2 * hr, hc.y - 0.2 * hr, 4 * hr, 0.5 * hr);
+  const cg = c.createLinearGradient(hc.x - hr, hc.y - hr, hc.x + hr, hc.y);
+  cg.addColorStop(0, PCOL.trim[1]); cg.addColorStop(0.5, PCOL.trim[0]); cg.addColorStop(1, PCOL.trim[2]);
+  c.fillStyle = cg; c.fillRect(hc.x - 2 * hr, hc.y - 2 * hr, 4 * hr, 1.78 * hr);
+  c.restore();
+  c.fillStyle = PCOL.trim[2]; c.beginPath(); c.ellipse(hc.x, hc.y - 0.16 * hr, hr * 1.08, hr * 0.24, 0, 0, Math.PI * 2); c.fill();
+  // floodlight falloff: shoulders catch the light, legs sink toward the mound
+  c.setTransform(DPR, 0, 0, DPR, -x0 * DPR, -y0 * DPR);
+  c.globalCompositeOperation = 'source-atop';
+  const fg = c.createLinearGradient(0, q.head.y - hr, 0, Math.max(q.tFt.y, q.gFt.y));
+  fg.addColorStop(0, 'rgba(255,242,220,0.12)'); fg.addColorStop(0.42, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(12,9,6,0.34)');
+  c.fillStyle = fg; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+  c.globalCompositeOperation = 'source-over';
+  g.drawImage(FIG, 0, 0, cw, ch, x0, y0, cw / DPR, ch / DPR);
+  // the ball rides in the throwing hand from the hand break until release
+  if (s >= -0.42 && s < 0) {
+    const bq = q.tHa; g.beginPath(); g.arc(bq.x, bq.y, Math.max(BALL_R * bq.k, 0.8), 0, Math.PI * 2); g.fillStyle = '#fbfaf5'; g.fill();
+  }
+}
+
+/* ---------- mitt: a per-pitch target held low, then a late, fast reach to the real arrival point ---------- */
+function hash32(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) {   // mulberry32: deterministic per pitch, so replays and the self-test are stable
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function gauss(r) { return Math.sqrt(-2 * Math.log(Math.max(1e-9, r()))) * Math.cos(2 * Math.PI * r()); }
+// the catcher sets up on the pitcher's intended spot: the real crossing minus a command error (SD 7 in),
+// with the glove held low, under every crossing, until the ball arrives
+function mittSetup(P) {
+  if (P._setup) return P._setup;
+  const r = rng(hash32(P.id));
+  return (P._setup = { x: clamp(P.k.mid.x + gauss(r) * (7 / 12), -1.3, 1.3), y: CATCH_Y, z: MITT_SETUP_Z });
+}
+// share of the way from the setup to the catch point: quartic ease-in over the last MITT_MOVE seconds
+function mittProgress(P, s) { const u = clamp((s - (P.k.toCatch - MITT_MOVE)) / MITT_MOVE, 0, 1); return u * u * u * u; }
+// the catcher's framing for this pitch (seeded, so replays and the self-test are stable), or null: a direction
+// toward the zone's interior from its nearest edge (corners: toward the nearest point of the zone), a size, a time
+function frameOf(P) {
+  if (P._frame !== undefined) return P._frame;
+  const r = rng(hash32('frame|' + P.id)), u = r(), size = r(), dur = r();
+  if (Math.abs(P.k.judge.marginIn) > FRAME.band || u > FRAME.p) return (P._frame = null);
+  const x = P.k.mid.x, z = P.k.mid.z, Z = P.zone;
+  const dx = Math.abs(x) - PLATE_HALF, db = Z.bottom - z, dt = z - Z.top;
+  let vx = 0, vz = 0;
+  if (dx > 0 && Math.max(db, dt) > 0) { vx = -Math.sign(x) * dx; vz = db > dt ? db : -dt; }
+  else if (dx >= Math.max(db, dt)) vx = -Math.sign(x);
+  else vz = db > dt ? 1 : -1;
+  const n = Math.hypot(vx, vz);
+  if (!n) return (P._frame = null);
+  return (P._frame = { dx: vx / n, dz: vz / n, ft: lerp(FRAME.minIn, FRAME.maxIn, size) / 12, dur: lerp(FRAME.durMin, FRAME.durMax, dur) });
+}
+// how far (ft) the glove has been framed, dt seconds after the catch: nothing before the pop is absorbed
+function frameShift(P, dt) {
+  const f = frameOf(P);
+  return !f || dt <= FRAME.t0 ? 0 : f.ft * smooth((dt - FRAME.t0) / f.dur);
+}
+function mittState(P, s) {
+  const m = catcherRig(P.batter.side, eyeOf(P)), a = P.k.catchP, tc = P.k.toCatch, o = mittSetup(P);
+  if (s < tc) {
+    const e = mittProgress(P, s);
+    return { p: { x: lerp(o.x, a.x, e), y: CATCH_Y, z: lerp(o.z, a.z, e) }, pop: 0, m };
+  }
+  // pop on the catch, a short hold (framed toward the zone on some borderline pitches), then the glove drops away
+  const dt = s - tc, amp = dt < 0.03 ? dt / 0.03 : Math.max(0, 1 - (dt - 0.03) / 0.24), e = smooth(amp);
+  const drop = smooth((dt - 0.45) / 0.35), f = frameOf(P), fs = frameShift(P, dt);
+  return { p: { x: a.x + (f ? f.dx * fs : 0), y: CATCH_Y - 0.14 * e - 0.3 * drop, z: a.z - 0.05 * e - 1.8 * drop + (f ? f.dz * fs : 0) }, pop: e, m };
+}
+// glove outline in world space around its pocket centre (a 10 x 11 in mitt face, square to the plate)
+function mittPts(p) {
+  const pts = [];
+  for (let i = 0; i < 44; i++) {
+    const a = (i / 44) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+    pts.push({ x: p.x + 0.43 * Math.sign(ca) * Math.pow(Math.abs(ca), 0.85), y: p.y, z: p.z + (sa > 0 ? 0.47 : 0.42) * Math.sign(sa) * Math.pow(Math.abs(sa), 0.85) });
+  }
+  return pts;
+}
+function mittBox(cam, P, s) {
+  const sp = projPoly(cam, mittPts(mittState(P, s).p));
+  if (sp.length < 3) return null;
+  const xs = sp.map((q) => q.x), ys = sp.map((q) => q.y);
+  return { l: Math.min(...xs), r: Math.max(...xs), t: Math.min(...ys), b: Math.max(...ys) };
+}
+function drawMitt(g, cam, P, s, alpha) {
+  const { p, pop, m } = mittState(P, s);
+  const c = cam.p(p);
+  if (c.y - 0.6 * c.k > cam.H + 10 || alpha <= 0.01) return;
+  g.save(); g.globalAlpha = alpha;
+  g.filter = `blur(${(Math.max(1.5, dofBlur(cam, c.d)) * DPR).toFixed(1)}px)`;
+  const wrist = { x: p.x + 0.12 * (m.head.x - p.x), y: p.y - 0.3, z: p.z - 0.5 };
+  const elbow = { x: lerp(p.x, m.head.x, 0.6) - m.sgn * 0.15, y: m.head.y + 0.3, z: p.z - 1.15 };
+  const W = cam.p(wrist), E = cam.p(elbow);
+  g.beginPath(); capPath(g, W, 0.16 * W.k, E, 0.2 * E.k); g.fillStyle = '#101722'; g.fill();
+  const sp = projPoly(cam, mittPts(p));
+  if (sp.length > 2) {
+    const r = 0.46 * c.k;
+    const lg = g.createRadialGradient(c.x - r * 0.3, c.y - r * 0.45, r * 0.05, c.x, c.y + r * 0.1, r * 1.1);
+    lg.addColorStop(0, '#4d311f'); lg.addColorStop(0.55, '#2e1d12'); lg.addColorStop(1, '#1a110b');
+    g.beginPath(); tracePoly(g, sp); g.fillStyle = lg; g.fill();
+    // laced rim catching the lights along the top, wrist strap across the back
+    g.save(); g.beginPath(); tracePoly(g, sp); g.clip();
+    g.lineWidth = Math.max(1.2, 0.05 * c.k); g.strokeStyle = 'rgba(176,122,78,0.45)';
+    g.beginPath(); g.ellipse(c.x, c.y + 0.06 * c.k, 0.41 * c.k, 0.44 * c.k, 0, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
+    g.fillStyle = 'rgba(120,80,50,0.35)'; g.fillRect(c.x - r, c.y + 0.16 * c.k, 2 * r, 0.09 * c.k);
+    g.restore();
+    if (pop > 0) { g.globalAlpha = alpha * 0.14 * pop; g.fillStyle = '#fff3e0'; g.beginPath(); tracePoly(g, sp); g.fill(); }
+  }
+  g.restore();
+}
+
+/* ============================================================
+   8. Game state + frame loop
+   ============================================================ */
+const G = {
+  phase: 'boot', set: TODAY_SET, mode: 'today', i: 0, results: [],
+  cam: null, t0: 0, trel: 0, frozenS: null,
+  call: null, callS: null, revealAt: null, revealT0: 0, replayT0: 0,
+};
+function curP() { return G.set[G.i]; }
+function sNow(now) { return G.frozenS !== null ? G.frozenS : (now - G.trel) / 1000; }
+function render(now) {
+  const P = curP();
+  ensureStatic(P);
+  const cam = G.cam, st = sceneState(now);
+  vctx.setTransform(1, 0, 0, 1, 0, 0); vctx.globalAlpha = 1;
+  vctx.drawImage(LAY.back, 0, 0);
+  vctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawPitcher(vctx, cam, P, st.s);
+  if (st.r === null) {
+    // mitt under the catcher, and the ball over everything: the illustrative glove and the defocused
+    // foreground must never hide the real flight
+    drawMitt(vctx, cam, P, st.s, 1);
+    vctx.setTransform(1, 0, 0, 1, 0, 0); vctx.drawImage(LAY.front, 0, 0);
+    vctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawBall(vctx, cam, P, st.s);
+    return;
+  }
+  drawMitt(vctx, cam, P, st.s, st.fg);
+  vctx.setTransform(1, 0, 0, 1, 0, 0); vctx.globalAlpha = st.fg; vctx.drawImage(LAY.front, 0, 0); vctx.globalAlpha = 1;
+  vctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawReveal(vctx, cam, P, st);
+}
+/* ============================================================
+   8b. Reveal: the one authored moment (~1.2 s)
+       chip -> chalk zone draws itself -> magenta ring + dotted path -> verdict
+   ============================================================ */
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const RV = { zone0: 0.18, zone1: 0.62, path0: 0.55, path1: 0.95, ring0: 0.62, ring1: 0.95, body: 0.95 };
+function sceneState(now) {
+  const P = curP();
+  if (G.phase === 'pitch') return { s: sNow(now), r: null };
+  if (G.phase === 'reveal' || G.phase === 'replay') {
+    const r = (G.frozenS !== null || REDUCED) ? 10 : (now - G.revealT0) / 1000;
+    if (G.phase === 'replay') {
+      const s = -0.3 + ((now - G.replayT0) / 1000) * REPLAY_RATE;
+      return { s: Math.min(s, P.k.toCatch + 0.06), r: 10, fg: 0.5, replay: true };
+    }
+    const s = G.frozenS !== null ? P.k.toCatch + 3 : (now - G.trel) / 1000;
+    return { s, r, fg: lerp(1, 0.22, easeOut3(r / 0.45)) };
+  }
+  return { s: PT[0] - 0.4, r: null };     // start / card: pitcher set on the mound
+}
+// dotted path from the release point to the ABS plane, spaced evenly on screen
+function pathDots(cam, P) {
+  const key = `${cam.F}|${cam.cx}|${cam.cy}|${cam.eye.x}|${cam.eye.y}|${cam.eye.z}`;
+  if (P._dotsKey === key) return P._dots;
+  const out = [], tr = P.traj;
+  let last = null;
+  for (let t = P.k.tRel; t < P.k.tMid; t += 0.0008) {
+    const w = posAt(tr, t), q = cam.p(w);
+    if (!last || Math.hypot(q.x - last.x, q.y - last.y) >= 13) { out.push({ w, q, t }); last = q; }
+  }
+  const qm = cam.p(P.k.mid);
+  if (last && Math.hypot(qm.x - last.x, qm.y - last.y) < 7) out.pop();
+  P._dotsKey = key; P._dots = out;
+  return out;
+}
+function drawReveal(g, cam, P, st) {
+  const r = st.r;
+  // spotlight: the scene steps back, the zone comes forward
+  const dimA = easeOut3(r / 0.35);
+  const zt = cam.p({ x: 0, y: MID_Y, z: P.zone.top }), zb = cam.p({ x: 0, y: MID_Y, z: P.zone.bottom });
+  const zc = { x: (zt.x + zb.x) / 2, y: (zt.y + zb.y) / 2 }, zh = zb.y - zt.y;
+  const rg = g.createRadialGradient(zc.x, zc.y, zh * 0.55, zc.x, zc.y, Math.max(cam.W, cam.H) * 0.8);
+  rg.addColorStop(0, 'rgba(3,7,5,0)'); rg.addColorStop(0.3, `rgba(3,7,5,${0.32 * dimA})`); rg.addColorStop(1, `rgba(3,7,5,${0.6 * dimA})`);
+  g.fillStyle = rg; g.fillRect(0, 0, cam.W, cam.H);
+
+  // chalk zone, true size at mid-plate, drawing itself clockwise from the top-left corner
+  const zp = st.replay ? 1 : easeOut3(ramp(r, RV.zone0, RV.zone1));
+  if (zp > 0) {
+    const zz = P.zone, c = [[-PLATE_HALF, zz.top], [PLATE_HALF, zz.top], [PLATE_HALF, zz.bottom], [-PLATE_HALF, zz.bottom]].map(([x, z]) => cam.p({ x, y: MID_Y, z }));
+    const lens = c.map((a, i) => { const b = c[(i + 1) % 4]; return Math.hypot(b.x - a.x, b.y - a.y); });
+    let left = zp * lens.reduce((a, b) => a + b, 0);
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    if (zp >= 1) { g.beginPath(); tracePoly(g, c); g.fillStyle = 'rgba(246,243,234,0.05)'; g.fill(); }
+    g.beginPath(); g.moveTo(c[0].x, c[0].y);
+    for (let i = 0; i < 4 && left > 0; i++) { const a = c[i], b = c[(i + 1) % 4], t = Math.min(1, left / lens[i]); g.lineTo(lerp(a.x, b.x, t), lerp(a.y, b.y, t)); left -= lens[i]; }
+    g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 7; g.shadowOffsetY = 1;
+    g.strokeStyle = 'rgba(247,244,236,0.96)'; g.lineWidth = 2.6; g.stroke();
+    g.restore();
+  }
+
+  // dotted path from release (grows with the ball in the slow replay)
+  const dots = pathDots(cam, P);
+  const tBall = ballT(P, st.s);
+  const nDots = st.replay ? dots.filter((d) => d.t <= tBall).length : Math.floor(dots.length * easeOut3(ramp(r, RV.path0, RV.path1)));
+  if (nDots > 0) {
+    g.save(); g.fillStyle = 'rgba(247,244,236,0.92)'; g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = 3;
+    for (let i = 0; i < nDots; i++) { const q = dots[i].q; g.beginPath(); g.arc(q.x, q.y, clamp(0.028 * q.k, 1.2, 3), 0, Math.PI * 2); g.fill(); }
+    g.restore();
+  }
+
+  // magenta ring: the true-size ball where it crossed the ABS plane
+  const rp = st.replay ? ramp(st.s, P.k.toMid, P.k.toMid + 0.05) : ramp(r, RV.ring0, RV.ring1);
+  if (rp > 0) {
+    const e = easeOut3(rp), sp = sphereOutline(cam, P.k.mid, BALL_R, 48), c = centroid(sp);
+    const rr = sp.reduce((m, p) => m + Math.hypot(p.x - c.x, p.y - c.y), 0) / sp.length;
+    g.save(); g.globalAlpha = e;
+    g.beginPath(); tracePoly(g, sp);
+    const bg = g.createRadialGradient(c.x - rr * 0.35, c.y - rr * 0.45, rr * 0.1, c.x, c.y, rr * 1.05);
+    bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.6, '#f1eee6'); bg.addColorStop(1, '#c9c4b8');
+    g.fillStyle = bg; g.fill();
+    const sc = (1 + (1 - e) * 1.3) * (rr + 4.5) / rr;
+    g.beginPath(); sp.forEach((p, i) => { const x = c.x + (p.x - c.x) * sc, y = c.y + (p.y - c.y) * sc; if (i) g.lineTo(x, y); else g.moveTo(x, y); }); g.closePath();
+    g.lineWidth = 3.2; g.strokeStyle = '#E20074'; g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowBlur = 5; g.stroke();
+    g.restore();
+  }
+  if (st.replay) drawBall(g, cam, P, st.s);
+}
+
+/* ============================================================
+   8c. Flow: start -> 10 pitches (beat, delivery, flight, catch,
+       call window) -> reveal -> card
+   ============================================================ */
+const UI = {
+  app: $('#app'), live: $('#live'), start: $('#start'), btnPlay: $('#btnPlay'), startLede: $('#startLede'),
+  matchup: $('#matchup'), muInning: $('#muInning'), muOuts: $('#muOuts'), muBases: $('#muBases'), muScore: $('#muScore'),
+  muBatter: $('#muBatter'), muBatterMeta: $('#muBatterMeta'), muPitcher: $('#muPitcher'), muPitcherMeta: $('#muPitcherMeta'), muGame: $('#muGame'),
+  score: $('#scoreChip'), scMain: $('#scMain'), scSub: $('#scSub'), wB: $('#wB'), wS: $('#wS'), wO: $('#wO'), indPitch: $('#indPitch'), indClock: $('#indClock'), indText: $('#indText'),
+  btnBall: $('#btnBall'), btnStrike: $('#btnStrike'), btnReplay: $('#btnReplay'), btnNext: $('#btnNext'), nextLabel: $('#nextLabel'),
+  verdict: $('#verdict'), vUmp: $('#vUmp'), vLine: $('#vLine'), vCtx: $('#vCtx'), vMeta: $('#vMeta'), vScore: $('#vScore'), toast: $('#toast'), indicator: $('#indicator'),
+};
+const cap1 = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+const lastName = (n) => { const p = n.trim().split(/\s+/); return p.length > 1 ? p.slice(1).join(' ') : n; };
+function fmtHeight(h) { let ft = Math.floor(h + 1e-6), inch = Math.round((h - ft) * 12); if (inch === 12) { ft++; inch = 0; } return `${ft}′${inch}″`; }
+function announce(msg) { UI.live.textContent = ''; requestAnimationFrame(() => { UI.live.textContent = msg; }); }
+let toastT = 0;
+function toast(msg) { UI.toast.textContent = msg; UI.toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => UI.toast.classList.remove('on'), 1300); }
+
+function setPhase(ph) {
+  G.phase = ph; UI.app.dataset.phase = ph;
+  const calling = ph === 'pitch' || ph === 'start';
+  UI.btnBall.hidden = UI.btnStrike.hidden = !calling;
+  UI.btnReplay.hidden = UI.btnNext.hidden = calling || ph === 'card';
+}
+function fillMatchup(P, animate) {
+  const gm = gameOf(P);
+  if (animate) { UI.matchup.classList.remove('swap'); void UI.matchup.offsetWidth; UI.matchup.classList.add('swap'); }
+  UI.muInning.textContent = `${P.half === 'top' ? 'Top' : 'Bot'} ${P.inning}`;
+  UI.muOuts.querySelectorAll('i').forEach((el, k) => el.classList.toggle('on', k < P.outs));
+  UI.muOuts.setAttribute('aria-label', `${P.outs} out${P.outs === 1 ? '' : 's'}`);
+  const bases = UI.muBases.querySelectorAll('rect');
+  ['1B', '2B', '3B'].forEach((b, k) => bases[k].classList.toggle('on', P.runnersOn.includes(b)));
+  UI.muScore.textContent = `${gm.away} ${P.score.away} · ${gm.home} ${P.score.home}`;
+  UI.muBatter.textContent = P.batter.name;
+  UI.muBatterMeta.textContent = `Bats ${P.batter.side} · ${fmtHeight(P.batter.heightFt)}`;
+  UI.muPitcher.textContent = P.pitcher.name;
+  UI.muPitcherMeta.textContent = `${P.pitcher.hand}HP`;
+  UI.muGame.textContent = `2026 World Series · Game ${P.gameNumber} · ${P.countBefore.balls}–${P.countBefore.strikes} count`;
+}
+function setIndicator(b, s, o) {
+  UI.wB.style.setProperty('--n', b); UI.wS.style.setProperty('--n', s); UI.wO.style.setProperty('--n', o);
+  UI.indText.textContent = `Count ${b} balls, ${s} strikes, ${o} out${o === 1 ? '' : 's'}`;
+}
+function scoreLine() {
+  const done = G.results.filter(Boolean), right = done.filter((r) => r.correct).length;
+  return { right, n: done.length, ump: done.filter((r) => r.P.umpCorrect).length };
+}
+function updateScore(tick) {
+  const { right, n, ump } = scoreLine();
+  // like for like: the real ump's original calls on these same pitches sit next to the ~94% hook
+  // (desktop: long form; phone: "You 2/2" / "Ump 2/2" over "MLB ≈ 94%", one phrase per line)
+  UI.scMain.innerHTML = n
+    ? `<b class="sc-ph">You ${right}/${n}</b><span class="sc-dot"> · </span><span class="sc-ph"><span class="sc-long">Real ump on these</span><span class="sc-short">Ump</span> ${ump}/${n}</span>`
+    : (G.mode === 'today' ? "Today's Ten" : 'Another ten');
+  UI.scSub.innerHTML = n
+    ? '<span class="sc-long">Close calls · MLB umps ≈ 94% overall</span><span class="sc-short">MLB ≈ 94%</span>'
+    : '<span class="sc-long">Close calls · MLB umps ≈ 94%</span><span class="sc-short"><span class="sc-ph">Close calls</span><span class="sc-ph">MLB ≈ 94%</span></span>';
+  UI.vScore.textContent = n ? `You ${right}/${n} · Real ump on these ${ump}/${n} · MLB umps ≈ 94% overall` : '';
+  if (tick && !REDUCED) { UI.score.classList.remove('tick'); void UI.score.offsetWidth; UI.score.classList.add('tick'); }
+}
+
+function beginPitch(i, opts = {}) {
+  const prev = G.set[G.i];
+  G.i = i;
+  const P = curP();
+  ensureStatic(P);
+  G.call = null; G.callS = null; G.revealAt = null; G.frozenS = null;
+  const now = performance.now(), beat = opts.first ? FIRST_BEAT : BEAT;
+  G.t0 = now; G.trel = now + (beat + WINDUP) * 1000;
+  fillMatchup(P, !opts.first && (!prev || prev.batter.id !== P.batter.id || prev.pitcher.id !== P.pitcher.id || i === 0));
+  setIndicator(P.countBefore.balls, P.countBefore.strikes, P.outs);
+  UI.indPitch.textContent = `${i + 1}/${G.set.length}`;
+  UI.indClock.style.transform = 'scaleX(1)';
+  UI.btnBall.classList.remove('is-called'); UI.btnStrike.classList.remove('is-called');
+  UI.verdict.hidden = true; UI.verdict.classList.remove('show-chip', 'show-body');
+  UI.matchup.classList.remove('yield'); UI.score.classList.remove('yield');
+  clearTimeout(G.tBody); clearTimeout(G.tAhead);
+  setPhase('pitch');
+  updateScore(false);
+  announce(`Pitch ${i + 1} of ${G.set.length}. ${P.batter.name}, bats ${P.batter.side === 'R' ? 'right' : 'left'}, against ${P.pitcher.name}.`);
+  if (!document.activeElement || document.activeElement === document.body || document.activeElement.offsetParent === null) UI.app.focus({ preventScroll: true });
+}
+function tryCall(call) {
+  if (G.phase !== 'pitch' || G.call) return;
+  const P = curP(), s = G.frozenS !== null ? G.frozenS : (performance.now() - G.trel) / 1000;
+  if (s < 0) { toast('Wait for the pitch'); return; }
+  G.call = call; G.callS = s;
+  (call === 'strike' ? UI.btnStrike : UI.btnBall).classList.add('is-called');
+  G.revealAt = Math.max(s + 0.12, P.k.toCatch + 0.3);
+}
+function marginPhrase(P) {
+  const m = P.k.judge.marginIn, x = P.k.mid.x, z = P.k.mid.z, Z = P.zone, am = Math.abs(m).toFixed(1);
+  const inside = P.batter.side === 'R' ? x < 0 : x > 0;
+  if (m >= 0) {
+    if (m >= 6) return `In the heart of the zone, ${am}\u00a0in from the nearest edge`;
+    const dx = Math.abs(x) - PLATE_HALF, lo = Z.bottom - z, hi = z - Z.top, best = Math.max(dx, lo, hi);
+    const edge = best === lo ? 'the bottom of the zone' : best === hi ? 'the top of the zone' : inside ? 'the inside edge' : 'the outside edge';
+    return `Caught ${edge} by ${am}\u00a0in`;
+  }
+  const dirs = [];
+  if (z < Z.bottom) dirs.push('low'); else if (z > Z.top) dirs.push('high');
+  if (Math.abs(x) > PLATE_HALF) dirs.push(inside ? 'inside' : 'away');
+  return `${m <= -6 ? 'Clear ball, missed' : 'Missed'} ${dirs.join(' and ')} by ${am}\u00a0in`;
+}
+const ICON_OK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10.5l4.5 4.5L17 5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_NO = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4.5l11 11M15.5 4.5l-11 11" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>';
+function fillVerdict(P, res) {
+  const word = (c) => (c === 'none' ? 'No call' : cap1(c));
+  UI.vUmp.textContent = word(P.umpCall);
+  const seg = (txt, cls, icon = '') => { const s = document.createElement('span'); s.className = `seg ${cls}`; s.innerHTML = icon; s.append(txt); return s; };
+  const dot = () => { const s = document.createElement('span'); s.className = 'dot'; s.textContent = '·'; s.setAttribute('aria-hidden', 'true'); return s; };
+  UI.vLine.replaceChildren(
+    seg(`You ${word(res.call)}`, res.correct ? 'ok' : 'bad', res.correct ? ICON_OK : ICON_NO), dot(),
+    seg(`Ump ${word(P.umpCall)}`, P.umpCorrect ? 'ok' : 'miss'), dot(),
+    seg(`ABS ${word(P.absTruth)}`, 'abs'));
+  const parts = [];
+  if (res.call === 'none') parts.push('Time ran out, which counts as a miss');
+  if (P.challenge) { const c = P.challenge; parts.push(`${lastName(c.by)} (${c.byTeam} ${c.byRole}) challenged, ${c.isOverturned ? 'overturned' : 'call stood'}`); }
+  parts.push(marginPhrase(P));
+  UI.vCtx.textContent = parts.join(' · ');
+  UI.vMeta.textContent = `${P.pitchType.name} · ${P.startSpeed.toFixed(1)} mph · ${lastName(P.batter.name)} vs ${lastName(P.pitcher.name)}`;
+  return `You ${word(res.call)}, ump ${word(P.umpCall)}, ABS ${word(P.absTruth)}. ${res.correct ? 'Right call.' : 'Missed it.'} ${UI.vCtx.textContent}.`;
+}
+// Desktop/tablet: the panel goes on the side away from the batter (mid-right for a right-hander, mid-left for a
+// left-hander), off his body, clear of this pitch's ring, path and zone, the indicator and the controls, and as far
+// as the width allows clear of every crossing the game can deal. Phones keep the full-width CSS layout.
+function placeVerdict() {
+  const el = UI.verdict, v = el.style;
+  v.left = v.top = v.width = v.transform = ''; el.classList.remove('tight', 'narrow');
+  UI.matchup.classList.remove('yield'); UI.score.classList.remove('yield');
+  if (VW <= 640) return;
+  const P = curP(), cam = camFor(VW, VH, P), keep = [];
+  const add = (pts, pad, w) => {
+    let l = 1e9, r = -1e9, t = 1e9, b = -1e9;
+    for (const q of pts) { l = Math.min(l, q.x); r = Math.max(r, q.x); t = Math.min(t, q.y); b = Math.max(b, q.y); }
+    keep.push({ l: l - pad, r: r + pad, t: t - pad, b: b + pad, w });
+  };
+  const zone = [[-PLATE_HALF, P.zone.top], [PLATE_HALF, P.zone.top], [PLATE_HALF, P.zone.bottom], [-PLATE_HALF, P.zone.bottom]].map(([x, z]) => cam.p({ x, y: MID_Y, z }));
+  add(zone, 14, 30);
+  const m = cam.p(P.k.mid), mr = BALL_R * m.k + 8;
+  add([{ x: m.x - mr, y: m.y - mr }, { x: m.x + mr, y: m.y + mr }], 10, 60);
+  for (const d of pathDots(cam, P)) add([d.q], 8, 20);
+  const J = pitcherPose(P, 2); add(Object.values(J).map(cam.p), 0.5 * cam.p(J.pel).k, 6);
+  const bb = batterBody(cam, P); add([{ x: bb.l, y: bb.t }, { x: bb.r, y: bb.b }], 12, 25);
+  const band = crossRect(cam); keep.push({ ...band, w: 2 });
+  const wide = VW > 1180;
+  for (const n of [UI.indicator, UI.btnReplay, UI.btnNext].concat(wide ? [UI.matchup, UI.score] : [])) {
+    if (n.hidden || n.offsetParent === null) continue;
+    const r = n.getBoundingClientRect(); keep.push({ l: r.left - 12, r: r.right + 12, t: r.top - 12, b: r.bottom + 12, w: 40 });
+  }
+  const E = 24, away = P.batter.side === 'R' ? 1 : -1;
+  // the free column on the away side: under that side's HUD card, over that side's control
+  const cap = wide ? (away > 0 ? UI.score : UI.matchup).getBoundingClientRect().bottom + 14 : E;
+  const lows = (away > 0 ? [UI.indicator, UI.btnNext] : [UI.btnReplay, UI.btnBall]).filter((n) => !n.hidden && n.offsetParent !== null);
+  const floor = Math.min(...lows.map((n) => n.getBoundingClientRect().top)) - 14;
+  const room = (edge) => (away > 0 ? VW - E - edge : edge - E);
+  const zl = Math.min(zone[0].x, zone[3].x), zr = Math.max(zone[1].x, zone[2].x), zmid = (zone[0].y + zone[3].y) / 2;
+  const widths = [...new Set([room(away > 0 ? band.r + 14 : band.l - 14), room(away > 0 ? zr + 20 : zl - 20), 340].map((w) => Math.round(clamp(w, 260, 440))))];
+  const slots = [];
+  for (const w of widths) {
+    const x = away > 0 ? VW - E - w : E;
+    for (const y of ['mid', 'top', 'low']) slots.push({ w, x, y, pen: 0 });
+  }
+  // fallbacks for odd cases (a crossing far out on the away side): the old top slots, at a cost
+  for (const w0 of [560, 480]) {
+    const w = Math.min(w0, VW - 2 * E), mid = clamp((zl + zr) / 2 - w / 2, E, VW - E - w);
+    slots.push({ w, x: mid, y: E, pen: 4e4 }, { w, x: away > 0 ? VW - E - w : E, y: cap, pen: 4e4 });
+  }
+  let best = null;
+  for (const s of slots) {
+    v.width = `${s.w}px`; el.classList.toggle('tight', s.w < 600); el.classList.toggle('narrow', s.w < 420);
+    const h = el.offsetHeight;
+    const y = s.y === 'mid' ? clamp(zmid - h / 2, cap, floor - h) : s.y === 'top' ? cap : s.y === 'low' ? floor - h : s.y;
+    const r = { l: s.x, r: s.x + s.w, t: y, b: y + h };
+    let cost = s.pen + (440 - s.w) * 20 + (r.l < 0 || r.t < 0 || r.r > VW || r.b > VH ? 1e9 : 0);
+    for (const q of keep) {
+      const ox = Math.min(r.r, q.r) - Math.max(r.l, q.l), oy = Math.min(r.b, q.b) - Math.max(r.t, q.t);
+      if (ox > 0 && oy > 0) cost += ox * oy * q.w;
+    }
+    if (!best || cost < best.cost) best = { ...s, y, cost };
+  }
+  v.width = `${best.w}px`; v.left = `${Math.round(best.x)}px`; v.top = `${Math.round(best.y)}px`; v.transform = 'none';
+  el.classList.toggle('tight', best.w < 600); el.classList.toggle('narrow', best.w < 420);
+  // a rare far-off crossing can sit under a HUD corner: that card steps aside for the reveal
+  for (const n of [UI.matchup, UI.score]) {
+    const r = n.getBoundingClientRect();
+    n.classList.toggle('yield', r.right > m.x - mr && r.left < m.x + mr && r.bottom > m.y - mr && r.top < m.y + mr);
+  }
+}
+function startReveal(now, instant = false) {
+  const P = curP(), call = G.call || 'none';
+  const res = { call, truth: P.absTruth, correct: call === P.absTruth, P };
+  G.results[G.i] = res;
+  G.revealT0 = instant ? now - 10000 : now;
+  setPhase('reveal');
+  const said = fillVerdict(P, res);
+  UI.nextLabel.textContent = G.i + 1 < G.set.length ? 'Next pitch' : 'See your card';
+  UI.btnReplay.disabled = false;
+  UI.verdict.hidden = false;
+  placeVerdict();
+  const finish = () => {
+    UI.verdict.classList.add('show-body');
+    updateScore(!instant);
+    let b = P.countBefore.balls, s = P.countBefore.strikes;
+    if (P.finalCall === 'ball' && b < 3) b++; else if (P.finalCall === 'strike' && s < 2) s++;
+    setIndicator(b, s, P.outs);
+    if (!instant) UI.btnNext.focus({ preventScroll: true });
+    announce(said);
+  };
+  clearTimeout(G.tBody); clearTimeout(G.tAhead);
+  if (instant || REDUCED) { UI.verdict.classList.add('show-chip'); finish(); }
+  else { requestAnimationFrame(() => UI.verdict.classList.add('show-chip')); G.tBody = setTimeout(finish, RV.body * 1000); }
+  // once the reveal has settled, paint the next pitch's scene (new eye, new batter) off screen
+  G.tAhead = setTimeout(paintAhead, instant ? 300 : 1300);
+}
+function startReplay() {
+  if (G.phase !== 'reveal') return;
+  G.replayT0 = performance.now();
+  setPhase('replay');
+  UI.btnReplay.disabled = true;
+}
+function nextPitch() {
+  if (G.phase !== 'reveal' && G.phase !== 'replay') return;
+  if (G.i + 1 < G.set.length) beginPitch(G.i + 1);
+  else if (typeof showCards === 'function') showCards();
+}
+function startGame() {
+  if (G.phase !== 'start') return;
+  UI.start.classList.add('leaving');
+  setTimeout(() => { UI.start.hidden = true; UI.start.classList.remove('leaving'); }, REDUCED ? 0 : 380);
+  G.results = [];
+  beginPitch(0, { first: true });
+}
+function tick(now) {
+  if (G.phase === 'pitch' && G.frozenS === null) {
+    const P = curP(), s = (now - G.trel) / 1000, win = P.k.toCatch + CALL_AFTER_CATCH;
+    UI.indClock.style.transform = `scaleX(${s < 0 ? 1 : clamp(1 - s / win, 0, 1).toFixed(4)})`;
+    if (!G.call && s > win) { G.call = 'none'; G.callS = s; G.revealAt = s; }
+    if (G.call && s >= G.revealAt) startReveal(now);
+  } else if (G.phase === 'replay') {
+    const P = curP(), e = (now - G.replayT0) / 1000;
+    if (e > (P.k.toCatch + 0.36) / REPLAY_RATE + 0.7) { setPhase('reveal'); UI.btnReplay.disabled = false; UI.btnReplay.focus({ preventScroll: true }); clearTimeout(G.tAhead); G.tAhead = setTimeout(paintAhead, 400); }
+  }
+}
+
+/* input: keys, buttons, touch */
+UI.btnBall.addEventListener('click', () => tryCall('ball'));
+UI.btnStrike.addEventListener('click', () => tryCall('strike'));
+UI.btnReplay.addEventListener('click', startReplay);
+UI.btnNext.addEventListener('click', nextPitch);
+UI.btnPlay.addEventListener('click', startGame);
+window.addEventListener('keydown', (e) => {
+  if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
+  const k = e.key, onButton = e.target && e.target.tagName === 'BUTTON';
+  if (G.phase === 'pitch') {
+    if (k === 's' || k === 'S' || k === 'ArrowRight') { e.preventDefault(); tryCall('strike'); }
+    else if (k === 'b' || k === 'B' || k === 'ArrowLeft') { e.preventDefault(); tryCall('ball'); }
+  } else if (G.phase === 'reveal' || G.phase === 'replay') {
+    if (k === 'r' || k === 'R') { e.preventDefault(); startReplay(); }
+    else if ((k === ' ' || k === 'Enter') && !onButton) { e.preventDefault(); nextPitch(); }
+  } else if (G.phase === 'start' && k === 'Enter' && !onButton) { e.preventDefault(); startGame(); }
+});
+// a hidden tab would break real-time flight: re-pitch when the viewer comes back
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && G.phase === 'pitch' && !G.call && G.frozenS === null) G.repitch = true;
+  else if (!document.hidden && G.repitch) { G.repitch = false; beginPitch(G.i); }
+});
+
+function bootFlow() {
+  G.set = TODAY_SET; G.mode = 'today'; G.results = [];
+  UI.startLede.textContent = todayLede();
+  UI.btnPlay.disabled = false; UI.btnPlay.textContent = 'Play ball';
+  const idx = clamp((parseInt(Q.get('i') || '1', 10) || 1), 1, G.set.length) - 1;
+  if (STATE === 'pitch' || STATE === 'reveal') {
+    UI.start.hidden = true;
+    for (let k = 0; k < idx; k++) { const P = G.set[k], call = Math.abs(P.edgeMarginIn) < 1 ? (P.absTruth === 'strike' ? 'ball' : 'strike') : P.absTruth; G.results[k] = { call, truth: P.absTruth, correct: call === P.absTruth, P }; }
+    beginPitch(idx, { first: true });
+    if (STATE === 'pitch') { const t = parseFloat(Q.get('t')); G.frozenS = Number.isFinite(t) ? t : 0.25; }
+    else { G.frozenS = curP().k.toCatch + 3; G.call = Q.get('call') === 'ball' ? 'ball' : 'strike'; startReveal(performance.now(), true); }
+  } else if (STATE === 'card' && typeof bootCard === 'function') {
+    bootCard();
+  } else {
+    G.i = 0; setPhase('start');
+    const P = curP(); fillMatchup(P, false); setIndicator(P.countBefore.balls, P.countBefore.strikes, P.outs);
+    UI.indPitch.textContent = `1/${G.set.length}`; updateScore(false);
+    if (!SELFTEST) UI.btnPlay.focus({ preventScroll: true });
+  }
+  render(performance.now());
+  document.documentElement.dataset.ready = '1';
+  document.documentElement.dataset.viewport = `${VW}x${VH}@${DPR}`;
+  requestAnimationFrame(frame);
+}
+/* ============================================================
+   8d. The umpire card, copy result, play another ten
+   ============================================================ */
+const CARD = {
+  root: $('#cards'), sum: $('#cardsSum'), num: $('#ucNum'), set: $('#ubSet'), pitches: $('#ubPitches'), correct: $('#ubCorrect'),
+  ump: $('#ubUmp'), tough: $('#ubTough'), map: $('#ubMap'), copy: $('#btnCopy'), again: $('#btnAgain'),
+};
+function locWord(P) {
+  const x = P.k.mid.x, z = P.k.mid.z, Z = P.zone, h = Z.top - Z.bottom, inside = P.batter.side === 'R' ? x < 0 : x > 0;
+  const v = z < Z.bottom + h * 0.3 ? 'low' : z > Z.top - h * 0.3 ? 'up' : '';
+  const s = Math.abs(x) > 0.42 ? (inside ? 'in' : 'away') : '';
+  return v && s ? `${v} and ${s}` : v || (s === 'in' ? 'inside' : s) || 'middle';
+}
+function tally(arr) { const m = new Map(); for (const a of arr) m.set(a, (m.get(a) || 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]); }
+function toughest(results) {
+  const miss = results.filter((r) => r && !r.correct);
+  if (!miss.length) return 'Nothing got by you';
+  const [type, tn] = tally(miss.map((r) => r.P.pitchType.name))[0];
+  const [loc, ln] = tally(miss.map((r) => locWord(r.P)))[0];
+  if (ln > tn) return `${cap1(loc)} (${ln} missed)`;
+  return tn > 1 ? `${type} (${tn} missed)` : `${type}, ${loc}`;
+}
+function drawMissMap(results) {
+  const NS = 'http://www.w3.org/2000/svg', S = 52, cx = 120, zTop = 22, zBot = 102, INK = '#2b261f';
+  const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  const svg = CARD.map; svg.replaceChildren();
+  const hw = PLATE_HALF * S, zh = zBot - zTop;
+  // inked on the stock: a framed map, the zone with dashed thirds, the plate
+  svg.append(el('rect', { x: 4, y: 8, width: 232, height: 136, fill: 'none', stroke: INK, 'stroke-width': 1.3, opacity: 0.8 }));
+  svg.append(el('rect', { x: cx - hw, y: zTop, width: 2 * hw, height: zh, fill: 'none', stroke: INK, 'stroke-width': 2 }));
+  for (const f of [1 / 3, 2 / 3]) {
+    svg.append(el('line', { x1: cx - hw + 2 * hw * f, y1: zTop, x2: cx - hw + 2 * hw * f, y2: zBot, stroke: INK, 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: 0.7 }));
+    svg.append(el('line', { x1: cx - hw, y1: zTop + zh * f, x2: cx + hw, y2: zTop + zh * f, stroke: INK, 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: 0.7 }));
+  }
+  svg.append(el('path', { d: `M${cx - hw} 118 H${cx + hw} V126 L${cx} 136 L${cx - hw} 126 Z`, fill: 'none', stroke: INK, 'stroke-width': 1.5 }));
+  let misses = 0;
+  results.forEach((r) => {
+    if (!r) return;
+    const P = r.P, zn = (P.k.mid.z - P.zone.bottom) / (P.zone.top - P.zone.bottom);
+    const x = clamp(cx + P.k.mid.x * S, 10, 230), y = clamp(zBot - zn * zh, 13, 139);
+    if (r.correct) svg.append(el('circle', { cx: x, cy: y, r: 4, fill: INK }));
+    else { misses++; svg.append(el('path', { d: `M${x - 5} ${y - 5}L${x + 5} ${y + 5}M${x + 5} ${y - 5}L${x - 5} ${y + 5}`, stroke: '#E20074', 'stroke-width': 3.2, 'stroke-linecap': 'round' })); }
+  });
+  svg.setAttribute('aria-label', `Miss map: ${misses} missed call${misses === 1 ? '' : 's'} marked with an X, ${results.filter(Boolean).length - misses} right calls marked with dots, relative to each batter's zone.`);
+}
+function resultText() {
+  const n = G.set.length, right = G.results.filter((r) => r && r.correct).length, ump = G.set.filter((P) => P.umpCorrect).length;
+  const label = G.mode === 'today' ? "Today's Ten" : 'Another ten';
+  return [
+    `Umpire's Eye · 2026 World Series · ${label}`,
+    `I called ${right} of ${n} right (${Math.round((right / n) * 100)}%). The real ump: ${ump}/${n}. MLB umps ≈ 94%.`,
+    `Toughest: ${toughest(G.results)}`,
+    G.set.map((P, k) => (G.results[k] && G.results[k].correct ? '✓' : '✗')).join(''),
+    'Personal mockup · real pitches via MLB Stats API',
+  ].join('\n');
+}
+function showCards(instant = false) {
+  const n = G.set.length, right = G.results.filter((r) => r && r.correct).length;
+  const ump = G.set.filter((P) => P.umpCorrect).length, after = G.set.filter((P) => P.finalCall === P.absTruth).length;
+  const pct = Math.round((right / n) * 100);
+  CARD.num.textContent = String(pct);
+  CARD.pitches.textContent = String(n);
+  CARD.correct.textContent = String(right);
+  CARD.ump.textContent = `${ump}/${n}`;
+  const tough = toughest(G.results);
+  CARD.tough.textContent = tough; CARD.tough.classList.toggle('long', tough.length > 14);
+  CARD.set.textContent = G.mode === 'today' ? "2026 World Series set · Today's Ten" : '2026 World Series set · Another ten';
+  const games = [...new Set(G.set.map((P) => P.gameNumber))].sort();
+  CARD.sum.innerHTML = `Round complete. You called <b>${right} of ${n}</b> right. On these same pitches the real ump got <b>${ump} of ${n}</b> on the field${after !== ump ? `, ${after} after ABS challenges` : ''}.`;
+  CARD.sum.title = games.length > 1 ? `Games ${games.join(', ')}` : `Game ${games[0]}`;
+  drawMissMap(G.results);
+  CARD.copy.textContent = 'Copy result';
+  setPhase('card');
+  CARD.root.hidden = false;
+  CARD.root.classList.toggle('enter', !instant && !REDUCED);
+  CARD.root.scrollTop = 0;
+  if (!instant) CARD.copy.focus({ preventScroll: true });
+  announce(`Round complete. You called ${right} of ${n} right, ${pct} percent. The real ump got ${ump} of ${n}.`);
+}
+async function copyResult() {
+  const text = resultText();
+  let ok = false;
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); ok = true; } } catch (e) { ok = false; }
+  if (!ok) {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.append(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+  }
+  CARD.copy.textContent = ok ? 'Copied ✓' : 'Copy failed: select the text';
+  announce(ok ? 'Result copied to the clipboard.' : 'Copy failed.');
+  if (!ok) window.prompt('Copy your result:', text);
+  setTimeout(() => { CARD.copy.textContent = 'Copy result'; }, 2200);
+}
+// "Another ten", dealt the way Today's Ten is: a clear calibrator (6 in or more from the edge) first, then eight
+// close calls within 1.5 in (at least one ABS-challenged; balls and strikes in whatever mix the draw gives, so
+// counting them tells you nothing) and one more from 1.5-4.5 in, the nine in Series order. Drawn from the whole
+// Series, never repeating Today's Ten.
+function pickPoolTen(rand = Math.random) {
+  const today = new Set(TODAY.map((p) => p.id)), m = (p) => Math.abs(p.edgeMarginIn);
+  const cands = POOL.pitches.filter((p) => playable(p) && !today.has(p.id));
+  const out = [];
+  const take = (list, n) => {
+    const pool = list.filter((p) => !out.includes(p));
+    for (let k = 0; k < n && pool.length; k++) out.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]);
+  };
+  const close = cands.filter((p) => m(p) <= CLOSE_IN);
+  take(close.filter((p) => p.challenge), 1);
+  take(close, 7);
+  take(cands.filter((p) => m(p) > CLOSE_IN && m(p) <= 4.5), 1);
+  const ord = (p) => { const [, ab, pn] = p.id.split('-').map(Number); return p.gameNumber * 1e6 + ab * 100 + pn; };
+  out.sort((a, b) => ord(a) - ord(b));
+  const cal = cands.filter((p) => m(p) >= 6 && !out.includes(p));
+  return [cal[Math.floor(rand() * cal.length)], ...out];
+}
+function playAnother() {
+  G.set = pickPoolTen().map(prep); G.mode = 'pool'; G.results = []; G.i = 0;
+  staticKey = '';
+  CARD.root.hidden = true; CARD.root.classList.remove('enter');
+  beginPitch(0, { first: true });
+}
+function bootCard() {
+  const want = clamp(parseInt(Q.get('correct') || '8', 10) || 0, 0, G.set.length);
+  const order = G.set.map((P, k) => k).sort((a, b) => Math.abs(G.set[a].edgeMarginIn) - Math.abs(G.set[b].edgeMarginIn));
+  const missIdx = new Set(order.slice(0, G.set.length - want));
+  G.results = G.set.map((P, k) => { const call = missIdx.has(k) ? (P.absTruth === 'strike' ? 'ball' : 'strike') : P.absTruth; return { call, truth: P.absTruth, correct: call === P.absTruth, P }; });
+  UI.start.hidden = true;
+  showCards(true);
+}
+CARD.copy.addEventListener('click', copyResult);
+CARD.again.addEventListener('click', playAnother);
+let lastIdleKey = '';
+function frame(now) {
+  requestAnimationFrame(frame);
+  tick(now);
+  if (G.phase === 'card') return;
+  // the start scene is static: paint it once per layout instead of every frame
+  if (G.phase === 'start') { const k = `${staticKey}|${G.i}`; if (k === lastIdleKey && G.cam) return; lastIdleKey = k; }
+  else lastIdleKey = '';
+  render(now);
+}
+function onResize() { sizeCanvases(); staticKey = ''; NEXT.key = ''; if (G.phase === 'reveal' || G.phase === 'replay') placeVerdict(); }
+window.addEventListener('resize', onResize);
+
+/* ============================================================
+   9. Self-test (?selftest=1)
+   ============================================================ */
+function cameraReport(W, H, line, bad, PLAYP) {
+  for (const side of ['R', 'L']) {
+    const cam = fitCam(W, H, side), Ps = TODAY_SET.filter((P) => P.batter.side === side), mine = PLAYP.filter((P) => P.batter.side === side);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const P of Ps) { const c = camFor(W, H, P); for (const zz of [P.zone.top, P.zone.bottom]) for (const xx of [-PLATE_HALF, PLATE_HALF]) {
+      const q = c.p({ x: xx, y: MID_Y, z: zz }); x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
+    } }
+    // the hard constraint: every dealt crossing, ball and air included, inside the frame from its own stance and
+    // from every corner of the stance box
+    const inFrame = (c, P) => { const q = c.p(P.k.mid), r = (BALL_R + CROSS_PAD) * q.k; return q.x - r >= 0 && q.x + r <= W && q.y - r >= 0 && q.y + r <= H; };
+    let out = 0, cx0 = 1e9, cx1 = -1e9, cy0 = 1e9, cy1 = -1e9;
+    for (const P of mine) {
+      const c = camFor(W, H, P), q = c.p(P.k.mid), r = BALL_R * q.k;
+      cx0 = Math.min(cx0, q.x - r); cx1 = Math.max(cx1, q.x + r); cy0 = Math.min(cy0, q.y - r); cy1 = Math.max(cy1, q.y + r);
+      if (!inFrame(c, P)) out++;
+    }
+    const corners = stanceCorners(side).map((e) => { const c = makeCam(e, cam.yaw, cam.F, cam.cx, cam.cy, W, H); c.U = cam.U; return c; });
+    let outX = 0, capMin = 1e9, clearX = 1e9;
+    const lowest = mine.reduce((a, P) => (P.zone.bottom < a.zone.bottom ? P : a), mine[0]);
+    // the catcher keys off the ump, so his helmet holds its place on screen; it must stay under every dealt zone
+    const helmClear = (c, Pz) => {
+      const m = catcherRig(side, c.eye), ring = sphereOutline(c, m.head, m.r, 96);
+      const zl = c.p({ x: -PLATE_HALF, y: MID_Y, z: Pz.zone.bottom }), zr = c.p({ x: PLATE_HALF, y: MID_Y, z: Pz.zone.bottom });
+      let helm = 1e9; for (const p of ring) if (p.x >= Math.min(zl.x, zr.x) - 12 && p.x <= Math.max(zl.x, zr.x) + 12) helm = Math.min(helm, p.y);
+      return helm - Math.max(zl.y, zr.y);
+    };
+    for (const c of corners) {
+      for (const P of mine) if (!inFrame(c, P)) outX++;
+      capMin = Math.min(capMin, c.p({ x: 0, y: RUBBER_Y - 0.75, z: MOUND_H + 6.2 }).y);
+      clearX = Math.min(clearX, helmClear(c, lowest));
+    }
+    let clearOwn = 1e9; for (const P of mine) clearOwn = Math.min(clearOwn, helmClear(camFor(W, H, P), P));
+    const pTop = cam.p({ x: 0, y: RUBBER_Y - 0.75, z: MOUND_H + 6.2 }).y, pFeet = cam.p({ x: 0, y: RUBBER_Y, z: MOUND_H }).y;
+    const rRel = Ps.map((P) => BALL_R * camFor(W, H, P).p(P.k.rel).k), rMid = Ps.map((P) => BALL_R * camFor(W, H, P).p(P.k.mid).k);
+    const hb = headSpan(cam, batterRig(Ps[0]));
+    line(`[CAMERA ${W}x${H} ${side}HB] F ${cam.F.toFixed(0)}px vFOV ${vfovDeg(cam).toFixed(1)} deg, horizon ${cam.cy.toFixed(0)} | pitcher ${pTop.toFixed(0)}-${pFeet.toFixed(0)} (${(pFeet - pTop).toFixed(0)}px; cap at least ${(100 * capMin / H).toFixed(1)}% below the top from any stance) | zone x ${x0.toFixed(0)}-${x1.toFixed(0)} y ${y0.toFixed(0)}-${y1.toFixed(0)} | dealt crossings x ${cx0.toFixed(0)}-${cx1.toFixed(0)} y ${cy0.toFixed(0)}-${cy1.toFixed(0)}, in frame ${mine.length - out}/${mine.length} from their own stances, ${8 * mine.length - outX}/${8 * mine.length} from the 8 extreme stances | catcher helmet under every dealt zone by ${clearOwn.toFixed(0)}px+ (extreme stances, lowest zone: ${clearX.toFixed(0)}px) | batter helmet y ${hb.t.toFixed(0)}-${hb.b.toFixed(0)} | ball r ${Math.min(...rRel).toFixed(1)}-${Math.max(...rRel).toFixed(1)} -> ${Math.min(...rMid).toFixed(1)}-${Math.max(...rMid).toFixed(1)}px`);
+    if (out || outX) bad.push(`crossings out of frame ${W}x${H} ${side}: ${out} own, ${outX} extreme`);
+    if (clearOwn <= 0 || clearX <= 0) bad.push(`catcher over zone ${W}x${H} ${side}`);
+    if (capMin < 0.05 * H) bad.push(`pitcher cap room ${W}x${H} ${side}`);
+  }
+}
+function selftest() {
+  const out = [], bad = [];
+  const line = (s) => out.push(s);
+  const f = (v, n = 4) => (v >= 0 ? ' ' : '') + v.toFixed(n);
+  line('UMPIRE\'S EYE SELF-TEST');
+  line(`document.compatMode = ${document.compatMode}`);
+  const check = (p, set) => {
+    const P = prep(p), k = P.k;
+    const dmx = k.mid.x - p.mid.x, dmz = k.mid.z - p.mid.z, dmt = k.tMid - p.mid.t;
+    const yAtMid = posAt(p.traj, k.tMid).y - MID_Y;
+    const dRel = Math.hypot(k.rel.x - p.release.x, k.rel.y - p.release.y, k.rel.z - p.release.z);
+    const truth = k.judge.strike ? 'strike' : 'ball';
+    const dm = k.judge.marginIn - p.edgeMarginIn;
+    // renderer clock: ball at s = flight must sit on the front plane; at s = toMid on the ABS plane
+    const yFront = posAt(p.traj, ballT(P, k.flight)).y - PLATE_FRONT;
+    const yMidR = posAt(p.traj, ballT(P, k.toMid)).y - MID_Y;
+    const ok = Math.abs(dmx) <= 0.01 && Math.abs(dmz) <= 0.01 && Math.abs(yAtMid) < 1e-9 && truth === p.absTruth
+      && Math.abs(dm) <= 0.011 && Math.abs(yFront) < 1e-9 && Math.abs(yMidR) < 1e-9 && dRel <= 0.01
+      && Math.abs(k.flight - p.flightTime) <= 0.0011;
+    if (!ok) bad.push(`${set} ${p.id}`);
+    return { P, dmx, dmz, dmt, dm, truth, ok, dRel };
+  };
+  line('');
+  line('[TODAY\'S TEN] mid-plate crossing recomputed from traj vs data.mid; ABS truth recomputed (r = 1.45 in, exact disc)');
+  let umpRight = 0, umpData = 0, umpAfter = 0, tenFlightMin = 9, tenFlightMax = 0;
+  const fr = (P) => {
+    const q = frameOf(P); if (!q) return 'not framed';
+    const d = Math.abs(q.dz) > Math.abs(q.dx) ? (q.dz > 0 ? 'up' : 'down') : 'across', cam = camFor(1440, 900, P), c = P.k.catchP;
+    const a = cam.p(c), b = cam.p({ x: c.x + q.dx * q.ft, y: c.y, z: c.z + q.dz * q.ft }), vis = a.y < 900 ? `${Math.hypot(b.x - a.x, b.y - a.y).toFixed(0)} px at 1440x900` : b.y < 900 ? 'framed up into the 1440x900 frame' : 'below the 1440x900 frame';
+    return `framed ${d} ${(q.ft * 12).toFixed(1)} in over ${(q.dur * 1000).toFixed(0)} ms (${vis})`;
+  };
+  TODAY.forEach((p, i) => {
+    const r = check(p, 'today');
+    if (r.truth === p.umpCall) umpRight++;
+    if (p.umpCorrect) umpData++;
+    if (p.finalCall === r.truth) umpAfter++;
+    tenFlightMin = Math.min(tenFlightMin, r.P.k.flight); tenFlightMax = Math.max(tenFlightMax, r.P.k.flight);
+    line(`${String(i + 1).padStart(2)} ${p.id.padEnd(12)} G${p.gameNumber} ${lastName(p.batter.name).padEnd(9)} ${p.pitchType.code} | edge ${f(r.P.k.judge.marginIn, 2)} in (data ${f(p.edgeMarginIn, 2)}) | truth ${r.truth.padEnd(6)} data ${p.absTruth.padEnd(6)} ump ${p.umpCall.padEnd(6)}${p.challenge ? ' (ABS challenge)' : ''} | dMid x${f(r.dmx)} z${f(r.dmz)} ft | release->plate ${r.P.k.flight.toFixed(3)} s (to mid ${r.P.k.toMid.toFixed(3)}, to mitt ${r.P.k.toCatch.toFixed(3)}) | ${fr(r.P)} | ${r.ok ? 'PASS' : 'FAIL'}`);
+  });
+  // the deal itself: an easy calibrator first, about eight close calls, at least one ABS challenge, both sides of
+  // the plate and all three pitch families; the real ump's tally is whatever the data says on these ten
+  const tm = TODAY.map((p) => Math.abs(p.edgeMarginIn)), nClose = tm.filter((m) => m <= CLOSE_IN).length;
+  const fam = new Set(TODAY.map((p) => p.pitchType.family)), sides = new Set(TODAY.map((p) => p.batter.side));
+  const tBalls = TODAY.filter((p) => Math.abs(p.edgeMarginIn) <= CLOSE_IN && p.absTruth === 'ball').length;
+  line(`today: calibrator first (${f(TODAY[0].edgeMarginIn, 2)} in) | ${nClose}/10 within ${CLOSE_IN} in (${tm.filter((m) => m <= CLOSE_IN).sort((a, b) => a - b).map((m) => m.toFixed(2)).join(', ')}): ${tBalls} balls, ${nClose - tBalls} strikes | ABS-challenged ${TODAY.filter((p) => p.challenge).length} | games ${listJoin([...new Set(TODAY.map((p) => p.gameNumber))].sort())} | families ${[...fam].join('/')} | bats ${[...sides].join('/')}`);
+  line(`today: real ump right ${umpRight}/10 on the field (data umpCorrect says ${umpData}/10), ${umpAfter}/10 after ABS challenges; flight ${tenFlightMin.toFixed(3)}-${tenFlightMax.toFixed(3)} s`);
+  if (umpRight !== umpData) bad.push('today ump count');
+  if (tm[0] < 6 || nClose < 7 || nClose > 9 || !TODAY.some((p) => p.challenge) || fam.size < 3 || sides.size < 2 || TODAY.some((p) => !playable(p))) bad.push('today deal');
+  line('');
+  let n = 0, maxD = 0, maxM = 0, mism = 0, fmin = 9, fmax = 0, fsum = 0, outOfBand = 0;
+  for (const p of POOL.pitches) {
+    const r = check(p, 'pool'); n++;
+    maxD = Math.max(maxD, Math.abs(r.dmx), Math.abs(r.dmz)); maxM = Math.max(maxM, Math.abs(r.dm));
+    if (r.truth !== p.absTruth) mism++;
+    const fl = r.P.k.flight; fmin = Math.min(fmin, fl); fmax = Math.max(fmax, fl); fsum += fl;
+    if (fl < 0.35 || fl > 0.51) outOfBand++;
+  }
+  line(`[POOL] ${n} pitches | max |dMid| ${maxD.toFixed(5)} ft (tol 0.01) | ABS truth mismatches ${mism} | max |dMargin| ${maxM.toFixed(4)} in`);
+  line(`[TIMING] release->plate real time: pool ${fmin.toFixed(3)}-${fmax.toFixed(3)} s (mean ${(fsum / n).toFixed(3)}), outside 0.35-0.51 s: ${outOfBand}`);
+  line('         renderer clock = performance.now() seconds since release mapped 1:1 to traj time (ballT); no slow motion before the call');
+  if (outOfBand) bad.push('flight band');
+  line('');
+  let maxHand = 0;
+  const handErr = (P) => { const J = pitcherPose(P, 0); return Math.hypot(J.tHa.x - P.k.rel.x, J.tHa.y - P.k.rel.y, J.tHa.z - P.k.rel.z); };
+  for (const P of TODAY_SET) maxHand = Math.max(maxHand, handErr(P));
+  for (const p of POOL.pitches) maxHand = Math.max(maxHand, handErr(prep(p)));
+  line(`[PITCHER] throwing hand vs real release point at the release instant: max |d| = ${maxHand.toExponential(2)} ft (ten + pool)`);
+  if (maxHand > 1e-9) bad.push('hand at release');
+  line('');
+  const PLAYP = POOL.pitches.filter(playable).map(prep);
+  line(`[DEALT] Today's Ten and every "another ten" come from the ${PLAYP.length} of ${POOL.pitches.length} pool pitches that cross mid-plate at z ${PLAY.zMin}-${PLAY.zMax} ft, |x| < ${PLAY.xMax} ft (Today's Ten all among them: ${TODAY.every(playable) ? 'yes' : 'NO'}); never dealt: ${POOL.pitches.length - PLAYP.length}, closest of those to flipping ${Math.min(...POOL.pitches.filter((p) => !playable(p)).map((p) => Math.abs(p.edgeMarginIn))).toFixed(1)} in`);
+  for (const [w, h] of [[1440, 900], [1920, 1080], [1280, 800], [1024, 768], [390, 844]]) cameraReport(w, h, line, bad, PLAYP);
+  {   // one lens for the scene: the near foreground defocused, the pitcher in the focal plane, the ball never blurred
+    const cam = fitCam(1440, 900, 'R'), D = batterDof(cam, TODAY_SET.find((P) => P.batter.side === 'R'));
+    const dc = cam.p(catcherRig('R').head).d, dm = cam.p({ x: 0, y: CATCH_Y, z: 2.5 }).d, dp = cam.p({ x: 0, y: RUBBER_Y, z: 4 }).d, b3 = dofBlur(cam, 3), b6 = dofBlur(cam, 6);
+    line(`[DOF 1440x900] focus ${DOF.focus} ft: 3 ft -> ${b3.toFixed(1)} px, 6 ft -> ${b6.toFixed(1)} px | batter ${D.dN.toFixed(1)}-${D.dF.toFixed(1)} ft -> ${D.sN.toFixed(1)}-${D.sF.toFixed(1)} px | catcher ${dc.toFixed(1)} ft -> ${dofBlur(cam, dc).toFixed(1)} px | mitt ${dm.toFixed(1)} ft -> ${dofBlur(cam, dm).toFixed(1)} px | pitcher ${dp.toFixed(0)} ft -> ${dofBlur(cam, dp).toFixed(2)} px | ball: never blurred`);
+    if (b3 < 15 || b3 > 25 || b6 < 8 || b6 > 14) bad.push('depth of field strength');
+  }
+  // the mask cage: clear of every dealt crossing, the zone and the indicator (bar + blur)
+  for (const [W, H] of [[1440, 900], [1920, 1080], [1280, 800], [1024, 768], [390, 844]]) for (const side of ['R', 'L']) {
+    const cam = fitCam(W, H, side), M = maskGeom(cam), vis = M.t / 2 + M.bl;
+    let hits = 0;
+    for (const b of M.bars) for (const q of maskSamples(b, M.t)) for (const K of M.keep) {
+      if (Math.hypot(Math.max(K.l - q.x, 0, q.x - K.r), Math.max(K.t - q.y, 0, q.y - K.b)) < vis) hits++;
+    }
+    line(`[MASK] ${W}x${H} ${side}HB: ${M.bars.map((b) => (b.k === 'arc' ? `arc r${b.rho.toFixed(0)}${b.sx ? 'R' : 'L'}` : `side ${b.sx ? 'R' : 'L'} y${b.y0.toFixed(0)}-${b.y1.toFixed(0)}`)).join(', ') || 'none'} | clear of crossings, zone, indicator: ${hits ? `NO (${hits})` : 'yes'}`);
+    if (hits) bad.push(`mask ${W}x${H} ${side}`);
+  }
+  line('');
+  // the glove never leads the ball: its share of the reach when the ball crosses mid-plate (all 742 pitches)
+  let maxProg = 0, progBad = 0;
+  const ALLP = POOL.pitches.map(prep);
+  for (const P of ALLP) { const e = mittProgress(P, P.k.toMid); maxProg = Math.max(maxProg, e); if (e > 0.25) progBad++; }
+  line(`[MITT] glove progress (setup -> catch) when the ball crosses mid-plate: max ${(100 * maxProg).toFixed(1)}% (limit 25%), over the limit: ${progBad} (all ${ALLP.length}, Today's Ten included)`);
+  if (progBad) bad.push('mitt leads the ball');
+  for (const [W, H] of [[1440, 900], [1024, 768], [390, 844]]) {
+    let over = 0;
+    for (const P of PLAYP) {
+      const cam = camFor(W, H, P), q = cam.p(P.k.mid), r = BALL_R * q.k + 2;
+      const zt = cam.p({ x: -PLATE_HALF, y: MID_Y, z: P.zone.top }), zb = cam.p({ x: PLATE_HALF, y: MID_Y, z: P.zone.bottom });
+      for (const s of [-1, P.k.toMid]) {
+        const g = mittBox(cam, P, s), hit = (l, t, rr, b) => g && g.r > l && g.l < rr && g.b > t && g.t < b;
+        if (hit(q.x - r, q.y - r, q.x + r, q.y + r) || hit(Math.min(zt.x, zb.x), zt.y, Math.max(zt.x, zb.x), zb.y)) { over++; break; }
+      }
+    }
+    line(`[MITT] ${W}x${H}: glove over the zone or the crossing before the ball crosses: ${over}/${PLAYP.length}`);
+    if (over) bad.push(`mitt over zone ${W}x${H}`);
+  }
+  // framing: after the catch only, 1-4 in toward the zone, strikes and balls alike, not every borderline pitch
+  let border = 0, bS = 0, framed = 0, fS = 0, fB = 0, sizeBad = 0, dirBad = 0, early = 0, late = 0, fMin = 9, fMax = 0;
+  for (const P of ALLP) {
+    const isB = Math.abs(P.k.judge.marginIn) <= FRAME.band, q = frameOf(P);
+    if (isB) { border++; if (P.k.judge.strike) bS++; }
+    if (!q) continue;
+    framed++; if (P.k.judge.strike) fS++; else fB++;
+    const sz = frameShift(P, 0.44) * 12;
+    fMin = Math.min(fMin, sz); fMax = Math.max(fMax, sz);
+    if (!isB || sz < FRAME.minIn - 1e-9 || sz > FRAME.maxIn + 1e-9) sizeBad++;
+    if (FRAME.t0 + q.dur > 0.45) late++;
+    // toward the zone: the framed spot is deeper inside (or less far outside) the zone than the real crossing
+    if (absJudge(P.k.mid.x + q.dx * sz / 12, P.k.mid.z + q.dz * sz / 12, P.zone.top, P.zone.bottom).marginIn <= P.k.judge.marginIn) dirBad++;
+    // nothing moves before the catch: the glove's path up to and at the catch is identical with framing switched off
+    const ss = [-1, P.k.toMid, P.k.toCatch - 0.02, P.k.toCatch - 1e-4, P.k.toCatch, P.k.toCatch + FRAME.t0];
+    const withF = ss.map((s) => mittState(P, s).p), keep = P._frame;
+    P._frame = null; const noF = ss.map((s) => mittState(P, s).p); P._frame = keep;
+    if (withF.some((p, k) => p.x !== noF[k].x || p.y !== noF[k].y || p.z !== noF[k].z)) early++;
+  }
+  line(`[FRAMING] borderline (within ${FRAME.band} in): ${border} pitches (${bS} strikes, ${border - bS} balls) | framed ${framed} = ${(100 * framed / border).toFixed(0)}% of them: ${fS} strikes, ${fB} balls | size ${fMin.toFixed(2)}-${fMax.toFixed(2)} in (bounds ${FRAME.minIn}-${FRAME.maxIn}), out of bounds ${sizeBad}, not toward the zone ${dirBad}, done after the hold ${late} | glove moved by framing before the catch: ${early} pitches`);
+  if (sizeBad || dirBad || early || late || !fS || !fB || framed === border) bad.push('framing');
+  // the ump's stance: seeded per plate appearance and pitch, bounded, identical on every replay and re-seed
+  {
+    let same = 0, inBox = 0;
+    const ok = (a, m) => Math.abs(a) <= m + 1e-12;
+    for (const p of POOL.pitches) {
+      const a = stanceOf(prep(p)), b = stanceOf(prep(p));
+      if (a.x === b.x && a.y === b.y && a.z === b.z) same++;
+      if (ok(a.x, STANCE_MAX.x) && ok(a.y, STANCE_MAX.y) && ok(a.z, STANCE_MAX.z)) inBox++;
+    }
+    const appSame = TODAY_SET.every((P, k) => { const a = eyeOf(P), b = eyeOf(prep(TODAY[k])), c = camFor(1440, 900, P).eye; return a.x === b.x && a.y === b.y && a.z === b.z && c.x === a.x && c.y === a.y && c.z === a.z; });
+    const hs = ALLP.map((P) => P.batter.heightFt), zs = ALLP.map((P) => stanceOf(P).z), mh = hs.reduce((s, v) => s + v, 0) / hs.length, mz = zs.reduce((s, v) => s + v, 0) / zs.length;
+    const cov = hs.reduce((s, v, k) => s + (v - mh) * (zs[k] - mz), 0), corr = cov / Math.sqrt(hs.reduce((s, v) => s + (v - mh) ** 2, 0) * zs.reduce((s, v) => s + (v - mz) ** 2, 0));
+    line(`[STANCE] per plate appearance: lateral ±${STANCE.paX} in, depth ±${STANCE.paY} in, height ±${STANCE.paZ} in (${STANCE.follow} in of it following the batter's height, r = ${corr.toFixed(2)}); per pitch ±${STANCE.pitch} in on each axis | deterministic: ${same}/${POOL.pitches.length} identical on re-seed, Today's Ten app = fresh = camera eye: ${appSame ? 'yes' : 'NO'} | inside the box: ${inBox}/${POOL.pitches.length}`);
+    if (same !== POOL.pitches.length || inBox !== POOL.pitches.length || !appSame) bad.push('stance');
+    // how much the stance moves the view at 1440x900, Today's Ten (inches at the plate = px x depth / F)
+    const rows = TODAY_SET.map((P) => {
+      const c = camFor(1440, 900, P), b = fitCam(1440, 900, P.batter.side), st = stanceOf(P);
+      const xi = P.batter.side === 'R' ? -PLATE_HALF : PLATE_HALF, zm = (P.zone.top + P.zone.bottom) / 2;
+      const ie = c.p({ x: xi, y: MID_Y, z: zm }), ie0 = b.p({ x: xi, y: MID_Y, z: zm });
+      const zb = c.p({ x: 0, y: MID_Y, z: P.zone.bottom }), zb0 = b.p({ x: 0, y: MID_Y, z: P.zone.bottom });
+      const pp = c.p({ x: 0, y: RUBBER_Y, z: MOUND_H + 3 }), pp0 = b.p({ x: 0, y: RUBBER_Y, z: MOUND_H + 3 });
+      return { P, st, ie: ie.x, ie0: ie0.x, ieIn: ie.d * 12 / c.F, zb: zb.y, zb0: zb0.y, zbIn: zb.d * 12 / c.F, pdx: pp.x - pp0.x, pdy: pp.y - pp0.y };
+    });
+    rows.forEach((r, k) => line(`  ${String(k + 1).padStart(2)} ${lastName(r.P.batter.name).padEnd(9)} ${r.P.batter.side}HB | stance x ${f(r.st.x * 12, 2)} y ${f(r.st.y * 12, 2)} z ${f(r.st.z * 12, 2)} in | inside edge x ${r.ie.toFixed(0)} px (slot ${r.ie0.toFixed(0)}) | zone bottom y ${r.zb.toFixed(0)} px (slot ${r.zb0.toFixed(0)}) | pitcher ${f(r.pdx, 1)}, ${f(r.pdy, 1)} px`));
+    const spread = (a) => Math.max(...a) - Math.min(...a);
+    const sideLine = (sd) => {
+      const R = rows.filter((r) => r.P.batter.side === sd), ip = R[0].ieIn;
+      const ie = spread(R.map((r) => r.ie)), zb = spread(R.map((r) => r.zb)), zb0 = spread(R.map((r) => r.zb0));
+      return `${sd}HB (${R.length}): inside edge spread ${ie.toFixed(0)} px = ${(ie * ip).toFixed(1)} in at the plate (from the fixed slot: 0) | zone bottom spread ${zb.toFixed(0)} px = ${(zb * R[0].zbIn).toFixed(1)} in (from the fixed slot, batter height alone: ${zb0.toFixed(0)} px)`;
+    };
+    const pm = Math.max(...rows.map((r) => Math.hypot(r.pdx, r.pdy)));
+    line(`[STANCE 1440x900] Today's Ten | ${sideLine('R')} | ${sideLine('L')} | pitcher moves at most ${pm.toFixed(1)} px from the slot's view (spread x ${spread(rows.map((r) => r.pdx)).toFixed(1)}, y ${spread(rows.map((r) => r.pdy)).toFixed(1)} px)`);
+  }
+  // "another ten": dealt like Today's Ten (seeded draws so the report is stable)
+  let pickBad = 0, pickUmp = 0, pickCh = 0, pickGames = 0, cbMin = 9, cbMax = 0;
+  const pr = rng(20261031);
+  for (let r = 0; r < 200; r++) {
+    const s = pickPoolTen(pr), ids = new Set(s.map((p) => p.id)), m = s.map((p) => Math.abs(p.edgeMarginIn));
+    const close = s.filter((p, k) => m[k] <= CLOSE_IN), cb = close.filter((p) => p.absTruth === 'ball').length;
+    if (s.length !== 10 || ids.size !== 10 || s.some((p) => !p || !playable(p) || TODAY.includes(p)) || m[0] < 6
+      || close.length !== 8 || !s.some((p) => p.challenge) || m.slice(1).some((v) => v > 4.5)) pickBad++;
+    cbMin = Math.min(cbMin, cb); cbMax = Math.max(cbMax, cb);
+    pickUmp += s.filter((p) => p.umpCorrect).length; pickCh += s.filter((p) => p.challenge).length;
+    pickGames += new Set(s.map((p) => p.gameNumber)).size;
+  }
+  line(`[PLAY ANOTHER TEN] 200 draws: invalid ${pickBad} | each: calibrator (6+ in) first, 8 close calls within ${CLOSE_IN} in (balls among them: ${cbMin}-${cbMax}, so counting is no tell), 1 more within 4.5 in, >= 1 ABS challenge (${(pickCh / 200).toFixed(1)} on average), from ${(pickGames / 200).toFixed(1)} games on average | real ump right ${(pickUmp / 200).toFixed(1)}/10 on average`);
+  if (pickBad || cbMin === cbMax) bad.push('pool picker');
+  line('');
+  line(bad.length ? `RESULT: FAIL (${bad.length}) ${bad.slice(0, 12).join(', ')}` : 'RESULT: PASS');
+  document.title = bad.length ? 'SELFTEST FAIL' : 'SELFTEST PASS';
+  const pre = $('#selftest'); pre.hidden = false; pre.textContent = out.join('\n');
+  return !bad.length;
+}
+
+// the static layers are re-rendered once per pitch (new eye, batter, lens blur): time it, raster included
+async function paintTiming() {
+  const ms = [];
+  for (const P of TODAY_SET) {
+    staticKey = ''; const t0 = performance.now(); ensureStatic(P);
+    if (window.createImageBitmap) await Promise.all([createImageBitmap(LAY.back), createImageBitmap(LAY.front)]);
+    ms.push(performance.now() - t0);
+  }
+  staticKey = '';
+  $('#selftest').textContent += `\n[STANCE] static layers for a new stance at ${VW}x${VH} (DPR ${DPR}): ${Math.min(...ms).toFixed(0)}-${Math.max(...ms).toFixed(0)} ms to paint (mean ${(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(0)}), done off screen once the reveal has settled; "Next pitch" swaps them in and the beat (${BEAT} s) follows`;
+}
+
+/* ============================================================
+   10. Start
+   ============================================================ */
+sizeCanvases();
+if (SELFTEST) { try { selftest(); } catch (e) { fail('Self-test crashed: ' + e.message); } }
+const assets = Promise.all([
+  loadImg(IMG.backdrop, BACKDROPS.wide.src).then(() => { IMG.bd = BACKDROPS.wide; }, () => loadImg(IMG.backdrop, BACKDROPS.old.src).then(() => { IMG.bd = BACKDROPS.old; })),
+  loadImg(IMG.card, 'assets/card-art.png'),
+  loadImg(IMG.bat, BATTER_IMG.src).catch(() => null),          // if it fails, the procedural batter stands in
+  document.fonts ? document.fonts.load('800 32px "Big Shoulders Display"').catch(() => null) : null,
+]);
+assets.then(async () => { if (SELFTEST) await paintTiming().catch((e) => fail('Paint timing: ' + e.message)); bootFlow(); }, (e) => { fail(e.message); bootFlow(); });
+})();
+</script>
+</body>
+</html>
