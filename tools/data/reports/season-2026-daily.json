@@ -1,0 +1,71 @@
+{
+  "note": "Written by npm run data:daily. Deterministic: the same shards, month files and recorded dates give the same file.",
+  "season": 2026,
+  "build": "97a8f28c432c",
+  "schedule": {
+    "first": "2026-11-01",
+    "last": "2028-12-31",
+    "servedThrough": "2026-11-14",
+    "days": 792,
+    "available": 792,
+    "unavailable": []
+  },
+  "reserve": {
+    "share": 0.25,
+    "pitches": 18725,
+    "piles": {
+      "calibrators": 1875,
+      "close": 14928,
+      "closeChallenged": 1830,
+      "near": 1899
+    },
+    "leftAfterSchedule": {
+      "calibrators": 1083,
+      "close": 8592,
+      "closeChallenged": 561,
+      "near": 1107
+    }
+  },
+  "freshRun": {
+    "note": "The generator run from the first date with no history until the reserve can't deal a ten: the no-repeat horizon, and the draws the variety rules took.",
+    "days": 1235,
+    "last": "2030-03-19",
+    "stoppedOn": "2030-03-20",
+    "stoppedBy": "the reserve has run out of challenged close calls",
+    "tries": {
+      "mean": 1.4,
+      "max": 6,
+      "histogram": {
+        "1": 888,
+        "2": 246,
+        "3": 66,
+        "4": 28,
+        "5": 3,
+        "6": 4
+      }
+    },
+    "rejectedByRule": {
+      "ABS challenges": 36,
+      "batter sides": 201,
+      "one pitch per game": 31,
+      "pitch families": 52,
+      "two strikes or three balls": 228
+    },
+    "throughLast": {
+      "days": 792,
+      "tries": {
+        "mean": 1.38,
+        "max": 6,
+        "histogram": {
+          "1": 579,
+          "2": 152,
+          "3": 40,
+          "4": 17,
+          "5": 2,
+          "6": 2
+        }
+      },
+      "sameAsSchedule": true
+    }
+  }
+}
