@@ -7,8 +7,10 @@ import { PNG } from 'pngjs';
 import type { Area, Box } from './helpers';
 import { mockupUrl, nextFrames, seedRandom, slugOf, waitReady } from './helpers';
 
-// Tune these after measuring. The largest share of the pixels outside the credit footnotes that may differ, per mode.
-const MAX_MASKED_RATIO = { exact: 0.005, shipped: 0.03 } as const;
+// Exact mode serves the PNG masters, so outside the credit footnotes nothing may differ: one pixel is a regression.
+// Shipped mode serves the WebP files. The scenes still match to the pixel, but the card's art is resampled, which moves
+// up to 2.5 % of the card screen (at 390x844), so the card states get their own limit.
+const SHIPPED_CARD_LIMIT = 0.03;
 // A pixel differs when any of its RGB channels moves by more than this many levels out of 255.
 const CHANNEL_TOLERANCE = 8;
 // The port's longer data credit is deliberate, but it is taller, and the card (and the phone start screen) lay out
@@ -41,6 +43,9 @@ const MASTER_DIR = new URL('../../mockup/assets/', import.meta.url);
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 
 type Mode = (typeof MODES)[number];
+
+/** The largest share of the pixels outside the credit footnotes that may differ. */
+const limitFor = (mode: Mode, state: string): number => (mode === 'shipped' && state.startsWith('state=card') ? SHIPPED_CARD_LIMIT : 0);
 
 interface Row {
   mode: Mode;
@@ -215,7 +220,7 @@ async function compare(mode: Mode, area: Area, state: string, mockup: Page, port
   const diff = diffShots(mockShot, portShot, mask, area.width);
   const pixels = diff.width * diff.height;
   const maskedRatio = diff.kept > 0 ? diff.maskedDiffering / diff.kept : 0;
-  const limit = MAX_MASKED_RATIO[mode];
+  const limit = limitFor(mode, state);
 
   writeFileSync(files.diff, diff.image);
 
@@ -258,7 +263,7 @@ function markdown(out: string, rows: Row[]): string {
     '# Mockup and port pixel parity',
     '',
     `A pixel differs when any RGB channel moves by more than ${CHANNEL_TOLERANCE}/255. Masked leaves out the boxes of \`.footnote\` and \`.cards-foot\` on both pages${ALIGN_CREDIT ? '; before capture the mockup footnotes take the port footnote heights, so the longer credit does not move the rest of the screen' : ''}.`,
-    `Exact routes the port's WebP images to the PNG masters in \`mockup/assets\`; shipped uses the built files. Limits on the masked share: exact ${pct(MAX_MASKED_RATIO.exact)} %, shipped ${pct(MAX_MASKED_RATIO.shipped)} %.`,
+    `Exact routes the port's WebP images to the PNG masters in \`mockup/assets\`; shipped uses the built files. Limits outside the masks: no differing pixel at all, except in shipped mode's card states, where up to ${pct(SHIPPED_CARD_LIMIT)} % may differ (the resampled WebP card art).`,
     '',
     `Shots: \`${repoPath(out)}/<mode>/<viewport>/<slug>-{mockup,port,diff}.png\`, where the slug is the state without \`state=\` and with \`&\` and \`=\` turned into \`-\`. In a diff, red marks a differing pixel and amber one inside the mask.`,
     '',
@@ -277,7 +282,7 @@ function writeReport(out: string): void {
     generatedAt: new Date().toISOString(),
     channelTolerance: CHANNEL_TOLERANCE,
     alignCredit: ALIGN_CREDIT,
-    maxMaskedRatio: MAX_MASKED_RATIO,
+    limits: { exact: 0, shipped: { scenes: 0, card: SHIPPED_CARD_LIMIT } },
     routedMasters: Object.fromEntries(parts.map((part): [Mode, number] => [part.mode, part.routedMasters])),
     rows,
   };
@@ -320,7 +325,8 @@ for (const mode of MODES) {
               const row = await compare(mode, area, state, mockup, port, dir);
 
               rows.push(row);
-              expect.soft(row.maskedRatio, `${mode} ${row.viewport} ${state}: share of differing pixels outside the credit`).toBeLessThanOrEqual(row.limit);
+              if (row.limit === 0) expect.soft(row.maskedDiffering, `${mode} ${row.viewport} ${state}: differing pixels outside the credit`).toBe(0);
+              else expect.soft(row.maskedRatio, `${mode} ${row.viewport} ${state}: share of differing pixels outside the credit`).toBeLessThanOrEqual(row.limit);
             });
           }
         } finally {
