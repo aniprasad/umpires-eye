@@ -3,6 +3,7 @@ import { RUBBER_Y } from '../core/rules.ts';
 import { MOUND_H } from './constants';
 import { groundZ } from './geometry';
 import type { PreparedPitch } from './kinematics';
+import type { Side } from './types';
 import { clamp } from './util';
 
 /**
@@ -31,6 +32,8 @@ const PK: readonly Key[] = [
 
 const REL_KEY = PT.indexOf(0);
 const HAND = PJ.indexOf('tHa');
+/** How far the frame may pull the hand toward the glove side before the figure throws from the other side (§4.7). */
+const MAX_GLOVE_PULL = 0.5;
 
 interface PitcherFrame {
   /** World x sign of the throwing side. */
@@ -42,13 +45,27 @@ interface PitcherFrame {
 
 const FRAMES = new WeakMap<PreparedPitch, PitcherFrame>();
 
+// the body 1.1 ft to the glove side of release, with the pivot foot on the 24 in rubber
+const bodyX = (arm: number, relX: number): number => clamp(relX - arm * 1.10, -1.0, 1.0);
+
+/**
+ * The world x sign of the figure's throwing side, from the release point (§4.7). It's the listed hand's, unless that
+ * frame would drag the hand more than 0.5 ft across the body to the release point, as for a release past the plate's
+ * centre line; then it's the other side's, which reaches the release point. The matchup card keeps the listed hand.
+ */
+export function figureArm(hand: Side, relX: number): number {
+  const listed = hand === 'L' ? 1 : -1;
+  const pull = -listed * (relX - (bodyX(listed, relX) + listed * PK[REL_KEY][HAND][0]));
+
+  return pull > MAX_GLOVE_PULL ? -listed : listed;
+}
+
 function pitcherFrame(P: PreparedPitch): PitcherFrame {
   const hit = FRAMES.get(P);
 
   if (hit) return hit;
-  const arm = P.pitcher.hand === 'L' ? 1 : -1;
-  // the pivot foot stays on the 24 in rubber
-  const xBody = clamp(P.k.rel.x - arm * 1.10, -1.0, 1.0);
+  const arm = figureArm(P.pitcher.hand, P.k.rel.x);
+  const xBody = bodyX(arm, P.k.rel.x);
   const b = PK[REL_KEY][HAND];
   const hand0 = { x: xBody + arm * b[0], y: RUBBER_Y - b[1], z: MOUND_H + b[2] };
   const delta = { x: P.k.rel.x - hand0.x, y: P.k.rel.y - hand0.y, z: P.k.rel.z - hand0.z };
