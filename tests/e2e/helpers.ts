@@ -36,7 +36,8 @@ const SLACK = 0.5;
 
 const fmtBox = (box: Box): string => `${box.width.toFixed(0)}x${box.height.toFixed(0)} at (${box.x.toFixed(0)}, ${box.y.toFixed(0)})`;
 
-// Both apps draw their canvas noise from Math.random, so the same seed gives two pages the same grain.
+// The mockup draws its canvas noise from Math.random before anything else does, and the port draws its own from a
+// stream with this seed (decorRandom), so seeding gives both pages the same grain.
 export async function seedRandom(page: Page, seed = 20261113): Promise<void> {
   await page.addInitScript((start: number) => {
     let a = start >>> 0;

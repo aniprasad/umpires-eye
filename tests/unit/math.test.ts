@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { absJudge } from '../../src/core/abs.ts';
+import { mulberry32 } from '../../src/core/rng.ts';
 import { LOOK_Y } from '../../src/math/constants';
 import { makeCam } from '../../src/math/geometry';
 import { prep } from '../../src/math/kinematics';
 import { eyeFor } from '../../src/math/stance';
+import { decorRandom } from '../../src/render/noise';
 import { synthPitch } from './fixtures';
 
 describe('kinematics', () => {
@@ -26,5 +28,18 @@ describe('camera', () => {
 
     expect(q.x).toBeCloseTo(700, 9);
     expect(q.y).toBeCloseTo(160, 9);
+  });
+});
+
+describe('decorative noise', () => {
+  it('paints the same grain on every load: its own stream, with the seed the parity tests give the mockup', () => {
+    const random = vi.spyOn(Math, 'random');
+
+    try {
+      expect(Array.from({ length: 5 }, () => decorRandom())).toEqual(Array.from({ length: 5 }, mulberry32(20261113)));
+      expect(random).not.toHaveBeenCalled();
+    } finally {
+      random.mockRestore();
+    }
   });
 });
