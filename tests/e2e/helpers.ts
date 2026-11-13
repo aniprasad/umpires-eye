@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Locator, Page, TestInfo } from '@playwright/test';
 import { WS_TODAY_IDS } from '../../src/data/ws2026';
+import { BEAT, FIRST_BEAT, WINDUP } from '../../src/math/constants';
 
 export type Call = 'strike' | 'ball';
 export type CallKey = 'S' | 's' | 'ArrowRight' | 'B' | 'b' | 'ArrowLeft';
@@ -136,34 +137,43 @@ export async function openPaused(page: Page, path: string): Promise<void> {
   await page.clock.pauseAt(Date.now() + 60_000);
 }
 
-// The call window runs 1.5 s past the catch, so the first step past the release still lands early in it.
-const CLOCK_STEP_MS = 500;
-// More page time than a pitch needs from the start of the windup to its settled verdict.
+// The call window runs 1.5 s past the catch, so a press within a step of the release lands early in it.
+const RELEASE_STEP_MS = 200;
+// A pitch is released WINDUP s after its beat, and the first pitch of a round waits a longer beat. One jump lands just
+// past the earlier of the two releases: a later pitch is released by then, and the first is a few steps short of it.
+const TO_RELEASE_MS = Math.round((Math.min(BEAT, FIRST_BEAT) + WINDUP) * 1000) + 100;
+// A verdict takes two steps at least: the first passes the moment the reveal starts, the second the moment its body shows.
+const VERDICT_STEP_MS = 1000;
+// More steps than the release or the verdict needs.
 const CLOCK_STEPS_MAX = 20;
 
-async function stepClockUntil(page: Page, done: () => Promise<boolean>, what: string): Promise<void> {
+async function stepClockUntil(page: Page, stepMs: number, done: () => Promise<boolean>, what: string): Promise<void> {
   for (let k = 0; k < CLOCK_STEPS_MAX; k++) {
     if (await done()) return;
-    await page.clock.fastForward(CLOCK_STEP_MS);
+    await page.clock.fastForward(stepMs);
   }
 
-  throw new Error(`${what} didn't come within ${(CLOCK_STEPS_MAX * CLOCK_STEP_MS) / 1000} s of page time`);
+  throw new Error(`${what} didn't come within ${(CLOCK_STEPS_MAX * stepMs) / 1000} s of page time`);
 }
 
 /**
- * Calls the pitch in play on a page opened with openPaused. It steps the clock through the windup to the release, presses
- * the key or the button once, checks the call was taken, then steps on until the verdict has settled.
+ * Calls the pitch in play on a page opened with openPaused, as the pitch begins. It jumps the clock to the release and
+ * steps on until it comes, presses the key or the button once, checks the call was taken, then steps on until the
+ * verdict has settled. Every step paints a frame, which WebKit takes a quarter of a second over, so the steps are few.
  */
 export async function callPitch(page: Page, input: CallKey | Locator, options: { tap?: boolean } = {}): Promise<void> {
   const button = typeof input === 'string' ? page.locator(callOf(input) === 'strike' ? '#btnStrike' : '#btnBall') : input;
 
+  await page.clock.fastForward(TO_RELEASE_MS);
   // The call clock's bar stays full until the release, then drains.
-  await stepClockUntil(page, async () => (await page.locator('#indClock').evaluate((el) => (el as HTMLElement).style.transform)) !== 'scaleX(1)', 'The release');
+  await stepClockUntil(page, RELEASE_STEP_MS, async () => (await page.locator('#indClock').evaluate((el) => (el as HTMLElement).style.transform)) !== 'scaleX(1)', 'The release');
   if (typeof input === 'string') await page.keyboard.press(input);
   else if (options.tap) await input.tap({ timeout: 5_000 });
   else await input.click({ timeout: 5_000 });
   await expect(button, 'the call was taken').toHaveClass(/\bis-called\b/);
-  await stepClockUntil(page, () => page.locator('#verdict').evaluate((el) => el.classList.contains('show-body')), 'The verdict');
+  await page.clock.fastForward(VERDICT_STEP_MS);
+  await page.clock.fastForward(VERDICT_STEP_MS);
+  await stepClockUntil(page, VERDICT_STEP_MS, () => page.locator('#verdict').evaluate((el) => el.classList.contains('show-body')), 'The verdict');
 }
 
 export async function activeId(page: Page): Promise<string> {
