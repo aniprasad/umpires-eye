@@ -244,6 +244,10 @@ async function pitchFrames(page: Page, url: string): Promise<FrameStats> {
 }
 
 const fmtFrames = (f: FrameStats): string => `${f.frames} frames; script per frame P50 ${f.costP50.toFixed(2)} ms, P95 ${f.costP95.toFixed(2)} ms, max ${f.costMax.toFixed(1)} ms; frame gap P50 ${f.gapP50.toFixed(1)} ms, P95 ${f.gapP95.toFixed(1)} ms`;
+const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+// The runs take turns, one pitch each per round, so load that comes and goes on a shared machine falls on every run
+// alike, and the medians over the rounds compare like with like. Two windows taken one after the other did neither.
+const SPEED_ROUNDS = 3;
 
 test('a live pitch with the fallback filter runs about as fast as the mockup in the same engine', async ({ page, baseURL, browserName }, testInfo) => {
   test.setTimeout(120_000);
@@ -253,13 +257,21 @@ test('a live pitch with the fallback filter runs about as fast as the mockup in 
 
   if (browserName === 'chromium') runs.push(['port, native filter', new URL('./', baseURL).href]);
   await timeFrames(page);
-  const stats: Record<string, FrameStats> = {};
+  const rounds: Record<string, FrameStats>[] = [];
 
-  for (const [name, url] of runs) {
-    stats[name] = await pitchFrames(page, url);
-    testInfo.annotations.push({ type: `frames (${name})`, description: fmtFrames(stats[name]) });
+  for (let r = 1; r <= SPEED_ROUNDS; r++) {
+    const round: Record<string, FrameStats> = {};
+
+    for (const [name, url] of runs) {
+      round[name] = await pitchFrames(page, url);
+      testInfo.annotations.push({ type: `frames (${name}, round ${r})`, description: fmtFrames(round[name]) });
+    }
+    rounds.push(round);
   }
-  await testInfo.attach('frames.json', { body: JSON.stringify(stats, null, 2), contentType: 'application/json' });
+  const gap = (name: string): number => median(rounds.map((round) => round[name].gapP50));
+
+  testInfo.annotations.push({ type: 'frame gap P50, median of rounds', description: runs.map(([name]) => `${name} ${gap(name).toFixed(1)} ms`).join('; ') });
+  await testInfo.attach('frames.json', { body: JSON.stringify(rounds, null, 2), contentType: 'application/json' });
   // Headless frame times are indicative only. This bound catches a filter redone in full every frame.
-  for (const [name] of runs.slice(1)) expect(stats[name].gapP50, name).toBeLessThan(1.25 * stats.mockup.gapP50 + 2);
+  for (const [name] of runs.slice(1)) expect(gap(name), name).toBeLessThan(1.25 * gap('mockup') + 2);
 });
