@@ -12,7 +12,7 @@ The approved look and behaviour live in `mockup/`. Open `mockup/index.html` to p
 
 - Never push, add or change a remote, create a GitHub repository, or publish anything. Only the lead pushes, and only `main`. The owner decides when the repo goes public.
 - Work on your own branch and commit in small, descriptive steps. Don't change git config.
-- Keep usernames, home-folder paths and account names out of files and commit messages.
+- Keep usernames, home-folder paths and account names out of files and commit messages. Always merge with an explicit message (`git merge -m "…"`), because git's default merge message includes the branch name.
 - `mockup/` is the reference: read it, don't edit it.
 - Stay honest. Real data is labelled real, the ABS truth is labelled as our reconstruction, and players, field and catch are illustrations. Never invent numbers, users or quotes.
 - No MLB or team logos and no player likenesses. VR, sharing and leaderboards are out of scope.
