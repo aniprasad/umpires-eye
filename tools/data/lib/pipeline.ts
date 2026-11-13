@@ -39,7 +39,7 @@ import {
   type Row,
 } from './format.ts';
 import { countPossible, judge, type Judged } from './judge.ts';
-import { ALLOWED, FAILING_KINDS, findingId, judgeFindings, type FailingKind } from './integrity.ts';
+import { ALLOWED, FAILING_KINDS, judgeFindings, type FailingKind } from './integrity.ts';
 import type { PlayByPlay, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import type { Person } from './people.ts';
 import { absJudge, crossing } from './physics.ts';
@@ -595,7 +595,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `ump vs ABS: overall ${ump.overall.agree}/${ump.overall.total} (${ump.overall.pct}%), within ${CLOSE_IN} in ${ump.close.agree}/${ump.close.total} (${ump.close.pct}%)`,
     `pool ${composition.pitches}: close ${composition.close} of ${pool.season.close}, near ${composition.near} of ${pool.season.near}, calibrators ${composition.calibrators} of ${pool.season.clear} clear calls, ${composition.mid} challenged between ${NEAR_IN} and ${CALIBRATOR_MIN_IN} in, challenged ${composition.challenged}`,
     `shards ${count}: ${kb(Math.min(...sizes.shardBytes))}-${kb(Math.max(...sizes.shardBytes))} raw, ${kb(Math.min(...sizes.shardGzipBytes))}-${kb(Math.max(...sizes.shardGzipBytes))} gzipped; largest session ${kb(sizes.largestSessionGzipBytes)} of ${kb(SESSION_BUDGET_GZIP)}`,
-    `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${verdict.allowed.length} allowlisted findings (${verdict.allowed.map(findingId).join(', ')})${verdict.stale.length ? `; stale pins: ${verdict.stale.join(', ')}` : ''}`,
+    `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${verdict.allowed.length} allowlisted findings (${verdict.allowed.join('; ')})${verdict.stale.length ? `; stale pins: ${verdict.stale.join(', ')}` : ''}`,
     `plate umpire: changed or unknown in ${report.plateUmpire.plateChanged.length} games (${report.plateUmpire.plateChanged.map((g) => g.gamePk).join(', ')}); ${report.plateUmpire.calledPitchesWithoutOne} called pitches name no one`,
     `slow pitches (over ${MAX_FLIGHT_S} s to the plate): ${report.dealableRule.slowPitches.calledPitches} called, ${report.dealableRule.slowPitches.keptFromDealingOnlyForSpeed} kept from dealing only for speed`,
   ];
