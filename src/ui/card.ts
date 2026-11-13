@@ -1,4 +1,5 @@
 import { PLATE_HALF } from '../core/rules.ts';
+import { isWorldSeries } from '../data/ws2026';
 import { REDUCED } from '../game/params';
 import { G, world } from '../game/state';
 import { seriesGames } from '../math/deal';
@@ -66,7 +67,8 @@ export function showCards(instant = false): void {
   const after = G.set.filter((P) => P.finalCall === P.absTruth).length;
   const pct = Math.round((right / n) * 100);
   const tough = toughest(G.results);
-  const games = seriesGames(G.set);
+  // only a World Series round numbers its games; a season round's come from several series, or none
+  const games = isWorldSeries(world().source) ? seriesGames(G.set) : [];
 
   CARD.num.textContent = String(pct);
   CARD.pitches.textContent = String(n);
@@ -76,7 +78,8 @@ export function showCards(instant = false): void {
   CARD.tough.classList.toggle('long', tough.length > 14);
   CARD.set.textContent = `${label} set · ${roundLabel()}`;
   CARD.sum.innerHTML = `Round complete. You called <b>${right} of ${n}</b> right. On these same pitches the real ump got <b>${ump} of ${n}</b> on the field${after !== ump ? `, ${after} after ABS challenges` : ''}.`;
-  CARD.sum.title = games.length > 1 ? `Games ${games.join(', ')}` : `Game ${games[0]}`;
+  if (games.length) CARD.sum.title = games.length > 1 ? `Games ${games.join(', ')}` : `Game ${games[0]}`;
+  else CARD.sum.removeAttribute('title');
   drawMissMap(G.results);
   CARD.copy.textContent = 'Copy result';
   setPhase('card');

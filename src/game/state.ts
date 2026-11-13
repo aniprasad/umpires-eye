@@ -1,4 +1,4 @@
-import type { Deck, PitchSource } from '../data/source';
+import type { PitchSource } from '../data/source';
 import type { PreparedPitch } from '../math/kinematics';
 import { prep } from '../math/kinematics';
 import { createLens, type Lens } from '../math/lens';
@@ -7,24 +7,21 @@ import type { CallOrNone, Result } from '../math/words';
 
 export type Phase = 'boot' | 'start' | 'pitch' | 'reveal' | 'replay' | 'card';
 
-/** The loaded dataset and everything derived from it once. */
+/** The loaded dataset and everything derived from it once. Another ten asks the source for its deck when it's first played. */
 export interface World {
   source: PitchSource;
   /** Today's Ten, prepared once, so per-pitch caches (stance, framing, path dots) live for the session. */
   today: PreparedPitch[];
-  /** What Another ten deals from. */
-  deck: Deck;
   /** Fitted once, to the source's lens points, so it never shifts with what's loaded. */
   lens: Lens;
 }
 
 let current: World | null = null;
 
-export function createWorld(source: PitchSource, today: readonly Pitch[], deck: Deck): World {
+export function createWorld(source: PitchSource, today: readonly Pitch[]): World {
   return {
     source,
     today: today.map(prep),
-    deck,
     lens: createLens(source.lensPoints),
   };
 }

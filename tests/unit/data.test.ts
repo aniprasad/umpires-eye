@@ -16,6 +16,7 @@ const todayPool = (): PoolPitch[] => WS_TODAY_IDS.map((id) => poolPitch({ id }))
 describe('the World Series source', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("returns Today's Ten in play order from the pool", () => {
@@ -62,20 +63,33 @@ describe('the World Series source', () => {
       [new Response('Not Found', { status: 404, statusText: 'Not Found' }), 'missing', /^Could not load the pitch data \(404 Not Found\)\.$/],
       [new Response('', { status: 503, statusText: 'Service Unavailable' }), 'network', /\(503 Service Unavailable\)/],
       [new TypeError('Failed to fetch'), 'network', /^Could not reach the pitch data \(Failed to fetch\)\.$/],
-      [new Response('<!doctype html>'), 'data', /JSON/],
+      [new Response('<!doctype html>', { headers: { 'content-type': 'text/html' } }), 'missing', /web page/],
+      [new Response('{"games": ['), 'data', /JSON/],
+      [Response.json(null), 'data', /^The pitch data has no games or no pitches\.$/],
       [Response.json({ ...file, pitches: file.pitches.slice(1) }), 'data', new RegExp(`^Today's Ten pitches are missing from the pool: ${WS_TODAY_IDS[0]}$`)],
       [Response.json({ ...file, games: [] }), 'data', /isn't in the pool's games/],
     ];
 
+    vi.useFakeTimers();
     for (const [answer, kind, words] of cases) {
-      vi.stubGlobal('fetch', () => (answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer)));
-      const e = await loadWorldSeries('pool.json').catch((err: unknown) => err);
+      vi.stubGlobal('fetch', () => (answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer.clone())));
+      const got = loadWorldSeries('pool.json').catch((err: unknown) => err);
+
+      // past the helper's retries
+      await vi.runAllTimersAsync();
+      const e = await got;
 
       expect(e).toBeInstanceOf(LoadError);
       expect(e).toMatchObject({ kind, message: expect.stringMatching(words) });
     }
     vi.stubGlobal('fetch', () => Promise.resolve(Response.json(file)));
     expect((await loadWorldSeries('pool.json')).id).toBe('ws-2026');
+  });
+
+  it('refuses a pool body that is null or not an object as broken data, not a crash', () => {
+    for (const body of [null, undefined, 42, 'pool', []]) {
+      expect(() => fromPoolFile(body)).toThrow(new LoadError('data', 'The pitch data has no games or no pitches.'));
+    }
   });
 
   it('is what ?pool=ws opens, and still the default', () => {
