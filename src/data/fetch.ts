@@ -40,7 +40,15 @@ const message = (e: unknown): string => (e instanceof Error ? e.message : String
  * - missing for a 404, or for a web page sent in the file's place;
  * - data for any other refusal, or a body that isn't JSON.
  */
-export function fetchJson(url: string, opts: FetchJsonOptions): Promise<unknown> {
+export async function fetchJson(url: string, opts: FetchJsonOptions): Promise<unknown> {
+  return parseJson(await fetchText(url, opts), opts.what);
+}
+
+/**
+ * A file's body as text, fetched as fetchJson fetches it and failing the same ways, but left unparsed: a body that isn't
+ * JSON only shows when parseJson reads it. Another ten's shard waits as text until the game wants it (§4.1).
+ */
+export function fetchText(url: string, opts: FetchJsonOptions): Promise<string> {
   return withRetries(() => fetchOnce(url, opts), RETRY_DELAYS_MS, opts);
 }
 
@@ -58,7 +66,7 @@ async function withRetries<T>(run: () => Promise<T>, delays: readonly number[], 
   }
 }
 
-async function fetchOnce(url: string, opts: FetchJsonOptions): Promise<unknown> {
+async function fetchOnce(url: string, opts: FetchJsonOptions): Promise<string> {
   const { what, signal } = opts;
   const ac = new AbortController();
   let timedOut = false;
@@ -85,7 +93,7 @@ async function fetchOnce(url: string, opts: FetchJsonOptions): Promise<unknown> 
       throw new LoadError('missing', `Could not load ${what}: the server sent a web page instead.`);
     }
 
-    return parseJson(text, what);
+    return text;
   } catch (e) {
     if (e instanceof LoadError) throw e;
     if (signal?.aborted) throw signal.reason;
@@ -99,7 +107,8 @@ async function fetchOnce(url: string, opts: FetchJsonOptions): Promise<unknown> 
   }
 }
 
-function parseJson(text: string, what: string): unknown {
+/** A body fetchText gave, as JSON. Rejects a body that isn't JSON as data, naming the file. */
+export function parseJson(text: string, what: string): unknown {
   try {
     return JSON.parse(text) as unknown;
   } catch (e) {
