@@ -14,3 +14,7 @@ export const GAME_TYPE_NAMES: Record<GameType, string> = {
 };
 
 export const SESSION_BUDGET_GZIP = 300_000;
+/** A daily month file. */
+export const MONTH_BUDGET_GZIP = 50_000;
+/** What loads before Play is enabled: the manifest, the largest month file and stats. */
+export const BOOT_BUDGET_GZIP = 50_000;

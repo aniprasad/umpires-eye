@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { absJudge } from '../../../src/core/abs.ts';
+import type { ManifestDaily } from '../../../src/core/daily.ts';
 import { dealTen, pilesOf, type Card } from '../../../src/core/deal.ts';
 import { crossing } from '../../../src/core/kinematics.ts';
 import { hash32, mulberry32 } from '../../../src/core/rng.ts';
@@ -34,6 +35,7 @@ import {
   type Row,
   type StatsDoc,
 } from '../../../src/core/schema.ts';
+import { buildIdOf } from './build-id.ts';
 import { GAME_TYPE_NAMES, GAME_TYPES, SESSION_BUDGET_GZIP } from './constants.ts';
 import { familyOf, gameRow, pitchRow, quantize, round, rowsJson, type Quantized } from './format.ts';
 import { countPossible, judge, type Judged } from './judge.ts';
@@ -76,6 +78,7 @@ export interface BuildResult {
   files: Map<string, string>;
   summary: string[];
   sizes: SessionSizes;
+  build: string;
 }
 
 export interface SessionSizes {
@@ -222,7 +225,8 @@ function plateReport(tracks: ReadonlyArray<{ game: Game; track: PlateTrack }>, n
   };
 }
 
-export function buildDataset(inputs: Inputs): BuildResult {
+/** Builds every file but the month files. data:daily owns the manifest's daily block, so pass the current one to keep it. */
+export function buildDataset(inputs: Inputs, daily?: ManifestDaily): BuildResult {
   const log = inputs.log ?? ((): void => undefined);
   const teams = parseTeams(inputs.teams);
   const { games, skipped, officials } = parseSchedule(inputs.schedules);
@@ -309,7 +313,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     [...new Map(named.flatMap((n) => (n ? [[n.id, n.name] as const] : []))).entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([id, name]): Row => [id, name]);
-  const shardText = (entries: readonly PoolEntry[], index: number, count: number): string => {
+  const shardText = (entries: readonly PoolEntry[], index: number, count: number, build: string | null): string => {
     const shardGames = [...new Set(entries.map((e) => e.j.p.gamePk))].flatMap((pk) => {
       const g = gameById.get(pk);
 
@@ -336,6 +340,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
       format: SHARD_FORMAT,
       version: FORMAT_VERSION,
       season: SEASON,
+      ...(build === null ? {} : { build }),
       shard: index,
       shards: count,
       credit: CREDIT,
@@ -355,7 +360,30 @@ export function buildDataset(inputs: Inputs): BuildResult {
 
   const count = Math.max(1, Math.ceil(pool.entries.length / PITCHES_PER_SHARD));
   const shards = makeShards(pool.entries, count, SEED);
-  const texts = shards.map((s, i) => shardText(s, i, count));
+  const ump = umpVsAbs(all);
+  const statsHead = { format: STATS_FORMAT, version: FORMAT_VERSION, season: SEASON };
+  const statsBody = {
+    credit: CREDIT,
+    truthNote: TRUTH_NOTE,
+    games: { total: games.length, byType: Object.fromEntries(GAME_TYPES.map((t) => [t, games.filter((g) => g.gameType === t).length])) },
+    calledPitches: {
+      total: all.length,
+      calledStrikes: all.filter((j) => j.p.finalCall === 'S').length,
+      balls: all.filter((j) => j.p.finalCall === 'B').length,
+      byType: byGameType(all, games, (some) => some.length),
+    },
+    excluded: { ballInDirt: checks.ballInDirt, automatic: checks.automatic, noTracking: checks.noTracking },
+    challenges: challengeStats(all),
+    umpVsAbs: ump,
+    umpVsAbsByGameType: byGameType(all, games, (some) => {
+      const u = umpVsAbs(some);
+
+      return { overall: u.overall, close: u.close };
+    }),
+  };
+  const build = buildIdOf([...shards.map((s, i) => shardText(s, i, count, null)), pretty({ ...statsHead, ...statsBody })]);
+  const stats: StatsDoc = { ...statsHead, build, ...statsBody };
+  const texts = shards.map((s, i) => shardText(s, i, count, build));
   const width = Math.max(2, String(count - 1).length);
   const shardFile = (i: number): string => `shards/${String(i).padStart(width, '0')}.json`;
   const dealing = shards.map((s, i) => {
@@ -400,6 +428,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     format: MANIFEST_FORMAT,
     version: FORMAT_VERSION,
     season: SEASON,
+    build,
     credit: CREDIT,
     truthNote: TRUTH_NOTE,
     source: 'MLB Stats API (statsapi.mlb.com): teams, schedule (with officials), game playByPlay and people endpoints.',
@@ -450,31 +479,9 @@ export function buildDataset(inputs: Inputs): BuildResult {
     pitchTypes,
     fields,
     pool: composition,
-    session: { budgetGzipBytes: SESSION_BUDGET_GZIP, files: ['manifest.json', 'stats.json', 'one shard'] },
+    session: { budgetGzipBytes: SESSION_BUDGET_GZIP, files: ['manifest.json', 'daily/YYYY-MM.json', 'stats.json', 'one shard'] },
     shards: shardMeta,
-  };
-  const ump = umpVsAbs(all);
-  const stats: StatsDoc = {
-    format: STATS_FORMAT,
-    version: FORMAT_VERSION,
-    season: SEASON,
-    credit: CREDIT,
-    truthNote: TRUTH_NOTE,
-    games: { total: games.length, byType: Object.fromEntries(GAME_TYPES.map((t) => [t, games.filter((g) => g.gameType === t).length])) },
-    calledPitches: {
-      total: all.length,
-      calledStrikes: all.filter((j) => j.p.finalCall === 'S').length,
-      balls: all.filter((j) => j.p.finalCall === 'B').length,
-      byType: byGameType(all, games, (some) => some.length),
-    },
-    excluded: { ballInDirt: checks.ballInDirt, automatic: checks.automatic, noTracking: checks.noTracking },
-    challenges: challengeStats(all),
-    umpVsAbs: ump,
-    umpVsAbsByGameType: byGameType(all, games, (some) => {
-      const u = umpVsAbs(some);
-
-      return { overall: u.overall, close: u.close };
-    }),
+    ...(daily ? { daily } : {}),
   };
   const manifestText = pretty(manifest);
   const statsText = pretty(stats);
@@ -507,6 +514,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
   const report = {
     note: 'Written by npm run data:build from the cached MLB Stats API responses. Deterministic: rebuilding gives the same file.',
     season: SEASON,
+    build,
     schedule: {
       games: games.length,
       byType: stats.games.byType,
@@ -585,6 +593,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
   const ch = stats.challenges;
   const kb = (n: number): string => `${(n / 1000).toFixed(0)} KB`;
   const summary = [
+    `build ${build}`,
     `games ${games.length} (${GAME_TYPES.map((t) => `${t} ${stats.games.byType[t]}`).join(', ')})`,
     `called pitches ${all.length} (left out: ${checks.ballInDirt} in the dirt, ${checks.noTracking} untracked; ${checks.automatic} automatic balls and strikes are not pitches)`,
     `challenges ${ch.total}, overturned ${ch.overturned}; ABS truth = final call on ${ch.absAgreesWithFinalCall.agree}/${ch.absAgreesWithFinalCall.total} (${ch.absAgreesWithFinalCall.pct}%)`,
@@ -596,7 +605,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `slow pitches (over ${MAX_FLIGHT_S} s to the plate): ${report.dealableRule.slowPitches.calledPitches} called, ${report.dealableRule.slowPitches.keptFromDealingOnlyForSpeed} kept from dealing only for speed`,
   ];
 
-  return { files, summary, sizes };
+  return { files, summary, sizes, build };
 }
 
 export function sessionSizes(manifestText: string, statsText: string, shardTexts: readonly string[]): SessionSizes {

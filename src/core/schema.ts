@@ -1,5 +1,6 @@
 // The season dataset's file formats, shared by the data tools that write them and the app that reads them. docs/DATA.md
 // describes every field ("Format (version 1)").
+import type { ManifestDaily } from './daily.ts';
 import { TRAJ_KEYS, type Traj } from './kinematics.ts';
 
 export const FORMAT_VERSION = 1;
@@ -71,6 +72,11 @@ export interface FileHead {
   format: string;
   version: number;
   season: number;
+  /**
+   * The build id: a short hash of the shards' and stats' content, the same in every file of one build. A file whose
+   * id differs from the manifest's is from another build (docs/M2-DESIGN.md §4.3).
+   */
+  build: string;
   credit: string;
   truthNote: string;
 }
@@ -154,6 +160,8 @@ export interface ManifestDoc extends FileHead {
   };
   session: { budgetGzipBytes: number; files: readonly string[] };
   shards: ShardFileMeta[];
+  /** Today's Ten: its horizon and month files. data:daily writes it; it's absent until data:daily first runs. */
+  daily?: ManifestDaily;
 }
 
 /** How many calls agreed, of how many, and that as a percentage to two decimals (0 when there were none). */

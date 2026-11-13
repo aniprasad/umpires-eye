@@ -1,7 +1,7 @@
 // npm run data:validate: checks public/data/season-2026 on its own terms (schema, ABS truth and the dealing rules
-// recomputed from what is stored, dealing, sizes, totals), judges the report's integrity findings against the
-// allowlist in lib/integrity.ts, and, when the cache is present, checks that a rebuild reproduces every file exactly.
-// Pass --no-rebuild to skip the rebuild.
+// recomputed from what is stored, dealing, sizes, totals, the build id, and Today's Ten in lib/daily-check.ts), judges
+// the report's integrity findings against the allowlist in lib/integrity.ts, and, when the cache is present, checks that
+// a rebuild reproduces every file exactly. Pass --no-rebuild to skip the rebuild; everything else reads only the files.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,10 @@ import {
   type StatsDoc,
 } from '../../src/core/schema.ts';
 import { cacheDir, openCache } from './lib/cache.ts';
-import { SESSION_BUDGET_GZIP } from './lib/constants.ts';
+import { buildIdProblems } from './lib/build-id.ts';
+import { BOOT_BUDGET_GZIP, MONTH_BUDGET_GZIP, SESSION_BUDGET_GZIP } from './lib/constants.ts';
+import { checkDaily } from './lib/daily-check.ts';
+import { DAILY_DIR, DAILY_REPORT_PATH } from './lib/daily.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
 import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, REPORT_PATH, sessionSizes, sha256 } from './lib/pipeline.ts';
@@ -70,6 +73,8 @@ for (const [name, doc, format] of [
   if (doc.credit !== CREDIT) fail(`${name}: the MLB credit is missing or changed`);
   if (doc.truthNote !== TRUTH_NOTE) fail(`${name}: the reconstruction note is missing or changed`);
 }
+if (typeof manifest.build !== 'string' || !manifest.build) fail('manifest.json has no build id');
+if (stats.build !== manifest.build) fail(`stats.json: build ${stats.build} is not the manifest's ${manifest.build}`);
 if (JSON.stringify(listed) !== JSON.stringify(onDisk)) fail(`shards on disk ${onDisk.join(',')} differ from the manifest`);
 
 // The build refuses findings outside the allowlist; judging the committed report again catches a hand-edited one.
@@ -94,6 +99,7 @@ if (reportText === null) {
 
 const ids = new Set<string>();
 const texts: string[] = [];
+const shardTexts = new Map<string, string>();
 const table: string[] = [];
 const totals = { pitches: 0, dealable: 0, close: 0, near: 0, mid: 0, calibrators: 0, challenged: 0, agree: 0, overturned: 0 };
 let maxDrift = 0;
@@ -110,6 +116,7 @@ for (const meta of manifest.shards) {
     continue;
   }
   texts.push(text);
+  shardTexts.set(meta.file, text);
   if (Buffer.byteLength(text) !== meta.bytes || sha256(text) !== meta.sha256) fail(`${meta.file}: size or hash differs from the manifest`);
 
   const doc = JSON.parse(text) as ShardDoc;
@@ -130,6 +137,7 @@ for (const meta of manifest.shards) {
   let prev: [number, number, number] = [-1, -1, -1];
 
   if (doc.format !== SHARD_FORMAT || doc.version !== FORMAT_VERSION || doc.season !== SEASON) fail(`${meta.file}: wrong format header`);
+  if (doc.build !== manifest.build) fail(`${meta.file}: build ${doc.build} is not the manifest's ${manifest.build}`);
   if (doc.credit !== CREDIT || doc.truthNote !== TRUTH_NOTE) fail(`${meta.file}: credit or reconstruction note missing`);
   if (doc.shards !== manifest.shards.length || pitches.length !== meta.pitches) fail(`${meta.file}: counts differ from the manifest`);
   for (const [k, g] of games.entries()) {
@@ -200,8 +208,19 @@ for (const meta of manifest.shards) {
 
 const sizes = sessionSizes(manifestText, statsText, texts);
 const pool = manifest.pool;
+const dailyDir = join(root, OUT_DIR, DAILY_DIR);
+const today = checkDaily({
+  manifestText,
+  statsText,
+  shardTexts,
+  monthTexts: new Map((existsSync(dailyDir) ? readdirSync(dailyDir) : []).map((name) => [`${DAILY_DIR}/${name}`, read(`${OUT_DIR}/${DAILY_DIR}/${name}`) ?? ''])),
+  reportText: read(DAILY_REPORT_PATH),
+});
+const monthGzip = Object.values(today.monthGzipBytes);
+const kb1 = (n: number): string => `${(n / 1000).toFixed(1)} KB`;
 
-if (sizes.largestSessionGzipBytes > SESSION_BUDGET_GZIP) fail(`a play session downloads ${sizes.largestSessionGzipBytes} gzipped bytes`);
+for (const f of buildIdProblems(manifest.build, [...shardTexts, ['stats.json', statsText]])) fail(f);
+for (const f of today.failures) fail(f);
 if (
   totals.pitches !== pool.pitches ||
   totals.dealable !== pool.dealable ||
@@ -225,7 +244,13 @@ console.log(table.join('\n'));
 console.log(
   `per shard gzipped: ${sizes.shardGzipBytes.map(kb).join(', ')}; manifest ${kb(sizes.manifestGzipBytes)}, stats ${kb(sizes.statsGzipBytes)}`,
 );
-console.log(`largest play session: ${kb(sizes.largestSessionGzipBytes)} gzipped (budget ${kb(SESSION_BUDGET_GZIP)})`);
+console.log(
+  `daily: ${manifest.daily?.first} to ${manifest.daily?.last}, served through ${manifest.daily?.servedThrough}; ${monthGzip.length} month files, ${kb1(Math.min(...monthGzip))}-${kb1(Math.max(...monthGzip))} gzipped each (budget ${kb1(MONTH_BUDGET_GZIP)})`,
+);
+console.log(
+  `boot fetch (manifest, largest month file, stats): ${kb1(today.bootGzipBytes)} gzipped (budget ${kb1(BOOT_BUDGET_GZIP)}); largest session, with a shard: ${kb1(today.sessionGzipBytes)} (budget ${kb1(SESSION_BUDGET_GZIP)})`,
+);
+for (const note of today.notes) console.log(`  served day kept as it was served (reported, not failed): ${note}`);
 console.log(
   `challenges: ABS reconstruction = final call on ${totals.agree}/${totals.challenged}; max stored-margin drift ${maxDrift.toFixed(4)} in; ${heldBack} drawable pitches held back (uncertain batter or pitcher, or an impossible count)`,
 );
@@ -240,7 +265,7 @@ if (rebuild) {
   } else {
     console.log('rebuilding from the cache to check the files are reproducible ...');
 
-    const rebuilt = buildDataset(inputs);
+    const rebuilt = buildDataset(inputs, manifest.daily);
 
     for (const [rel, text] of rebuilt.files) {
       if (read(rel) !== text) fail(`${rel} differs from a fresh rebuild`);
