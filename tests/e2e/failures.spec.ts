@@ -68,3 +68,17 @@ test('a lost connection asks for a reload', async ({ page }) => {
   await expectNoRound(page, /The pitch data didn't load: Could not reach the pitch data/, RELOAD_LEDE);
   expect(errors).toEqual([]);
 });
+
+test("card art that won't load is reported, and the game still starts", async ({ page }) => {
+  const errors = pageErrors(page);
+
+  await page.route('**/card-art-*.webp', (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' }));
+  await page.goto('./');
+  await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
+  await expect(page.locator('#err')).toBeVisible();
+  await expect(page.locator('#err')).toContainText(/Could not load \S*card-art-\d+-\S*\.webp/);
+  await expect(page.locator('#btnPlay')).toBeEnabled();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+  expect(errors).toEqual([]);
+});
