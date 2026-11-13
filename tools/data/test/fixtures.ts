@@ -139,6 +139,8 @@ export interface JudgedSpec {
   challenged?: boolean;
   dealable?: boolean;
   showable?: boolean;
+  pitchType?: string;
+  team?: number;
 }
 
 // A judged pitch with only the fields the pool, shards and dealer look at filled in meaningfully.
@@ -163,8 +165,9 @@ export function judged(s: JudgedSpec): Judged {
     pitcherId: 20,
     pitcherName: 'Pitcher 20',
     throws: 'R',
+    pitchingTeamId: s.team ?? HOME,
     attribution: 'matchup',
-    pitchType: 'FF',
+    pitchType: s.pitchType ?? 'FF',
     pitchTypeName: 'Four-Seam Fastball',
     mph: 95,
     extension: 6.5,

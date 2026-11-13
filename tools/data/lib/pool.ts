@@ -13,51 +13,92 @@ export interface PoolEntry {
 
 export interface Pool {
   entries: PoolEntry[];
-  clearEligible: number;
+  // Dealable pitches in each band over the whole season, challenged or not, before any sampling.
+  season: { close: number; near: number; clear: number };
   notShowable: { close: number; near: number };
 }
 
-// One calibrator for every nine other dealable pitches, the proportion a round of ten uses them in.
-export const CALIBRATOR_SHARE = 1 / 9;
+export interface Rates {
+  near: number;
+  calibrator: number;
+}
 
-const absMargin = (j: Judged): number => Math.abs(j.marginIn);
+// A round of ten deals eight close calls, one near call and one calibrator. So the pool keeps every close call and
+// samples near calls and calibrators at one per eight close calls; change a rate and rebuild for a different mix.
+export const PER_CLOSE: Rates = { near: 1 / 8, calibrator: 1 / 8 };
+
+const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 // The margin as stored (0.01 in), which is what the app and the validator classify by.
 export const storedAbsMargin = (j: Judged): number => Math.abs(Math.round(j.marginIn * 100) / 100);
 
 export function band(j: Judged): 'close' | 'near' | 'mid' | 'clear' {
-  const m = absMargin(j);
+  const m = storedAbsMargin(j);
 
   return m <= CLOSE_IN ? 'close' : m <= NEAR_IN ? 'near' : m < CALIBRATOR_MIN_IN ? 'mid' : 'clear';
 }
 
-// Every challenged pitch, every dealable pitch within 4.5 in of flipping, and a seeded sample of clear calls.
-export function selectPool(all: readonly Judged[], seed: string): Pool {
+// Systematic sampling from a seeded start, over the candidates ordered by pitch type, then pitching team, then the
+// order they were played. Every pitch type, and every team within it, keeps its share to within one pitch, and each
+// one's picks are spread evenly through the season.
+export function spreadSample(candidates: readonly Judged[], want: number, seed: string): Judged[] {
+  if (want <= 0) return [];
+  if (want >= candidates.length) return [...candidates];
+
+  const ordered = [...candidates].sort(
+    (a, b) => cmp(a.p.pitchType ?? '', b.p.pitchType ?? '') || a.p.pitchingTeamId - b.p.pitchingTeamId || a.seq - b.seq,
+  );
+  const step = ordered.length / want;
+  const start = unitHash(seed) * step;
+  const out: Judged[] = [];
+
+  for (let k = 0; k < want; k++) {
+    const pick = ordered[Math.floor(start + k * step)];
+
+    if (pick) out.push(pick);
+  }
+
+  return out;
+}
+
+// Every challenged pitch and every dealable close call, plus spread-out samples of near calls and clear calls.
+export function selectPool(all: readonly Judged[], seed: string, rates: Rates = PER_CLOSE): Pool {
   const entries: PoolEntry[] = [];
+  const near: Judged[] = [];
   const clear: Judged[] = [];
+  const season = { close: 0, near: 0, clear: 0 };
+  const challenged = { near: 0, clear: 0 };
   const notShowable = { close: 0, near: 0 };
 
   for (const j of all) {
     const b = band(j);
     const dealable = j.dealable && j.showable;
 
-    if (j.p.challenge) entries.push({ j, bucket: 'challenge', dealable });
-    else if (b === 'close' || b === 'near') {
-      if (dealable) entries.push({ j, bucket: b, dealable });
-      else if (j.dealable) notShowable[b]++;
-    } else if (b === 'clear' && dealable) clear.push(j);
+    if (dealable && b !== 'mid') season[b]++;
+    if (j.p.challenge) {
+      entries.push({ j, bucket: 'challenge', dealable });
+      if (dealable && (b === 'near' || b === 'clear')) challenged[b]++;
+    } else if (dealable) {
+      if (b === 'close') entries.push({ j, bucket: 'close', dealable });
+      else if (b === 'near') near.push(j);
+      else if (b === 'clear') clear.push(j);
+    } else if (j.dealable && (b === 'close' || b === 'near')) {
+      notShowable[b]++;
+    }
   }
 
-  const others = entries.filter((e) => e.dealable && (band(e.j) === 'close' || band(e.j) === 'near')).length;
-  const want = Math.min(clear.length, Math.round(others * CALIBRATOR_SHARE));
-  const ranked = clear
-    .map((j) => ({ j, h: unitHash(`${seed}|calibrator|${j.p.id}`) }))
-    .sort((a, b) => a.h - b.h || a.j.seq - b.j.seq);
+  // The dealer draws on challenged pitches too, so they count toward each pile's share.
+  const want = (rate: number, already: number): number => Math.max(0, Math.round(season.close * rate) - already);
 
-  for (const { j } of ranked.slice(0, want)) entries.push({ j, bucket: 'calibrator', dealable: true });
+  for (const j of spreadSample(near, want(rates.near, challenged.near), `${seed}|near`)) {
+    entries.push({ j, bucket: 'near', dealable: true });
+  }
+  for (const j of spreadSample(clear, want(rates.calibrator, challenged.clear), `${seed}|calibrator`)) {
+    entries.push({ j, bucket: 'calibrator', dealable: true });
+  }
   entries.sort((a, b) => a.j.seq - b.j.seq);
 
-  return { entries, clearEligible: clear.length, notShowable };
+  return { entries, season, notShowable };
 }
 
 export function stratumOf(e: PoolEntry): string {

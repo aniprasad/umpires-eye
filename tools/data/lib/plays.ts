@@ -43,6 +43,7 @@ export interface CalledPitch {
   pitcherId: number;
   pitcherName: string;
   throws: Side;
+  pitchingTeamId: number;
   attribution: Attribution;
   pitchType: string | null;
   pitchTypeName: string | null;
@@ -554,6 +555,7 @@ export function extractGame(pbp: PlayByPlay, game: Game, people: Map<number, Per
             pitcherId: attr.pitcher.id,
             pitcherName: attr.pitcher.name,
             throws: attr.throws,
+            pitchingTeamId: fieldingId,
             attribution: attr.attribution,
             pitchType: d?.type?.code ?? null,
             pitchTypeName: d?.type?.description ?? null,

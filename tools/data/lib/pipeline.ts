@@ -40,7 +40,7 @@ import type { PlayByPlay, ScheduleResponse, TeamsResponse } from './mlb.ts';
 import type { Person } from './people.ts';
 import { absJudge, crossing } from './physics.ts';
 import { addChecks, emptyChecks, extractGame, type Checks } from './plays.ts';
-import { makeShards, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
+import { makeShards, PER_CLOSE, selectPool, storedAbsMargin, type PoolEntry } from './pool.ts';
 import { hash32, mulberry32 } from './rng.ts';
 import { parseSchedule, parseTeams, type Game } from './schedule.ts';
 import {
@@ -264,9 +264,10 @@ export function buildDataset(inputs: Inputs): BuildResult {
     near: poolDealable.filter((e) => storedAbsMargin(e.j) > CLOSE_IN && storedAbsMargin(e.j) <= NEAR_IN).length,
     calibratorMinIn: CALIBRATOR_MIN_IN,
     calibrators: pool.entries.filter((e) => e.bucket === 'calibrator').length,
-    clearCallsSampledFrom: pool.clearEligible,
     challenged: challenged.length,
     challengedDealable: pool.entries.filter((e) => e.bucket === 'challenge' && e.dealable).length,
+    sampledPerClose: PER_CLOSE,
+    seasonDealable: pool.season,
   };
   const shardMeta = shards.map((s, i) => ({
     file: shardFile(i),
@@ -454,7 +455,7 @@ export function buildDataset(inputs: Inputs): BuildResult {
     `called pitches ${all.length} (left out: ${checks.ballInDirt} in the dirt, ${checks.noTracking} untracked; ${checks.automatic} automatic balls and strikes are not pitches)`,
     `challenges ${ch.total}, overturned ${ch.overturned}; ABS truth = final call on ${ch.absAgreesWithFinalCall.agree}/${ch.absAgreesWithFinalCall.total} (${ch.absAgreesWithFinalCall.pct}%)`,
     `ump vs ABS: overall ${ump.overall.agree}/${ump.overall.total} (${ump.overall.pct}%), within ${CLOSE_IN} in ${ump.close.agree}/${ump.close.total} (${ump.close.pct}%)`,
-    `pool ${composition.pitches}: close ${composition.close}, near ${composition.near}, calibrators ${composition.calibrators}, challenged ${composition.challenged}`,
+    `pool ${composition.pitches}: close ${composition.close} of ${pool.season.close}, near ${composition.near} of ${pool.season.near}, calibrators ${composition.calibrators} of ${pool.season.clear} clear calls, challenged ${composition.challenged}`,
     `shards ${count}: ${kb(Math.min(...sizes.shardBytes))}-${kb(Math.max(...sizes.shardBytes))} raw, ${kb(Math.min(...sizes.shardGzipBytes))}-${kb(Math.max(...sizes.shardGzipBytes))} gzipped; largest session ${kb(sizes.largestSessionGzipBytes)} of ${kb(SESSION_BUDGET_GZIP)}`,
     `integrity: count ${checks.countMismatches.length}, outs ${checks.outsMismatches.length}, runners ${checks.runnersMismatches.length}/${checks.runnersChecked}, score ${checks.scoreMismatches.length}; ${impossible.length} called pitches with an impossible count (not dealable)`,
   ];

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { dealTen, deckOf, tenProblems, type Card } from '../lib/deal.ts';
 import { judge, type Judged } from '../lib/judge.ts';
-import { CALIBRATOR_SHARE, makeShards, selectPool, stratumOf } from '../lib/pool.ts';
+import { makeShards, selectPool, spreadSample, stratumOf, type Pool } from '../lib/pool.ts';
 import { mulberry32 } from '../lib/rng.ts';
 import { judged } from './fixtures.ts';
 
@@ -18,29 +18,38 @@ function season(n: number): Judged[] {
 }
 
 describe('selectPool', () => {
-  test('takes every challenge and every dealable call within 4.5 in, and samples clear calls', () => {
-    const all = [
-      judged({ seq: 0, marginIn: 0.4 }),
-      judged({ seq: 1, marginIn: -3 }),
-      judged({ seq: 2, marginIn: 5 }),
-      judged({ seq: 3, marginIn: 0.2, dealable: false }),
-      judged({ seq: 4, marginIn: -0.3, showable: false }),
-      judged({ seq: 5, marginIn: -20, dealable: false, challenged: true }),
-      ...Array.from({ length: 30 }, (_, k) => judged({ seq: 10 + k, marginIn: k % 2 ? 1 : -1 })),
-      ...Array.from({ length: 50 }, (_, k) => judged({ seq: 100 + k, marginIn: 8 })),
-    ];
+  const all = [
+    judged({ seq: 0, marginIn: -3, challenged: true }),
+    judged({ seq: 1, marginIn: 5 }),
+    judged({ seq: 2, marginIn: 0.2, dealable: false }),
+    judged({ seq: 3, marginIn: -0.3, showable: false }),
+    judged({ seq: 4, marginIn: -20, dealable: false, challenged: true }),
+    ...Array.from({ length: 40 }, (_, k) => judged({ seq: 10 + k, marginIn: k % 2 ? 1 : -1 })),
+    ...Array.from({ length: 30 }, (_, k) => judged({ seq: 100 + k, marginIn: 3 })),
+    ...Array.from({ length: 50 }, (_, k) => judged({ seq: 200 + k, marginIn: 8 })),
+  ];
+  const count = (pool: Pool, bucket: string): number => pool.entries.filter((e) => e.bucket === bucket).length;
+
+  test('keeps every challenge and every dealable close call, and samples near calls and calibrators per close call', () => {
     const pool = selectPool(all, 'seed');
     const bySeq = new Map(pool.entries.map((e) => [e.j.seq, e]));
 
-    assert.equal(bySeq.get(0)?.bucket, 'close');
-    assert.equal(bySeq.get(1)?.bucket, 'near');
-    assert.equal(bySeq.has(2), false);
-    assert.equal(bySeq.has(3), false);
-    assert.equal(bySeq.has(4), false);
-    assert.deepEqual([bySeq.get(5)?.bucket, bySeq.get(5)?.dealable], ['challenge', false]);
+    assert.deepEqual(pool.season, { close: 40, near: 31, clear: 50 });
+    assert.equal(count(pool, 'close'), 40);
+    // Five near calls in all (40 / 8), and the challenged one is already in.
+    assert.equal(count(pool, 'near'), 4);
+    assert.equal(count(pool, 'calibrator'), 5);
+    assert.deepEqual([bySeq.get(0)?.bucket, bySeq.get(0)?.dealable], ['challenge', true]);
+    assert.deepEqual([bySeq.get(4)?.bucket, bySeq.get(4)?.dealable], ['challenge', false]);
+    assert.deepEqual([1, 2, 3].map((seq) => bySeq.has(seq)), [false, false, false]);
     assert.deepEqual(pool.notShowable, { close: 1, near: 0 });
-    assert.equal(pool.entries.filter((e) => e.bucket === 'calibrator').length, Math.round(32 * CALIBRATOR_SHARE));
     assert.deepEqual(selectPool(all, 'seed'), pool);
+  });
+
+  test('takes the sampling rates as a parameter', () => {
+    const pool = selectPool(all, 'seed', { near: 1 / 2, calibrator: 1 / 4 });
+
+    assert.deepEqual([count(pool, 'close'), count(pool, 'near'), count(pool, 'calibrator')], [40, 19, 10]);
   });
 
   test('leaves out a pitch whose count before it is impossible', () => {
@@ -52,6 +61,50 @@ describe('selectPool', () => {
       selectPool([fine, broken], 'seed').entries.map((e) => e.j.seq),
       [0],
     );
+  });
+});
+
+describe('spreadSample', () => {
+  const rand = mulberry32(11);
+  const types = ['FF', 'SL', 'CH', 'CU'];
+  const n = 2000;
+  const candidates = Array.from({ length: n }, (_, seq) => {
+    const r = rand();
+
+    return judged({ seq, marginIn: 3, pitchType: r < 0.5 ? 'FF' : r < 0.75 ? 'SL' : r < 0.9 ? 'CH' : 'CU', team: 1 + Math.floor(rand() * 3) });
+  });
+  const want = 250;
+  const picked = spreadSample(candidates, want, 'seed');
+  const within1 = (have: number, of: number): boolean => Math.abs(have - (of * want) / n) < 1;
+
+  test('keeps every pitch type, and every team within it, to its share within one pitch', () => {
+    assert.equal(new Set(picked.map((j) => j.seq)).size, want);
+    for (const type of types) {
+      const all = candidates.filter((j) => j.p.pitchType === type);
+      const got = picked.filter((j) => j.p.pitchType === type);
+
+      assert.ok(within1(got.length, all.length), `${type}: ${got.length} of ${all.length}`);
+      for (const team of [1, 2, 3]) {
+        const t = (j: Judged): boolean => j.p.pitchingTeamId === team;
+
+        assert.ok(within1(got.filter(t).length, all.filter(t).length), `${type} team ${team}`);
+      }
+    }
+  });
+
+  test('spreads the picks through the season', () => {
+    for (let q = 0; q < 4; q++) {
+      const inQuarter = picked.filter((j) => j.seq >= (q * n) / 4 && j.seq < ((q + 1) * n) / 4).length;
+
+      assert.ok(inQuarter >= want * 0.2 && inQuarter <= want * 0.3, `quarter ${q}: ${inQuarter}`);
+    }
+  });
+
+  test('is deterministic for a seed and changes with it', () => {
+    const seqs = (list: Judged[]): number[] => list.map((j) => j.seq).sort((a, b) => a - b);
+
+    assert.deepEqual(seqs(spreadSample(candidates, want, 'seed')), seqs(picked));
+    assert.notDeepEqual(seqs(spreadSample(candidates, want, 'other')), seqs(picked));
   });
 });
 
