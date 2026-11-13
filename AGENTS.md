@@ -36,6 +36,9 @@ These are the owner's preferences. Lint should enforce the first two.
 - Run one full e2e suite at a time on this machine: two at once overload it, and WebKit times out. Before a full run, check that no other session's test server is listening on ports 4173–4299, and wait if one is. While you work, run only the specs you touched.
 - When an e2e test fails, read its `error-context.md` (the page snapshot at the failure) before you re-run anything, and list the failure in your report: test, project, step and error. A test that fails the same way twice, in any run, is a bug. Fix its cause; don't re-run it until it passes, and don't add retries or longer timeouts.
 - When you fix a test, or add one that guards something (a cache, a rule, a budget), break the guarded thing locally and uncommitted, check that the test fails, then revert. Report which breaks it catches. Where the guarded cost is smaller than a frame, count the work instead of timing it.
+- Run those breaks one at a time: break, run, revert, then the next. Don't start one while another run in the same worktree is still going, such as a background batch: two at once mix, and neither result holds.
+- Anything that launches browsers takes the e2e lock, not just full suites: single specs, repeat runs and repro scripts too. `npm run e2e -- <specs or flags>` takes it and passes the rest to Playwright. `npx playwright test` doesn't take it, and a script takes it through `scripts/e2e-lock.ts`.
+- When a run times out, or you stop it, kill its whole process tree (on Windows, `taskkill /T /F /PID <pid>`). Then check that none of its node, Playwright or browser processes survive: leftover runs load the machine, and WebKit then times out in everyone's tests.
 - Data tests use small synthetic fixtures, not recorded MLB responses.
 
 ## Environment
