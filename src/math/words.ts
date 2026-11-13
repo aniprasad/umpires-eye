@@ -4,6 +4,12 @@ import type { Call } from './types';
 
 export type CallOrNone = Call | 'none';
 
+/**
+ * The data credit AGENTS.md requires. The copied result ends with it, and vite.config.ts writes it into
+ * index.html's footnotes at build time, so this is the only copy.
+ */
+export const DATA_CREDIT = 'MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.';
+
 /** One finished pitch: your call against the ABS truth. */
 export interface Result {
   call: CallOrNone;
@@ -108,6 +114,6 @@ export function resultText(opts: { label: string; roundLabel: string; set: reado
     `I called ${right} of ${n} right (${Math.round((right / n) * 100)}%). The real ump: ${ump}/${n}. MLB umps ≈ 94%.`,
     `Toughest: ${toughest(results)}`,
     set.map((_P, k) => (results[k]?.correct ? '✓' : '✗')).join(''),
-    'Real pitches: MLB Stats API, © MLB Advanced Media, L.P. Not affiliated with MLB.',
+    `Real pitches: ${DATA_CREDIT}`,
   ].join('\n');
 }

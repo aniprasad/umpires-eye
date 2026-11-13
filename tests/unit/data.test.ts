@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { fromPoolFile, WS_LABEL, WS_TODAY_IDS } from '../../src/data/ws2026';
-import { fmtHeight, marginPhrase, toughest } from '../../src/math/words';
+import { fmtHeight, marginPhrase, resultText, toughest } from '../../src/math/words';
 import { judged } from '../../src/math/flow';
 import { prep } from '../../src/math/kinematics';
 import { PLATE_HALF } from '../../src/math/constants';
@@ -45,5 +46,15 @@ describe('words on the reveal and the card', () => {
 
     expect(toughest([judged(P, 'strike')])).toBe('Nothing got by you');
     expect(toughest([judged(P, 'ball')])).toMatch(/^Four-Seam Fastball, /);
+  });
+
+  it('ends the copied result with the data credit AGENTS.md requires', () => {
+    const rules = readFileSync(new URL('../../AGENTS.md', import.meta.url), 'utf8');
+    const credit = /Credit the data: "([^"]+)"/.exec(rules)?.[1];
+    const set = [prep(synthPitch())];
+    const text = resultText({ label: WS_LABEL, roundLabel: "Today's Ten", set, results: [judged(set[0], 'strike')] });
+
+    expect(credit).toMatch(/MLB Stats API/);
+    expect(text.split('\n').at(-1)).toContain(credit);
   });
 });

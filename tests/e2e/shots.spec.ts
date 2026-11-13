@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { DATA_CREDIT } from '../../src/math/words';
 import { attachShot, boxOf, expectApart, expectInside, horizontalOverflow, sceneColours, slugOf, trackErrors, viewportOf, waitReady } from './helpers';
 
 const VIEWPORTS = [
@@ -7,7 +8,6 @@ const VIEWPORTS = [
   { width: 1024, height: 768 },
 ];
 const STATES = ['state=start', 'state=pitch&i=8&t=0.358', 'state=reveal&i=4&call=strike', 'state=reveal&i=1&call=ball', 'state=card&correct=7'];
-const CREDIT = 'MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.';
 
 async function expectVerdictClear(page: Page): Promise<void> {
   const area = viewportOf(page);
@@ -39,7 +39,7 @@ for (const viewport of VIEWPORTS) {
 
         if (phase === 'start') {
           await expect(page.locator('#btnPlay')).toHaveText('Play ball');
-          await expect(page.locator('.footnote')).toContainText(CREDIT);
+          await expect(page.locator('.footnote')).toContainText(DATA_CREDIT);
         }
         if (phase === 'pitch' || phase === 'reveal') await expect(page.locator('#indPitch')).toHaveText(`${params.get('i')}/10`);
         if (phase === 'reveal') {
@@ -49,7 +49,7 @@ for (const viewport of VIEWPORTS) {
         if (phase === 'card') {
           await expect(page.locator('#cards')).toBeVisible();
           await expect(page.locator('#ucNum')).toHaveText(String(10 * Number(params.get('correct'))));
-          await expect(page.locator('.cards-foot')).toContainText(CREDIT);
+          await expect(page.locator('.cards-foot')).toContainText(DATA_CREDIT);
         }
         expect(errors).toEqual([]);
       });
