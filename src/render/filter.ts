@@ -1,8 +1,9 @@
 import { ctx2d } from './env';
 
 // Canvas 2D `filter` (blur and colour functions) isn't applied by every engine; WebKit, and so Safari, lacks it.
-// Every filtered draw goes through withFilter: the native filter where the engine applies it, otherwise an
-// approximation built from plain drawImage (downsampled, separable Gaussian taps) and a colour matrix.
+// Every filtered draw goes through withFilter: the native filter where the engine applies it, otherwise the block is
+// drawn on a downsampled work canvas, blurred there (an exact Gaussian on its pixels, or drawImage taps when the
+// canvas is too big for that) and put through a colour matrix.
 
 let native: boolean | null = null;
 
@@ -105,6 +106,85 @@ function blurPass(src: HTMLCanvasElement, dst: CanvasRenderingContext2D, w: numb
   dst.globalCompositeOperation = 'source-over';
 }
 
+/** Above this many tap-pixels a pass, the exact blur would stall a paint; only small full-size blurs get that far. */
+const EXACT_TAPS = 3e6;
+
+/** One pass of a Gaussian along lines of samples (`step` apart within a line, `lineStep` between lines). */
+function convolve(src: Float32Array, dst: Float32Array, lines: number, len: number, step: number, lineStep: number, k: Float32Array): void {
+  const R = (k.length - 1) / 2;
+
+  for (let l = 0; l < lines; l++) {
+    const base = l * lineStep;
+
+    for (let x = 0; x < len; x++) {
+      const t0 = Math.max(-R, -x);
+      const t1 = Math.min(R, len - 1 - x);
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+
+      for (let t = t0; t <= t1; t++) {
+        const j = base + (x + t) * step;
+        const wt = k[t + R];
+
+        r += src[j] * wt;
+        g += src[j + 1] * wt;
+        b += src[j + 2] * wt;
+        a += src[j + 3] * wt;
+      }
+      const i = base + x * step;
+
+      dst[i] = r;
+      dst[i + 1] = g;
+      dst[i + 2] = b;
+      dst[i + 3] = a;
+    }
+  }
+}
+
+/**
+ * An exact separable Gaussian over a work canvas's pixels, in premultiplied floats. Summing faint drawImage taps
+ * rounds each tap to 8 bits, and WebKit rounds them up, so a 19-tap blur of a dark navy comes out grey; here nothing
+ * is rounded until the end. Outside the canvas counts as transparent, as it does for the native filter.
+ */
+function blurExact(c: CanvasRenderingContext2D, w: number, h: number, sigma: number): void {
+  const R = Math.max(1, Math.ceil(sigma * 3));
+  const k = new Float32Array(2 * R + 1);
+  let sum = 0;
+
+  for (let i = -R; i <= R; i++) {
+    k[i + R] = Math.exp(-(i * i) / (2 * sigma * sigma));
+    sum += k[i + R];
+  }
+  for (let i = 0; i < k.length; i++) k[i] /= sum;
+  const img = c.getImageData(0, 0, w, h);
+  const d = img.data;
+  const a = new Float32Array(d.length);
+  const b = new Float32Array(d.length);
+
+  for (let i = 0; i < d.length; i += 4) {
+    const al = d[i + 3] / 255;
+
+    a[i] = d[i] * al;
+    a[i + 1] = d[i + 1] * al;
+    a[i + 2] = d[i + 2] * al;
+    a[i + 3] = d[i + 3];
+  }
+  convolve(a, b, h, w, 4, 4 * w, k);
+  convolve(b, a, w, h, 4 * w, 4, k);
+  for (let i = 0; i < d.length; i += 4) {
+    const al = a[i + 3];
+    const f = al > 0.5 ? 255 / al : 0;
+
+    d[i] = a[i] * f;
+    d[i + 1] = a[i + 1] * f;
+    d[i + 2] = a[i + 2] * f;
+    d[i + 3] = f ? al : 0;
+  }
+  c.putImageData(img, 0, 0);
+}
+
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /** brightness, then contrast, then saturate, in the order the CSS filter list applies them. */
@@ -202,10 +282,15 @@ export function withFilter(
   a.restore();
   if (colour) colourMatrix(a, sw, sh, spec);
   if (blur) {
-    const b = scratch(1, sw, sh);
+    const sigma = spec.blur / k;
 
-    blurPass(a.canvas, b, sw, sh, spec.blur / k, true);
-    blurPass(b.canvas, a, sw, sh, spec.blur / k, false);
+    if (sw * sh * (2 * Math.ceil(3 * sigma) + 1) <= EXACT_TAPS) blurExact(a, sw, sh, sigma);
+    else {
+      const b = scratch(1, sw, sh);
+
+      blurPass(a.canvas, b, sw, sh, sigma, true);
+      blurPass(b.canvas, a, sw, sh, sigma, false);
+    }
   }
   if (memo) {
     const keep = hit ? hit.canvas : document.createElement('canvas');
