@@ -52,6 +52,8 @@ export interface UmpFigure {
   readonly definition: string;
   /** True for a rounded, cited figure, written with "≈". */
   readonly approx: boolean;
+  /** The season a measured figure counts, which the hook names, so it stays right once that season is over. */
+  readonly season?: number;
 }
 
 /**

@@ -121,7 +121,7 @@ describe('the ump figure in words (§5.4)', () => {
   const set = [prep(synthPitch())];
   const results = [judged(set[0], 'strike')];
   const cited: UmpFigure = { pct: 94, label: 'MLB umps', definition: 'UmpScorecards via mlb.com', approx: true };
-  const measured: UmpFigure = { pct: 93.2, label: 'season overall', definition: 'agreement with our ABS reconstruction on 2026 called pitches', approx: false };
+  const measured: UmpFigure = { pct: 93.2, label: 'season overall', definition: 'agreement with our ABS reconstruction on 2026 called pitches', approx: false, season: 2026 };
   const ump = `The real ump: ${set.filter((P) => P.umpCorrect).length}/1.`;
   const copied = (figure: UmpFigure | null): string | undefined => resultText({ label: 'x', roundLabel: 'y', figure, set, results }).split('\n')[1];
 
@@ -138,9 +138,9 @@ describe('the ump figure in words (§5.4)', () => {
     expect(copied(cited)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps ≈ 94%.`);
   });
 
-  it("labels the season's measured figure season overall, and defines it", () => {
+  it("labels the season's measured figure season overall, defines it, and names its year in the hook", () => {
     expect(figureWords(measured)).toEqual({
-      hook: 'MLB umpires got 93.2% of calls right this season. Can you?',
+      hook: 'MLB umpires got 93.2% of calls right in 2026. Can you?',
       chip: 'MLB umps 93.2% season overall',
       chipShort: 'MLB 93.2%',
       overall: 'MLB umps 93.2% season overall',
@@ -149,6 +149,8 @@ describe('the ump figure in words (§5.4)', () => {
       copy: 'MLB umps 93.2% against our ABS reconstruction, season overall.',
     });
     expect(copied(measured)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps 93.2% against our ABS reconstruction, season overall.`);
+    // without its season, the hook claims no time at all, rather than one that may have passed
+    expect(figureWords({ ...measured, season: undefined }).hook).toBe('MLB umpires got 93.2% of calls right. Can you?');
   });
 
   it('leaves the figure out when there is none, and the hook asks without a number', () => {

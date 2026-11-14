@@ -8,8 +8,9 @@ const POOLS = new Map<string, PitchSource['id']>([['ws', 'ws-2026'], ['season', 
 export const DEFAULT_SOURCE: PitchSource['id'] = 'season-2026';
 
 /**
- * Which source ?pool= asks for: `ws` is the World Series pool, `season` the 2026 season. Any other value is ignored. The
- * self-test's figures are the mockup's, so ?selftest=1 without a ?pool= keeps the World Series.
+ * Which source ?pool= asks for: `ws` is the World Series pool and `season` the 2026 season; any other value gets the
+ * default, as no ?pool= does. The one exception: ?selftest=1 without a ?pool= keeps the World Series, since that report's
+ * figures are the mockup's.
  */
 export const sourceIdOf = (pool: string | null, selftest = false): PitchSource['id'] => POOLS.get(pool ?? (selftest ? 'ws' : '')) ?? DEFAULT_SOURCE;
 

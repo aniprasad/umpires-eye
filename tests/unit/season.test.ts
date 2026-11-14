@@ -463,6 +463,7 @@ describe('the season source', () => {
       label: 'season overall',
       definition: 'agreement with our ABS reconstruction on 2026 called pitches',
       approx: false,
+      season: 2026,
     });
     expect(await serve(withFile('stats.json', undefined)).source.umpFigure()).toBeNull();
   });

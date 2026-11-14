@@ -30,7 +30,7 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await openPaused(page, `./?pool=season&date=${mini.date}`);
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
   await expect(page.locator('#startLede')).toHaveText(/^Today's Ten for November 14, 2026: real pitches from the 2026 season, \d+ of them close calls/);
-  await expect(page.locator('#hook')).toHaveText(`MLB umpires got ${FIG}% of calls right this season. Can you?`);
+  await expect(page.locator('#hook')).toHaveText(`MLB umpires got ${FIG}% of calls right in 2026. Can you?`);
   await expect(page.locator('.footnote')).toContainText(`tracking data. ${CITE} Players`, { useInnerText: true });
   await expect(page.locator('#scSub .sc-long')).toHaveText(`Close calls · MLB umps ${FIG}% season overall`);
   // the manifest, the month file and the stats while the page boots, and no shard before Play (§4.1, §4.2); then the

@@ -162,7 +162,7 @@ export function figureWords(f: UmpFigure | null): FigureWords {
   const fig = `MLB umps ${f.pct}%`;
 
   return {
-    hook: `MLB umpires got ${f.pct}% of calls right this season. Can you?`,
+    hook: `MLB umpires got ${f.pct}% of calls right${f.season ? ` in ${f.season}` : ''}. Can you?`,
     chip: `${fig} ${f.label}`,
     chipShort: `MLB ${f.pct}%`,
     overall: `${fig} ${f.label}`,
