@@ -8,11 +8,13 @@ import { hold, loadsOf, mini, PAST_IDLE_MS, parsesOf, saveData, serveSeason, sha
 const KEYS: readonly CallKey[] = ['S', 'B', 'ArrowRight', 'ArrowLeft', 's', 'b', 'S', 'ArrowLeft', 'ArrowRight', 'B'];
 const WORD = { strike: 'Strike', ball: 'Ball' } as const;
 const CALL = { S: 'strike', B: 'ball' } as const;
-// the ump figures, from the synthetic stats, to one decimal as the app shows them (§5.4)
+// the ump figures, from the synthetic stats, to one decimal as the app shows them
 const VS = (mini.files.get('stats.json') as { umpVsAbs: { overall: { pct: number }; close: { pct: number } } }).umpVsAbs;
 const FIG = Math.round(VS.overall.pct * 10) / 10;
 const CLOSE = Math.round(VS.close.pct * 10) / 10;
 const CITE = `MLB umps ${FIG}% season overall, and ${CLOSE}% on close calls, within 1.5 in of the zone's edge: agreement with our ABS reconstruction on 2026 called pitches.`;
+// the card back's shorter form of the same definition
+const FOOT = `MLB umps' calls agree with our ABS reconstruction: ${FIG}% season overall, ${CLOSE}% within 1.5 in of the zone's edge.`;
 
 // Each pitch repaints the static layers for a new stance: 2-5 s of WebKit's time at 2x, about 1 s at 1x. At 2x this round
 // took 108 s alone of its 180 s; at 1x, 28 s. Nothing it checks depends on the pixel density.
@@ -35,8 +37,8 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await expect(page.locator('#hook')).toHaveText(`MLB umpires got ${FIG}% of calls right in 2026, but only ${CLOSE}% of the close ones. Can you?`);
   await expect(page.locator('.footnote')).toContainText(`tracking data. ${CITE} Players`, { useInnerText: true });
   await expect(page.locator('#scSub .sc-long')).toHaveText(`MLB umps ${CLOSE}% on close calls`);
-  // the manifest, the month file and the stats while the page boots, and no shard before Play (§4.1, §4.2); then the
-  // shard's text, once the start screen is ready and idle
+  // the manifest, the month file and the stats while the page boots, and no shard before Play; then the shard's text,
+  // once the start screen is ready and idle
   await expect.poll(async () => (await loadsOf(page)).length).toBe(4);
   const loads = await loadsOf(page);
 
@@ -69,7 +71,7 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await expect(page.locator('#ucSet')).toHaveText('2026 season');
   await expect(page.locator('#ubFigLabel')).toHaveText('MLB umps on close calls');
   await expect(page.locator('#ubFig')).toHaveText(`${CLOSE}%`);
-  await expect(page.locator('#ubFoot')).toHaveText(`${CITE} The real ump: original calls vs ABS on these pitches.`);
+  await expect(page.locator('#ubFoot')).toHaveText(FOOT);
   // the World Series' footnote counts its real challenges; the season's has no such count
   await expect(page.locator('.cards-foot')).toContainText('ABS truth reconstructed from tracking data. Players', { useInnerText: true });
   // The card paints before the text the start screen fetched is parsed: the parse waits until the page is idle, and the
@@ -224,6 +226,6 @@ test('a card that is up before the stats arrive takes the ump figure when they d
   release();
   await expect(page.locator('#ubFigRow')).toBeVisible();
   await expect(page.locator('#ubFig')).toHaveText(`${CLOSE}%`);
-  await expect(page.locator('#ubFoot')).toHaveText(`${CITE} The real ump: original calls vs ABS on these pitches.`);
+  await expect(page.locator('#ubFoot')).toHaveText(FOOT);
   expect(errors).toEqual([]);
 });
