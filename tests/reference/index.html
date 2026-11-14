@@ -384,7 +384,7 @@ window.addEventListener('error', (e) => fail(`Error: ${e.message} (line ${e.line
 window.addEventListener('unhandledrejection', (e) => fail(`Error: ${(e.reason && e.reason.message) || e.reason}`));
 
 const TEN = window.UE_TEN, POOL = window.UE_POOL;
-if (!TEN || !POOL) { fail('Pitch data is missing. Run "pwsh -File build-data.ps1" next to index.html, then reload.'); return; }
+if (!TEN || !POOL) { fail('Pitch data is missing. The files in tests/reference/data/ are committed, so restore them from git, then reload.'); return; }
 const Q = new URLSearchParams(location.search);
 const STATE = Q.get('state');
 const SELFTEST = Q.get('selftest') === '1';
