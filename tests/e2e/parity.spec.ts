@@ -13,9 +13,10 @@ import { mockupUrl, nextFrames, seedRandom, slugOf, waitReady } from './helpers'
 const SHIPPED_CARD_LIMIT = 0.03;
 // A pixel differs when any of its RGB channels moves by more than this many levels out of 255.
 const CHANNEL_TOLERANCE = 8;
-// The port's longer data credit is deliberate, but it is taller, and the card (and the phone start screen) lay out
-// around it. Giving the mockup's footnotes the port's footnote heights stops that from moving everything else.
-// UE_PARITY_ALIGN=0 compares the untouched pages instead, so the shift the longer credit causes shows in the numbers.
+// The port's data credit differs from the mockup's, so its footnotes can wrap to another height, and the card (and the
+// phone start screen) lay out around them. Giving the mockup's footnotes the port's footnote heights stops that from
+// moving everything else. UE_PARITY_ALIGN=0 compares the untouched pages instead, so any shift the credit causes shows
+// in the numbers.
 const ALIGN_CREDIT = process.env.UE_PARITY_ALIGN !== '0';
 const MODES = ['exact', 'shipped'] as const;
 const VIEWPORTS: readonly Area[] = [
@@ -262,7 +263,7 @@ function markdown(out: string, rows: Row[]): string {
   const lines = [
     '# Mockup and port pixel parity',
     '',
-    `A pixel differs when any RGB channel moves by more than ${CHANNEL_TOLERANCE}/255. Masked leaves out the boxes of \`.footnote\` and \`.cards-foot\` on both pages${ALIGN_CREDIT ? '; before capture the mockup footnotes take the port footnote heights, so the longer credit does not move the rest of the screen' : ''}.`,
+    `A pixel differs when any RGB channel moves by more than ${CHANNEL_TOLERANCE}/255. Masked leaves out the boxes of \`.footnote\` and \`.cards-foot\` on both pages${ALIGN_CREDIT ? '; before capture the mockup footnotes take the port footnote heights, so the different credit does not move the rest of the screen' : ''}.`,
     `Exact routes the port's WebP images to the PNG masters in \`art/\`; shipped uses the built files. Limits outside the masks: no differing pixel at all, except in shipped mode's card states, where up to ${pct(SHIPPED_CARD_LIMIT)} % may differ (the resampled WebP card art).`,
     '',
     `Shots: \`${repoPath(out)}/<mode>/<viewport>/<slug>-{mockup,port,diff}.png\`, where the slug is the state without \`state=\` and with \`&\` and \`=\` turned into \`-\`. In a diff, red marks a differing pixel and amber one inside the mask.`,

@@ -131,7 +131,7 @@ describe('words on the reveal and the card', () => {
     const set = [prep(synthPitch())];
     const text = resultText({ label: WS_LABEL, roundLabel: "Today's Ten", figure: null, set, results: [judged(set[0], 'strike')] });
 
-    expect(CREDIT).toBe('MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.');
+    expect(CREDIT).toBe('MLB Stats API, © MLB Advanced Media, L.P. Not affiliated with MLB.');
     expect(text.split('\n').at(-1)).toContain(CREDIT);
   });
 });

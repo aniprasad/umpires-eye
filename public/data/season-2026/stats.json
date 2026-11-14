@@ -2,8 +2,8 @@
   "format": "umpires-eye.season-stats",
   "version": 1,
   "season": 2026,
-  "build": "97a8f28c432c",
-  "credit": "MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.",
+  "build": "56882356a76c",
+  "credit": "MLB Stats API, © MLB Advanced Media, L.P. Not affiliated with MLB.",
   "truthNote": "abs and marginIn are our reconstruction of the 2026 ABS call from the feed's tracking, not MLB's official ABS output.",
   "games": {
     "total": 2469,
