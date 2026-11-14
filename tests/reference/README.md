@@ -1,0 +1,1 @@
+The approved design prototype of Umpire's Eye, kept as the design reference: the parity and speed tests load it next to the app, in the same browser engine, and compare against it. It isn't part of the app, and it reads its images and fonts from `art/`.

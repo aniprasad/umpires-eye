@@ -1,12 +1,12 @@
-// Builds the shipped assets from the mockup's masters: web-sized WebP images, the fonts and their licences, and the
-// 2026 World Series pitch pool. The masters stay in mockup/ (batter-src.png is source art and never ships).
+// Builds the shipped assets from the masters in art/: web-sized WebP images, the fonts and their licences, and the
+// 2026 World Series pitch pool.
 import { copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const masters = join(root, 'mockup', 'assets');
+const masters = join(root, 'art');
 const out = {
   img: join(root, 'src', 'assets', 'img'),
   fonts: join(root, 'src', 'assets', 'fonts'),
@@ -54,7 +54,7 @@ for (const f of FONTS) {
 }
 for (const f of LICENCES) await copyFile(join(masters, 'fonts', f), join(out.licences, f));
 
-const poolSrc = join(root, 'mockup', 'data', 'pool.json');
+const poolSrc = join(masters, 'data', 'ws-2026-pool.json');
 const poolDst = join(out.data, 'pool.json');
 const pool = JSON.stringify(JSON.parse(await readFile(poolSrc, 'utf8')));
 

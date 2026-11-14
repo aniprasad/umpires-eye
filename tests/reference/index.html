@@ -14,9 +14,9 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
 <meta name="description" content="Be the plate umpire. Real 2026 World Series pitches at real speed from the umpire's slot. Call ball or strike, then see the ABS zone and the real call.">
 <meta name="theme-color" content="#07100c">
 <style>
-@font-face { font-family: "Big Shoulders Display"; src: url("assets/fonts/big-shoulders-display-latin.woff2") format("woff2"); font-weight: 500 900; font-display: swap; }
-@font-face { font-family: "Courier Prime"; src: url("assets/fonts/courier-prime-400-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Courier Prime"; src: url("assets/fonts/courier-prime-700-latin.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Big Shoulders Display"; src: url("../../art/fonts/big-shoulders-display-latin.woff2") format("woff2"); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: "Courier Prime"; src: url("../../art/fonts/courier-prime-400-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Courier Prime"; src: url("../../art/fonts/courier-prime-700-latin.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
   --night: #07100c; --night-2: #0c1913; --night-3: #142219;
@@ -337,7 +337,7 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
       <div class="cards-row">
         <figure class="ucard ucard-front" aria-label="Your umpire card, front">
           <div class="uc-frame">
-            <img src="assets/card-art.png" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
+            <img src="../../art/card-art.png" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
             <div class="uc-badge" aria-label="Accuracy"><span id="ucNum">0</span><small>%</small></div>
             <div class="uc-plate">You</div>
           </div>
@@ -437,7 +437,7 @@ const DOF = { ap: 0.077, focus: 60 };
 const dofBlur = (cam, depth) => cam.F * DOF.ap * Math.abs(1 / Math.max(depth, 0.3) - 1 / DOF.focus);
 // photographic batter, keyed offline from assets/batter-src.png (anchors in batter.png pixels): helmet top,
 // mean sole line, the stance centre between the cleats, and each cleat's centre; one image, mirrored for lefties
-const BATTER_IMG = { src: 'assets/batter.png', top: 123, sole: 1424.5, footX: 404, backX: 72, frontX: 736, stance: 0.9 };
+const BATTER_IMG = { src: '../../art/batter.png', top: 123, sole: 1424.5, footX: 404, backX: 72, frontX: 736, stance: 0.9 };
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -742,8 +742,8 @@ const COL = {
 // far background: 45 ft of batter's eye + wall at 400 ft sets the scale (true angular size, no cheat);
 // metrics measured on each image (rows/columns in image px)
 const BACKDROPS = {
-  wide: { src: 'assets/backdrop-wide.png', wallRow: 502.5, eyeTop: 378, cx: 766, ft: 45, towers: [[88, 125], [387, 222], [1137, 223], [1442, 121]] },
-  old: { src: 'assets/backdrop.png', wallRow: 478, cover: true, towers: [[232, 78], [1303, 78]] },
+  wide: { src: '../../art/backdrop-wide.png', wallRow: 502.5, eyeTop: 378, cx: 766, ft: 45, towers: [[88, 125], [387, 222], [1137, 223], [1442, 121]] },
+  old: { src: '../../art/backdrop.png', wallRow: 478, cover: true, towers: [[232, 78], [1303, 78]] },
 };
 function drawBackdrop(g, cam) {
   const img = IMG.backdrop, bd = IMG.bd;
@@ -2325,7 +2325,7 @@ sizeCanvases();
 if (SELFTEST) { try { selftest(); } catch (e) { fail('Self-test crashed: ' + e.message); } }
 const assets = Promise.all([
   loadImg(IMG.backdrop, BACKDROPS.wide.src).then(() => { IMG.bd = BACKDROPS.wide; }, () => loadImg(IMG.backdrop, BACKDROPS.old.src).then(() => { IMG.bd = BACKDROPS.old; })),
-  loadImg(IMG.card, 'assets/card-art.png'),
+  loadImg(IMG.card, '../../art/card-art.png'),
   loadImg(IMG.bat, BATTER_IMG.src).catch(() => null),          // if it fails, the procedural batter stands in
   document.fonts ? document.fonts.load('800 32px "Big Shoulders Display"').catch(() => null) : null,
 ]);

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +8,7 @@ import { crossing, type Traj } from '../../../src/core/kinematics.ts';
 
 // The mockup's self-test guarantees, kept as a test: the same math must reproduce its validated World Series pool
 // (742 called pitches, 29 of 29 challenges, the ump right on 683). The pool is our own derived file, not an MLB response.
-const file = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'mockup', 'data', 'pool.json');
+const file = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'art', 'data', 'ws-2026-pool.json');
 
 interface MockupPitch {
   id: string;
@@ -21,7 +21,7 @@ interface MockupPitch {
   challenge: object | null;
 }
 
-test('reproduces the mockup World Series pool', { skip: !existsSync(file) && 'mockup/ is not here' }, () => {
+test('reproduces the mockup World Series pool', () => {
   const pitches = (JSON.parse(readFileSync(file, 'utf8')) as { pitches: MockupPitch[] }).pitches;
   const judged = pitches.map((p) => {
     const mid = crossing(p.traj);
