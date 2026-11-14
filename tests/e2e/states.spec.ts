@@ -29,6 +29,7 @@ test("while the month file is slow, Play says it's loading, the panel is busy, a
   await expect(page.locator('#indicator')).toBeHidden();
   await expect(page.locator('#slowHint')).toBeHidden();
   await page.clock.runFor(6_000);
+  await expect(page.locator('#slowHint')).toBeVisible();
   await expect(page.locator('#slowHint')).toHaveText('Still loading. A slow connection can take a while.');
   release();
   await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
