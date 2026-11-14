@@ -6,11 +6,12 @@ import type { PitchSource, TodayResult } from './data/source';
 import { openSource, sourceIdOf } from './data/sources';
 import { isWorldSeries } from './data/ws2026';
 import { bootFlow, dataFailed, wireInput } from './game/flow';
-import { DATE, POOL, SELFTEST, TIMING } from './game/params';
+import { DATE, POOL, SELFTEST, TIMING, WORK } from './game/params';
 import { createWorld, setWorld } from './game/state';
 import { showFailure, showLoading } from './game/states';
 import { BACKDROPS } from './render/backdrop';
 import { IMG, sizeCanvases } from './render/env';
+import { work } from './render/scene';
 import { paintTiming, showSelfTest } from './selftest/page';
 import { showCardFigure } from './ui/card';
 import { CARD, fail, UI } from './ui/dom';
@@ -46,6 +47,7 @@ async function seasonToday(source: PitchSource, dateKey: string, again: () => vo
 
 async function boot(): Promise<void> {
   if (TIMING) showTiming();
+  if (WORK) Object.assign(window, { ueWork: work });
   sizeCanvases(UI.scene);
   wireInput();
   // The images load while the pitches do. Every load settles before the scene starts, and each failure comes back as a
