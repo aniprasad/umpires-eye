@@ -91,6 +91,14 @@ export function render(now: number): void {
   drawReveal(g, cam, P, st);
 }
 
+/** NoToday has no pitch to draw, so the night behind its panel is empty, as it is while the page loads. */
+function clearScene(): void {
+  const g = ctx2d(UI.scene);
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, UI.scene.width, UI.scene.height);
+}
+
 export function beginPitch(i: number, opts: { first?: boolean } = {}): void {
   const prev = G.set[G.i];
 
@@ -445,6 +453,7 @@ function showStart(): void {
   } else {
     UI.startLede.textContent = noTodayLede(dateLabel(w.dateKey), w.source.label);
     UI.btnPlay.textContent = 'Play another ten';
+    clearScene();
     // Another ten is all there is to play, so its shard loads at once (§4.1). The press parses it, so the parse never
     // holds up this screen's first paint.
     if (!saveData()) w.source.prefetch?.();
@@ -544,7 +553,11 @@ export function bootFlow(): void {
         if (G.phase === 'start') w.source.prefetch?.();
       });
     }
-    if (clockDate() !== null) watchMidnight(() => void checkDate());
+    if (clockDate() !== null) {
+      watchMidnight(() => void checkDate());
+      // a midnight while the page booted, after it read the date (§2.2)
+      checkDate();
+    }
   }
   requestAnimationFrame(frame);
 }
