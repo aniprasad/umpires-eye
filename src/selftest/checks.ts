@@ -1,8 +1,11 @@
 // The mockup's ?selftest=1 guarantees, as pure checks. Vitest runs each one; the page prints them at ?selftest=1.
 import { absJudge } from '../core/abs.ts';
+import { varietyProblems } from '../core/daily.ts';
+import { tenProblems } from '../core/deal.ts';
 import { posAt } from '../core/kinematics.ts';
 import { mulberry32 } from '../core/rng.ts';
 import { BALL_R, CLOSE_IN, DEAL_BOX, MID_Y, PLATE_FRONT_Y, PLATE_HALF, RUBBER_Y } from '../core/rules.ts';
+import type { Family } from '../core/schema.ts';
 import { batterDof, batterRig, headSpan } from '../math/batter';
 import { catcherRig, frameOf, frameShift, mittBox, mittProgress, mittState } from '../math/catcher';
 import { CATCH_Y, CROSS_PAD, FRAME, MOUND_H, STANCE, STANCE_MAX } from '../math/constants';
@@ -51,6 +54,14 @@ export function selfTestContext(ws: WorldSeries, todaySet?: readonly PreparedPit
     todaySet: todaySet || ws.today.map(prep),
     lens: createLens(ws.lensPoints),
   };
+}
+
+/**
+ * The season's report covers the date's Ten. The season has no pool in memory, and its pool-wide guarantees (the ABS
+ * truth, the challenges, the flight limit and dealing) are data:validate's, over every shard.
+ */
+export function seasonSelfTestContext(todaySet: readonly PreparedPitch[], lens: Lens): SelfTestCtx {
+  return { pool: todaySet, today: todaySet, deck: [], todaySet, lens };
 }
 
 const f = (v: number, n = 4): string => (v >= 0 ? ' ' : '') + v.toFixed(n);
@@ -110,7 +121,7 @@ function todayPitches(ctx: SelfTestCtx): CheckResult {
       bad++;
       failures.push(`today ${p.id}`);
     }
-    lines.push(`${String(i + 1).padStart(2)} ${p.id.padEnd(12)} G${p.game.seriesGame} ${lastName(p.batter.name).padEnd(9)} ${p.pitchType.code} | edge ${f(r.P.k.judge.marginIn, 2)} in (data ${f(p.edgeMarginIn, 2)}) | truth ${r.truth.padEnd(6)} data ${p.absTruth.padEnd(6)} ump ${p.umpCall.padEnd(6)}${p.challenge ? ' (ABS challenge)' : ''} | dMid x${f(r.dmx)} z${f(r.dmz)} ft | release->plate ${r.P.k.flight.toFixed(3)} s (to mid ${r.P.k.toMid.toFixed(3)}, to mitt ${r.P.k.toCatch.toFixed(3)}) | ${describeFraming(ctx.lens, r.P)} | ${r.ok ? 'PASS' : 'FAIL'}`);
+    lines.push(`${String(i + 1).padStart(2)} ${p.id.padEnd(12)} ${p.game.seriesGame ? `G${p.game.seriesGame} ` : ''}${lastName(p.batter.name).padEnd(9)} ${p.pitchType.code} | edge ${f(r.P.k.judge.marginIn, 2)} in (data ${f(p.edgeMarginIn, 2)}) | truth ${r.truth.padEnd(6)} data ${p.absTruth.padEnd(6)} ump ${p.umpCall.padEnd(6)}${p.challenge ? ' (ABS challenge)' : ''} | dMid x${f(r.dmx)} z${f(r.dmz)} ft | release->plate ${r.P.k.flight.toFixed(3)} s (to mid ${r.P.k.toMid.toFixed(3)}, to mitt ${r.P.k.toCatch.toFixed(3)}) | ${describeFraming(ctx.lens, r.P)} | ${r.ok ? 'PASS' : 'FAIL'}`);
   });
 
   return { lines, failures, stats: { pitches: ctx.today.length, bad } };
@@ -152,6 +163,37 @@ function todayMakeUp(ctx: SelfTestCtx): CheckResult {
   if (tm[0] < 6 || nClose < 7 || nClose > 9 || !challenged || fam.size < 3 || sides.size < 2 || T.some((p) => !playable(p))) failures.push('today deal');
 
   return { lines, failures, stats: { umpRight, umpData, umpAfter, close: nClose, closeBalls: tBalls, challenged, calibratorIn: tm[0], families: fam.size, sides: sides.size } };
+}
+
+/**
+ * The season's Today's Ten: the dealer's rules and the schedule's variety rules (docs/M2-DESIGN.md §2.3, §2.4), as the
+ * build applied them, in the order the file gives. The real ump's tally is whatever the data says.
+ */
+function todayRules(ctx: SelfTestCtx): CheckResult {
+  const T = ctx.today;
+  const cards = T.map((p) => ({
+    id: p.id,
+    seq: p.order,
+    absMarginIn: Math.abs(p.edgeMarginIn),
+    challenged: !!p.challenge,
+    gamePk: p.gamePk,
+    bats: p.batter.side,
+    family: p.pitchType.family as Family,
+    balls: p.countBefore.balls,
+    strikes: p.countBefore.strikes,
+  }));
+  const problems = [...tenProblems(cards), ...varietyProblems(cards)];
+  const umpRight = T.filter((p) => checkPitch(p).truth === p.umpCall).length;
+  const umpData = T.filter((p) => p.umpCorrect).length;
+  const failures = problems.map((p) => `today rules: ${p}`);
+
+  if (umpRight !== umpData) failures.push('today ump count');
+
+  return {
+    lines: [`today: the dealer's and the schedule's rules: ${problems.length ? problems.join('; ') : 'all kept'} | real ump right ${umpRight}/${T.length} on the field (data umpCorrect says ${umpData}/${T.length})`],
+    failures,
+    stats: { problems: problems.length, umpRight, umpData },
+  };
 }
 
 function poolTruth(ctx: SelfTestCtx): CheckResult {
@@ -352,8 +394,11 @@ function camera(ctx: SelfTestCtx): CheckResult {
   const PLAYP = ctx.pool.filter(playable).map(prep);
   const never = ctx.pool.filter((p) => !playable(p));
   const closestNever = Math.min(...never.map((p) => Math.abs(p.edgeMarginIn)));
-  const lines = [`[DEALT] Today's Ten and every "another ten" come from the ${PLAYP.length} of ${ctx.pool.length} pool pitches that cross mid-plate at z ${DEAL_BOX.zMin}-${DEAL_BOX.zMax} ft, |x| < ${DEAL_BOX.xMax} ft (Today's Ten all among them: ${ctx.today.every(playable) ? 'yes' : 'NO'}); never dealt: ${never.length}, closest of those to flipping ${closestNever.toFixed(1)} in`];
-  const failures: string[] = [];
+  const inBox = ctx.today.every(playable);
+  const lines = [ctx.deck.length
+    ? `[DEALT] Today's Ten and every "another ten" come from the ${PLAYP.length} of ${ctx.pool.length} pool pitches that cross mid-plate at z ${DEAL_BOX.zMin}-${DEAL_BOX.zMax} ft, |x| < ${DEAL_BOX.xMax} ft (Today's Ten all among them: ${inBox ? 'yes' : 'NO'}); never dealt: ${never.length}, closest of those to flipping ${closestNever.toFixed(1)} in`
+    : `[DEALT] Today's Ten: all ${ctx.today.length} cross mid-plate at z ${DEAL_BOX.zMin}-${DEAL_BOX.zMax} ft, |x| < ${DEAL_BOX.xMax} ft: ${inBox ? 'yes' : 'NO'}`];
+  const failures: string[] = inBox || ctx.deck.length ? [] : ['today outside the deal box'];
   const stats: Record<string, number> = { dealt: PLAYP.length, neverDealt: never.length, closestNeverIn: closestNever, outOwn: 0, outExtreme: 0, capMinPct: 1e9, helmetMin: 1e9 };
 
   for (const [W, H] of SIZES) {
@@ -640,13 +685,20 @@ export const CHECKS: readonly Check[] = [
   { id: 'picker', name: '"Another ten" picker', run: picker },
 ];
 
-/** Runs every check in the mockup's report order. */
-export function runSelfTest(ctx: SelfTestCtx): { lines: string[]; failures: string[] } {
+/** The season's report: the checks that hold for one date's Ten (seasonSelfTestContext). */
+export const SEASON_CHECKS: readonly Check[] = [
+  ...CHECKS.filter((c) => c.id === 'today'),
+  { id: 'rules', name: "Today's Ten: the dealer's and the schedule's rules, and the real ump's tally", run: todayRules },
+  ...CHECKS.filter((c) => ['hand', 'camera', 'dof', 'mask', 'mitt', 'stance'].includes(c.id)),
+];
+
+/** Runs the checks in the mockup's report order. */
+export function runSelfTest(ctx: SelfTestCtx, checks: readonly Check[] = CHECKS): { lines: string[]; failures: string[] } {
   const lines = ["UMPIRE'S EYE SELF-TEST"];
   const failures: string[] = [];
   const gaps = new Set(['today', 'pool', 'hand', 'camera', 'mitt']);
 
-  for (const c of CHECKS) {
+  for (const c of checks) {
     if (gaps.has(c.id)) lines.push('');
     const r = c.run(ctx);
 
