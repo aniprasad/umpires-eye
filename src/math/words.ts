@@ -168,7 +168,8 @@ export function figureWords(f: UmpFigure | null): FigureWords {
     overall: `${fig} ${f.label}`,
     row: { label: 'MLB umps', value: `${f.pct}%` },
     cite: `${fig}, ${f.label}: ${f.definition}.`,
-    copy: `${fig}, ${f.label}.`,
+    // a copied result leaves the page, and with it the cite, so it says briefly what the figure measures
+    copy: `${fig} against our ABS reconstruction, ${f.label}.`,
   };
 }
 

@@ -12,6 +12,7 @@ import { showFailure, showLoading } from './game/states';
 import { BACKDROPS } from './render/backdrop';
 import { IMG, sizeCanvases } from './render/env';
 import { paintTiming, showSelfTest } from './selftest/page';
+import { showCardFigure } from './ui/card';
 import { CARD, fail, UI } from './ui/dom';
 import { showFigure } from './ui/hud';
 
@@ -65,7 +66,11 @@ async function boot(): Promise<void> {
 
     // a date without a Ten is no failure: the start screen offers Another ten (NoToday)
     setWorld(createWorld(source, isWorldSeries(source) ? await source.today(dateKey) : await seasonToday(source, dateKey)));
-    void figure.then(showFigure);
+    // a card can be up before the figure, as ?state=card's can, so it takes the figure too
+    void figure.then((f) => {
+      showFigure(f);
+      showCardFigure(f);
+    });
   } catch (e) {
     // only the World Series loads anything before it opens, and it keeps M1's failure
     dataFailed(e);

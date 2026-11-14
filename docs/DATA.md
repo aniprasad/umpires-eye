@@ -177,6 +177,7 @@ How the result changes with the method:
   - LCS: 93.28% and 68.93%
   - World Series: 92.05% and 63.41%
 - Our 93.24% uses the ABS zone and rule above. Other sites' accuracy numbers use their own zones and margins, so they aren't directly comparable.
+- **"Season overall" in the app** is this first row: `stats.json`'s `umpVsAbs.overall.pct`, rounded to one decimal, so "MLB umps 93.2%, season overall". Its definition goes with it wherever there's room: "agreement with our ABS reconstruction on 2026 called pitches". Players are compared with the real ump's tally on their own ten, not with this figure. The World Series pool keeps the mockup's cited "≈ 94%" (UmpScorecards via mlb.com).
 
 **Who challenged** (challenges, then how many were overturned):
 - catchers: 5,738, 3,363 overturned (58.61%)
@@ -267,9 +268,13 @@ The build deals 200 rounds from every shard with the mockup's Today's Ten rule a
 
 The shard count comes from a fixed size (`PITCHES_PER_SHARD` = 3,500 in `tools/data/lib/pipeline.ts`), not from measured gzip size. Gzip output can differ between zlib builds, and the files must rebuild identically anywhere. The build fails if manifest, stats and the largest shard would exceed the session budget; `data:validate` holds all three budgets, the month file included.
 
+**Where the budgets are enforced.** `data:validate` checks each month file, the boot fetch and the largest session against the shipped files. `data:test` shows each budget failing on a synthetic schedule, and an e2e test shows that only the manifest, the month file and `stats.json` load before Play is enabled, and no shard. They all run locally: in each session's self-check, and in the lead's gate before every merge. No CI runs them. A page left open past midnight asks for the manifest again for each new date, which usually costs a 304, and loads a month file again only after a new build.
+
 ## Today's Ten
 
 `npm run data:daily` chooses Today's Ten for every date from 2026-11-01 to 2028-12-31 ahead of time, and writes them to `daily/YYYY-MM.json`, one file per month. Everyone on the same date gets the same ten, and once a date may have been served, its ten never changes. `docs/M2-DESIGN.md` §2 has the design.
+
+**In the app.** The page reads the player's local date, asks for that month's file alongside the manifest, and plays the date's ten. So everyone whose clock shows the same date gets the same ten, and at local midnight the start screen moves on to the next date's. Before the first date or after the last, or on an unavailable day, it offers Another ten instead (M2-DESIGN §2.2 and §2.7). `?date=` picks a date.
 
 **The reserve.** A quarter of the pool is held back for the schedule. A pitch is reserved when `unitHash("umpires-eye-2026|daily|" + id)` is below 0.25: `isDailyReserve` in `src/core/daily.ts`.
 - It rests on the ID alone, so the tools and the app agree on it, and a rebuild can't change it.

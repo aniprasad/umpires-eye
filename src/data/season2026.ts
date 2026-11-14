@@ -194,12 +194,21 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     return abortable(manifest, signal);
   };
 
+  /**
+   * The manifest the page goes by from now on. A new build drops the month files read under the old one, whichever
+   * check found it, so a later date reads the new build's file (§2.2).
+   */
+  function useManifest(fresh: Manifest, was: Manifest): void {
+    manifest = Promise.resolve(fresh);
+    if (fresh.build !== was.build) months.clear();
+  }
+
   /** A file, paired with the manifest of its build (§4.3). */
   async function sameBuild<F extends Built>(file: F, refetch: (fresh: Manifest) => Promise<F>, what: string): Promise<F> {
     const known = await theManifest();
     const got = await matchBuild(known, file, { manifest: () => fetchManifest('reload'), file: refetch }, what);
 
-    if (got.manifest !== known) manifest = Promise.resolve(got.manifest);
+    if (got.manifest !== known) useManifest(got.manifest, known);
 
     return got.file;
   }
@@ -223,8 +232,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
 
     // a build check elsewhere may have brought a newer manifest meanwhile; it stands
     if (manifest !== known || fresh.build === was.build) return;
-    manifest = Promise.resolve(fresh);
-    months.clear();
+    useManifest(fresh, was);
   }
 
   async function loadMonth(month: string): Promise<MonthFile> {

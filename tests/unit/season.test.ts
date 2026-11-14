@@ -29,17 +29,18 @@ function read(rows: readonly PitchCells[], over: Record<string, unknown> = {}) {
 /**
  * Serves the season's files under ROOT, the query ignored, unless `answer` has something else to say for an address.
  * It records what each request asked for and how. `rand` picks the shards. A request waits for `hold`, as long as its
- * signal lets it.
+ * signal lets it. `onLine` is what the device says about its connection.
  */
 function serve(
   files: ReadonlyMap<string, unknown> = mini.files,
   answer: (path: string) => Response | undefined = () => undefined,
   rand: () => number = () => 0,
   hold: (path: string) => Promise<void> = () => Promise.resolve(),
+  onLine: () => boolean = () => true,
 ) {
   const asked: string[] = [];
   const net: Net = {
-    onLine: () => true,
+    onLine,
     fetch: async (url, init) => {
       const path = url.slice(ROOT.length);
       const body = files.get(path.split('?')[0]);
@@ -280,6 +281,52 @@ describe('the season source', () => {
     expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'manifest.json no-cache']);
     answer = Response.json({ ...manifest, version: 2 });
     await expect(source.today(mini.date)).rejects.toMatchObject({ kind: 'data', message: expect.stringMatching(/version 2, not/) });
+  });
+
+  it('serves a later date from the month file it has when the check finds the device offline, or the network down', async () => {
+    let online = true;
+    let down = false;
+    const { source, asked } = serve(mini.files, (path) => (down && path === 'manifest.json' ? new Response('Busy', { status: 503 }) : undefined), undefined, undefined, () => online);
+
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    online = false;
+    expect(await source.today(mini.unavailableDate)).toMatchObject({ kind: 'none', reason: 'unavailable' });
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache']);
+    online = true;
+    down = true;
+    vi.useFakeTimers();
+    try {
+      const later = source.today(mini.date);
+
+      await vi.advanceTimersByTimeAsync(2500);
+      expect((await later).kind).toBe('ten');
+    } finally {
+      vi.useRealTimers();
+    }
+    // the check and its two retries, and November from memory
+    expect(asked.slice(2)).toEqual(['manifest.json no-cache', 'manifest.json no-cache', 'manifest.json no-cache']);
+  });
+
+  it("drops the month files when a shard's build check brings a new manifest, so a later date reads the new build's", async () => {
+    const month = mini.files.get('daily/2026-11.json') as Record<string, unknown>;
+    const shard = mini.files.get('shards/00.json') as Record<string, unknown>;
+    let build = '';
+    const { source, asked } = serve(mini.files, (path) => {
+      if (!build) return undefined;
+      if (path === 'manifest.json') return Response.json({ ...manifest, build });
+      if (path.startsWith('shards/')) return Response.json({ ...shard, build });
+
+      return path === 'daily/2026-11.json' ? Response.json({ ...month, build }) : undefined;
+    });
+
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    build = 'new000000000';
+    // the shard is from the new build, so its check asks for the manifest again, past the cache, and takes it
+    await source.deck();
+    expect(asked.slice(2)).toEqual([`${mini.shardUrl} force-cache`, 'manifest.json reload']);
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    // the later date's check finds that build, and November is read again under it
+    expect(asked.slice(4)).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache']);
   });
 
   it("deals Another ten from one shard, loaded on the first deck(): dealable rows only, none of Today's, in file order", async () => {

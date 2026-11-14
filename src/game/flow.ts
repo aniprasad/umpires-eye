@@ -258,17 +258,24 @@ export function startGame(): void {
 
 let dealing = false;
 const AGAIN = 'Play another ten';
+// The Another ten button whose press reloads the page: its deck's data is damaged, or from another build.
+let reloadFrom: HTMLButtonElement | null = null;
 
 /**
  * "Play another ten", on the card or in NoToday: the next ten from the source's decks, with none of Today's Ten and no
  * pitch dealt earlier on this page (§3). Under Save-Data, this is when the season's shard loads. While a deck loads, the
  * button says so (§5.2). A deck that's ready deals before the next paint, so then it never shows. If the deck can't
- * load, the button offers to try again.
+ * load, the button offers to try again; if its data is damaged, a reload, as Broken does (§5.1).
  */
 export async function playAnother(btn: HTMLButtonElement): Promise<void> {
   const w = world();
   let ten: Pitch[];
 
+  if (reloadFrom === btn) {
+    location.reload();
+
+    return;
+  }
   // one deal per press, however long the deck takes
   if (dealing) return;
   dealing = true;
@@ -278,9 +285,13 @@ export async function playAnother(btn: HTMLButtonElement): Promise<void> {
   try {
     ten = await w.another.deal();
   } catch (e) {
-    // a load that failed is the button's to say; anything else is a fault for the error box
-    if (!(e instanceof LoadError)) fail(e instanceof Error ? e.message : String(e));
-    btn.textContent = "Couldn't load more pitches. Try again";
+    // A file that doesn't read right reads the same on a second try, which re-reads the text it has, so only a reload
+    // helps. Its detail, like any fault's, goes to the error box; a load that failed is the button's to say.
+    const damaged = e instanceof LoadError && e.kind === 'data';
+
+    if (damaged || !(e instanceof LoadError)) fail(e instanceof Error ? e.message : String(e));
+    if (damaged) reloadFrom = btn;
+    btn.textContent = damaged ? "Couldn't load more pitches. Reload the page" : "Couldn't load more pitches. Try again";
     announce("Couldn't load more pitches.");
 
     return;
@@ -431,6 +442,8 @@ function showStart(): void {
   const w = world();
 
   endLoading();
+  // the start screen's button is about to say something else, so a press means what it says again
+  if (reloadFrom === UI.btnPlay) reloadFrom = null;
   G.set = w.today;
   G.mode = 'today';
   G.results = [];

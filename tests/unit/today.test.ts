@@ -146,9 +146,9 @@ describe('the ump figure in words (§5.4)', () => {
       overall: 'MLB umps 93.2% season overall',
       row: { label: 'MLB umps', value: '93.2%' },
       cite: 'MLB umps 93.2%, season overall: agreement with our ABS reconstruction on 2026 called pitches.',
-      copy: 'MLB umps 93.2%, season overall.',
+      copy: 'MLB umps 93.2% against our ABS reconstruction, season overall.',
     });
-    expect(copied(measured)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps 93.2%, season overall.`);
+    expect(copied(measured)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps 93.2% against our ABS reconstruction, season overall.`);
   });
 
   it('leaves the figure out when there is none, and the hook asks without a number', () => {

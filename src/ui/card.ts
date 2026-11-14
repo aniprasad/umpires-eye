@@ -97,7 +97,7 @@ export function showCards(instant = false): void {
 }
 
 /** The card back's ump figure row and its citation; without a figure, the row goes and the citation leaves it out. */
-function showCardFigure(f: UmpFigure | null): void {
+export function showCardFigure(f: UmpFigure | null): void {
   const { row, cite } = figureWords(f);
 
   CARD.figRow.hidden = !row;
