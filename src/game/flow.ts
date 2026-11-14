@@ -331,7 +331,8 @@ function tick(now: number): void {
     if (e > replayLength(curP())) {
       setPhase('reveal');
       UI.btnReplay.disabled = false;
-      UI.btnReplay.focus({ preventScroll: true });
+      // on Next, so Space goes on to the next pitch, as its key cap says, rather than into the replay again
+      UI.btnNext.focus({ preventScroll: true });
       window.clearTimeout(G.tAhead);
       G.tAhead = window.setTimeout(paintNext, 400);
     }

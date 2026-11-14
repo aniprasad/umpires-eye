@@ -5,7 +5,7 @@ import { LoadError, type LoadErrorKind } from '../../src/data/source';
 import { sourceIdOf } from '../../src/data/sources';
 import { fromPoolFile, loadWorldSeries, worldSeriesSource, WS_LABEL, WS_TODAY_IDS, type PoolPitch } from '../../src/data/ws2026';
 import { playPoints } from '../../src/math/deal';
-import { fmtHeight, marginPhrase, resultText, toughest } from '../../src/math/words';
+import { countWords, fmtHeight, marginPhrase, resultText, toughest } from '../../src/math/words';
 import { judged } from '../../src/math/flow';
 import { prep } from '../../src/math/kinematics';
 import { poolPitch, synthPitch } from './fixtures';
@@ -105,6 +105,11 @@ describe('words on the reveal and the card', () => {
   it('writes heights the way a matchup card does', () => {
     expect(fmtHeight(6.0833)).toBe('6′1″');
     expect(fmtHeight(5.9999)).toBe('6′0″');
+  });
+
+  it("says the indicator's count with one ball, strike or out where there's one", () => {
+    expect(countWords(1, 1, 1)).toBe('Count 1 ball, 1 strike, 1 out');
+    expect(countWords(0, 2, 3)).toBe('Count 0 balls, 2 strikes, 3 outs');
   });
 
   it('names the edge a close strike caught, and which way a ball missed', () => {

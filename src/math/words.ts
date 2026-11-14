@@ -35,6 +35,12 @@ export function fmtHeight(h: number): string {
 
 export const callWord = (c: CallOrNone): string => (c === 'none' ? 'No call' : cap1(c));
 
+const counted = (n: number, what: string): string => `${n} ${what}${n === 1 ? '' : 's'}`;
+
+/** The indicator's count, as a screen reader hears it. */
+export const countWords = (balls: number, strikes: number, outs: number): string =>
+  `Count ${counted(balls, 'ball')}, ${counted(strikes, 'strike')}, ${counted(outs, 'out')}`;
+
 /** The reveal's margin line: which edge it caught, or which way it missed, and by how much. */
 export function marginPhrase(P: PreparedPitch): string {
   const m = P.k.judge.marginIn;
