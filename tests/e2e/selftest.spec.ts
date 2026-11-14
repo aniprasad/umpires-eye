@@ -32,7 +32,7 @@ async function expectPass(page: Page, testInfo: TestInfo, url: string, source: s
 
 test('the self-test page passes', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
-  await expectPass(page, testInfo, './?selftest=1', "the World Series pool, with the mockup's figures");
+  await expectPass(page, testInfo, './?selftest=1', 'the World Series pool, with every check');
 });
 
 // On the shipped season files: the self-test checks the data the page plays, as the World Series' does.
