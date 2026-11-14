@@ -4,9 +4,10 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { seasonMini } from '../fixtures/season-mini';
 import { activeId, callPitch, trackErrors } from './helpers';
-import { loadsOf, PAST_IDLE_MS, parsesOf, saveData, serveSeason, shards, textsOf, watchLoads } from './season-data';
+import { DATA, errorsBut, loadsOf, PAST_IDLE_MS, parsesOf, saveData, serveSeason, shards, textsOf, watchLoads } from './season-data';
 
 const cal = seasonMini({ calendar: true });
+const DECEMBER = 'daily/2026-12.json';
 const tenOf = (date: string): string => {
   const ids = cal.days.get(date);
 
@@ -198,6 +199,48 @@ test.describe('in Los Angeles', () => {
     await page.clock.fastForward(60_000);
     await expectTen(page, '2026-11-16');
     await expect(page.locator('.indicator')).toBeVisible();
+  });
+
+  test("a midnight whose month won't load shows Failed, with nothing in the error box, and Try again loads the new date", async ({ page }) => {
+    const { errors, allowed } = errorsBut(page, DECEMBER);
+    const play = page.locator('#btnPlay');
+    let missing = true;
+
+    await serveSeason(page, cal);
+    await page.route((url) => url.pathname.endsWith(DATA + DECEMBER), (route) => (missing ? route.fulfill({ status: 404, body: 'Not Found' }) : route.fallback()));
+    await openAt(page, '2026-11-30T23:59:00-08:00');
+    await expectTen(page, '2026-11-30');
+    await page.clock.fastForward(60_000);
+    await expect(page.locator('html')).toHaveAttribute('data-error', 'missing');
+    await expect(play).toHaveText('Try again');
+    await expect(play).toBeFocused();
+    missing = false;
+    await play.click();
+    await expectTen(page, '2026-12-01');
+    await expect(page.locator('#err')).toBeHidden();
+    expect(allowed).toHaveLength(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('Broken at a midnight lasts until a reload, even when the page comes back into view on a date that would load', async ({ page }) => {
+    const errors = trackErrors(page);
+    const december = cal.files.get(DECEMBER) as Record<string, unknown>;
+    let damaged = true;
+
+    await serveSeason(page, cal);
+    await page.route((url) => url.pathname.endsWith(DATA + DECEMBER), (route) => (damaged ? route.fulfill({ json: { ...december, season: null } }) : route.fallback()));
+    await openAt(page, '2026-11-30T23:59:00-08:00');
+    await expectTen(page, '2026-11-30');
+    await page.clock.fastForward(60_000);
+    await expect(page.locator('html')).toHaveAttribute('data-error', 'data');
+    await expect(page.locator('#err')).toBeVisible();
+    damaged = false;
+    await page.clock.setSystemTime(new Date('2026-12-02T09:00:00-08:00'));
+    // a page that comes back into view checks its date at once, so a switch would already be loading here
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(await page.locator('html').getAttribute('data-error')).toBe('data');
+    await expect(page.locator('#btnPlay')).toHaveText('Reload');
+    expect(errors).toEqual([]);
   });
 
   test('?date= keeps its date when midnight comes, and when Play is pressed', async ({ page }) => {
