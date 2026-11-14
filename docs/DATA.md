@@ -46,7 +46,7 @@ Left out:
 
 | What | Count | Why |
 |---|---|---|
-| `*B`, ball in the dirt | 15,142 | Nobody needs an eye to call these; the mockup leaves them out too |
+| `*B`, ball in the dirt | 15,142 | Nobody needs an eye to call these; the design reference page in `tests/reference/` leaves them out too |
 | Called pitches without tracking | 192 | No trajectory or zone to judge |
 | Automatic balls and strikes | 2,347 | Pitch-clock and timeout violations and intentional balls are `no_pitch` events, not pitches. They still move the count, which the build keeps. |
 
@@ -117,20 +117,20 @@ Each pitch stores its plate umpire in `umpire`. The names come from the schedule
 
 ## The ABS model
 
-The model is the mockup's, unchanged. It matched 29 of 29 World Series challenges.
+The model is the design reference's, unchanged. It matched 29 of 29 World Series challenges.
 
 - **Zone:** 17 in wide (|x| ≤ 8.5 in). Top and bottom come from the feed's `strikeZoneTop`/`strikeZoneBottom`, which are 53.5% and 27% of the batter's height.
 - **Where:** at mid-plate, y = 8.5/12 ft. The build re-integrates the feed's constant-acceleration fit, p(t) = p0 + v0·t + ½·a·t² with t = 0 at y0 = 50 ft, to find where the ball's centre crosses that plane.
 - **Rule:** a strike if any part of the ball (radius 1.45 in) touches the zone. That is, the distance from the ball's centre to the zone rectangle is at most the radius, so the corners are rounded.
 - **`marginIn`** = radius − signed distance from the ball's centre to the zone. It's how far the ball would have to move to flip the call: positive for strikes, negative for balls.
 - **Dealable** means the app can deal the pitch without widening its lens, and can show it as it happened:
-  - the mockup's rule: the mid-plate crossing has 0.9 < z < 4.5 ft and |x| < 1.5 ft (`DEAL_BOX`);
+  - the design reference's rule: the mid-plate crossing has 0.9 < z < 4.5 ft and |x| < 1.5 ft (`DEAL_BOX`);
   - the release extension and speed are known, so it can be drawn;
   - it reaches the front of the plate within 0.6 s of release (`MAX_FLIGHT_S`). An eephus or a position player's lob arcs high and slow enough to leave the app's frame;
   - the batter and pitcher are certain;
   - the count before the pitch is a possible one.
 
-The code is `src/core/kinematics.ts` and `src/core/abs.ts` (`tAtY`, `crossing`, `flightTime`, `absJudge`, `inDealBox`), which the app shares, and `tools/data/lib/judge.ts`. They're checked against the mockup's 742 pitches in `tools/data/test/mockup.test.ts`.
+The code is `src/core/kinematics.ts` and `src/core/abs.ts` (`tAtY`, `crossing`, `flightTime`, `absJudge`, `inDealBox`), which the app shares, and `tools/data/lib/judge.ts`. They're checked against the World Series pool's 742 pitches in `tools/data/test/mockup.test.ts`.
 
 ## Validation
 
@@ -177,7 +177,7 @@ How the result changes with the method:
   - LCS: 93.28% and 68.93%
   - World Series: 92.05% and 63.41%
 - Our 93.24% uses the ABS zone and rule above. Other sites' accuracy numbers use their own zones and margins, so they aren't directly comparable.
-- **In the app**, the first two rows are `stats.json`'s `umpVsAbs.overall.pct` and `umpVsAbs.close.pct`, rounded to one decimal. The hook gives both: "MLB umpires got 93.2% of calls right in 2026, but only 68.3% of the close ones." Wherever a player's score is set against the umps (the score chip, the verdict, the card and Copy result), the figure is "MLB umps 68.3% on close calls", since eight of each ten's pitches are close calls; the round's other two are a near call and a calibrator. The citation defines both: "within 1.5 in of the zone's edge" and "agreement with our ABS reconstruction on 2026 called pitches". A `stats.json` without the close row falls back to the overall figure, never beside "Close calls". The World Series pool keeps the mockup's cited "≈ 94%" (UmpScorecards via mlb.com).
+- **In the app**, the first two rows are `stats.json`'s `umpVsAbs.overall.pct` and `umpVsAbs.close.pct`, rounded to one decimal. The hook gives both: "MLB umpires got 93.2% of calls right in 2026, but only 68.3% of the close ones." Wherever a player's score is set against the umps (the score chip, the verdict, the card and Copy result), the figure is "MLB umps 68.3% on close calls", since eight of each ten's pitches are close calls; the round's other two are a near call and a calibrator. The citation defines both: "within 1.5 in of the zone's edge" and "agreement with our ABS reconstruction on 2026 called pitches". A `stats.json` without the close row falls back to the overall figure, never beside "Close calls". The World Series pool keeps the design reference's cited "≈ 94%" (UmpScorecards via mlb.com).
 
 **Who challenged** (challenges, then how many were overturned):
 - catchers: 5,738, 3,363 overturned (58.61%)
@@ -247,7 +247,7 @@ How to read the table:
 - Within a shard, pitches are in played order.
 - Each shard has 2,718–2,720 close calls (325 or 326 of them challenged), 339–341 near calls and 339 or 340 calibrators.
 
-The build deals 200 rounds from every shard with the mockup's Today's Ten rule and fails if any shard can't deal a full ten. The rule:
+The build deals 200 rounds from every shard with the design reference's Today's Ten rule and fails if any shard can't deal a full ten. The rule:
 - 1 calibrator;
 - 8 pitches within 1.5 in, at least one of them challenged;
 - 1 within 4.5 in;

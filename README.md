@@ -12,7 +12,7 @@ Call real MLB pitches from the plate umpire's eye, at real speed. Then see the A
 - Call each pitch: **S** or **→** for a strike, **B** or **←** for a ball, or tap **Strike** or **Ball**. The call window opens when the ball leaves the pitcher's hand and closes 1.5 s after the catch; if it runs out, the pitch counts as a miss.
 - Then the reveal: the ABS call (our reconstruction of the zone MLB uses for challenges), the call the real umpire made, and yours. **Watch it slow** (**R**) replays the pitch at a quarter of its speed, and **Next pitch** (**Space** or **Enter**) goes on.
 - After ten pitches comes your umpire card: your calls against the real umpire's on the same pitches, and against how often MLB's umpires got the close ones right.
-- **Today's Ten** is the same ten for everyone whose clock shows the same date, and it changes at local midnight. **Another ten** deals a fresh set from the whole season.
+- **Today's Ten** is the same ten for everyone whose clock shows the same date, and it changes at local midnight. **Another ten** deals a fresh set from the season, and never a pitch held back for a future Today's Ten.
 
 The ABS call is our reconstruction, and the players, field and catch are illustrations. [How it works](docs/HOW-IT-WORKS.md) explains the whole path, from MLB's Stats API to the pixels.
 
@@ -88,4 +88,6 @@ The workflows in `.github/workflows/` (checks, and a GitHub Pages deploy) run on
 
 ## Licence
 
-The code is under the MIT licence: see [LICENSE](LICENSE). The fonts keep their own licence, and the MLB data stays under MLB's terms above.
+- The code, and the AI-generated art (the images in `art/` and the copies built from them), are under the MIT licence: see [LICENSE](LICENSE).
+- The fonts are under the SIL Open Font License; its texts are in `art/fonts/`.
+- The pitch data, and the screenshots in `docs/img/` that show it, fall under MLB's terms, quoted in [The data](#the-data).
