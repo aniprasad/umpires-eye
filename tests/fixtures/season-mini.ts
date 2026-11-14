@@ -314,7 +314,14 @@ export function seasonMini({ shards: count = 1, calendar = false }: SeasonMiniOp
   const tenIds = ten.map((c) => c.id);
   const otherIds = reserve.map((c) => c.id).filter((id) => !tenIds.includes(id)).slice(0, 10);
   const agree = rows.filter((r) => r.ump === r.abs).length;
-  const stats = { umpVsAbs: { overall: { agree, total: rows.length, pct: round((100 * agree) / rows.length, 2) } } };
+  const close = rows.filter((r) => Math.abs(Number(r.marginIn)) <= CLOSE_IN);
+  const closeAgree = close.filter((r) => r.ump === r.abs).length;
+  const stats = {
+    umpVsAbs: {
+      overall: { agree, total: rows.length, pct: round((100 * agree) / rows.length, 2) },
+      close: { withinIn: CLOSE_IN, agree: closeAgree, total: close.length, pct: round((100 * closeAgree) / close.length, 2) },
+    },
+  };
   // the build id hashes the shards' and the stats' content before any of them is stamped with it
   const build = sha256([...parts.map(tablesFor), stats]).slice(0, 12);
   const shards = parts.map((part, i) => {

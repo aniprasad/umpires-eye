@@ -41,11 +41,14 @@ interface MonthFile extends Rows {
 interface Stats extends Built {
   readonly season: number;
   readonly pct: number;
+  readonly close: { readonly pct: number; readonly withinIn: number } | null;
 }
 
 type Doc = Readonly<Record<string, unknown>>;
 
 const isRecord = (v: unknown): v is Doc => typeof v === 'object' && v !== null && !Array.isArray(v);
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const tenth = (x: number): number => Math.round(x * 10) / 10;
 const show = (v: unknown): string => (v === undefined ? 'missing' : JSON.stringify(v));
 const broken = (what: string, why: string): LoadError => new LoadError('data', `${what[0]?.toUpperCase()}${what.slice(1)} ${why}.`);
 const isMonthMeta = (v: unknown): v is MonthMeta => isRecord(v) && typeof v.month === 'string' && typeof v.file === 'string';
@@ -99,14 +102,17 @@ function readMonth(body: unknown, what: string): MonthFile {
 
 function readStats(body: unknown): Stats {
   const d: Doc = isRecord(body) ? body : {};
-  const overall: Doc = isRecord(d.umpVsAbs) && isRecord(d.umpVsAbs.overall) ? d.umpVsAbs.overall : {};
+  const vs: Doc = isRecord(d.umpVsAbs) ? d.umpVsAbs : {};
+  const overall: Doc = isRecord(vs.overall) ? vs.overall : {};
+  const close: Doc = isRecord(vs.close) ? vs.close : {};
 
   if (d.format !== STATS_FORMAT || d.version !== FORMAT_VERSION) throw broken(STATS, `are ${show(d.format)} version ${show(d.version)}, not ${STATS_FORMAT} version ${FORMAT_VERSION}`);
-  if (typeof d.build !== 'string' || typeof d.season !== 'number' || typeof overall.pct !== 'number' || !Number.isFinite(overall.pct)) {
+  if (typeof d.build !== 'string' || typeof d.season !== 'number' || !finite(overall.pct)) {
     throw broken(STATS, 'have no build id, season or overall agreement');
   }
 
-  return { build: d.build, season: d.season, pct: overall.pct };
+  // the close calls are optional: without them, the copy keeps the overall figure's words
+  return { build: d.build, season: d.season, pct: overall.pct, close: finite(close.pct) && finite(close.withinIn) ? { pct: close.pct, withinIn: close.withinIn } : null };
 }
 
 function dayOf(month: MonthFile, dateKey: string, what: string): DailyDay | undefined {
@@ -361,11 +367,12 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     const stats = await sameBuild(await read('stats.json'), (fresh) => read(versioned('stats.json', fresh.build)), STATS);
 
     return {
-      pct: Math.round(stats.pct * 10) / 10,
+      pct: tenth(stats.pct),
       label: 'season overall',
       definition: `agreement with our ABS reconstruction on ${stats.season} called pitches`,
       approx: false,
       season: stats.season,
+      ...(stats.close ? { close: { pct: tenth(stats.close.pct), withinIn: stats.close.withinIn } } : {}),
     };
   });
 

@@ -92,7 +92,11 @@ export function showCards(instant = false): void {
   CARD.root.hidden = false;
   CARD.root.classList.toggle('enter', !instant && !REDUCED);
   CARD.root.scrollTop = 0;
-  if (!instant) CARD.copy.focus({ preventScroll: true });
+  if (!instant) {
+    CARD.copy.focus({ preventScroll: true });
+    // a short screen leaves the actions below the fold, and focus mustn't land out of sight (the M3 review's finding 4)
+    if (CARD.copy.getBoundingClientRect().bottom > innerHeight) CARD.copy.scrollIntoView({ block: 'end' });
+  }
   announce(`Round complete. You called ${right} of ${n} right, ${pct} percent. The real ump got ${ump} of ${n}.`);
 }
 

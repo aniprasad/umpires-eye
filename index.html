@@ -13,6 +13,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
 <title>Umpire's Eye: call real 2026 MLB pitches</title>
 <meta name="description" content="Be the plate umpire. Real pitches from the 2026 MLB season at real speed from the umpire's slot, with a new Today's Ten every day. Call ball or strike, then see the ABS zone and the real call.">
 <meta name="theme-color" content="#07100c">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
@@ -35,12 +36,12 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
   </header>
 
   <div class="indicator" id="indicator" role="group" aria-label="Umpire indicator">
-    <div class="ind-wheels">
+    <div class="ind-wheels" aria-hidden="true">
       <div class="wheel"><span class="lbl">B</span><span class="win"><span class="digits" id="wB"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
       <div class="wheel"><span class="lbl">S</span><span class="win"><span class="digits" id="wS"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
       <div class="wheel"><span class="lbl">O</span><span class="win"><span class="digits" id="wO"><span>0</span><span>1</span><span>2</span><span>3</span></span></span></div>
     </div>
-    <div class="ind-foot"><span>Pitch</span><b id="indPitch">1/10</b></div>
+    <div class="ind-foot" aria-hidden="true"><span>Pitch</span><b id="indPitch">1/10</b></div>
     <div class="ind-clock" aria-hidden="true"><i id="indClock"></i></div>
     <span class="sr-only" id="indText">Count 0 and 0, 0 outs</span>
   </div>
@@ -76,6 +77,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
       </ul>
       <button class="btn-play" id="btnPlay" type="button" disabled>Loading the ballpark</button>
       <p class="slow" id="slowHint" hidden>Still loading. A slow connection can take a while.</p>
+      <p class="rotate-hint">Turn your phone upright for the best view.</p>
     </div>
     <p class="footnote">Real pitches: %DATA_CREDIT% ABS truth reconstructed from tracking data<span class="ws-only" hidden> and matches all 29 real challenges in the Series</span>.<span id="figCite" hidden></span> Players, field and catch are illustrations.</p>
   </section>
@@ -86,7 +88,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
       <div class="cards-row">
         <figure class="ucard ucard-front" aria-label="Your umpire card, front">
           <div class="uc-frame">
-            <img id="ucArt" src="./src/assets/img/card-art-1024.webp" srcset="./src/assets/img/card-art-600.webp 600w, ./src/assets/img/card-art-1024.webp 1024w" sizes="286px" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
+            <img id="ucArt" src="./src/assets/img/card-art-1024.webp" srcset="./src/assets/img/card-art-600.webp 600w, ./src/assets/img/card-art-860.webp 860w, ./src/assets/img/card-art-1024.webp 1024w" sizes="286px" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
             <div class="uc-badge" aria-label="Accuracy"><span id="ucNum">0</span><small>%</small></div>
             <div class="uc-plate">You</div>
           </div>
@@ -118,9 +120,73 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
   </section>
   <p id="live" class="sr-only" aria-live="polite"></p>
 </div>
-<pre id="err" role="alert" hidden></pre>
+<div class="err-wrap">
+  <pre id="err" role="alert" hidden></pre>
+  <button class="err-close" id="errClose" type="button" aria-label="Dismiss the error">×</button>
+</div>
 <pre id="selftest" hidden></pre>
 <noscript><p style="padding:24px">Umpire's Eye needs JavaScript to replay the pitches.</p></noscript>
+<script>
+  // Before the modules, so that an error while they load still reaches the error box, and the start screen offers a
+  // reload rather than loading for good (the M1 review's N12). Once the main module runs, an error is only reported.
+  (function () {
+    var loading = true;
+    var err = document.getElementById('err');
+    var close = document.getElementById('errClose');
+    var back = null;
+
+    // Another site's script, such as one an extension adds to every page, isn't ours to report, and the browser often
+    // hides its error as a bare "Script error." (the M3 review's code risk 1).
+    function ours(url) {
+      try {
+        return new URL(url, location.href).origin === location.origin;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function report(msg) {
+      var play = document.getElementById('btnPlay');
+      var lede = "The game didn't load. Reload the page.";
+
+      err.hidden = false;
+      err.textContent += msg + '\n';
+      if (!loading) return;
+      loading = false;
+      document.documentElement.dataset.ready = 'error';
+      document.documentElement.dataset.error = 'app';
+      document.getElementById('startLede').textContent = lede;
+      document.getElementById('live').textContent = lede;
+      play.textContent = 'Reload';
+      play.disabled = false;
+      play.onclick = function () { location.reload(); };
+      play.focus();
+    }
+
+    addEventListener('ue:running', function () { loading = false; });
+    // in the capture phase, to hear a script that fails to load as well; an image that fails is the app's to report
+    addEventListener('error', function (e) {
+      if (e.target === window) {
+        if (e.filename ? ours(e.filename) : e.message !== 'Script error.') report('Error: ' + e.message + ' (line ' + e.lineno + ')');
+      } else if (e.target instanceof HTMLScriptElement && ours(e.target.src)) report('Could not load ' + e.target.src);
+    }, true);
+    addEventListener('unhandledrejection', function (e) {
+      report('Error: ' + (e.reason instanceof Error ? e.reason.message : String(e.reason)));
+    });
+
+    // Closing the box clears it, so a later error shows on its own; keyboard focus goes back to where it came from.
+    close.addEventListener('focus', function (e) { back = e.relatedTarget; });
+    close.addEventListener('click', function () {
+      var had = document.activeElement === close;
+
+      err.hidden = true;
+      err.textContent = '';
+      if (!had) return;
+      if (back && back.isConnected) back.focus();
+      if (document.activeElement === close || document.activeElement === document.body) document.getElementById('app').focus();
+    });
+  })();
+</script>
 <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

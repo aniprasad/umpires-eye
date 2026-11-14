@@ -15,12 +15,14 @@ const out = {
 };
 
 // The backdrop and batter keep their full resolution: the renderer's art metrics (wall row, cleats, helmet top) are
-// in image pixels. The card art is shown about 286 px wide, so 600w covers DPR 2 and 1024w covers DPR 3.
+// in image pixels. The card art is shown about 286 px wide, so 600w covers DPR 2, 860w covers DPR 3 (858 px), which
+// most phones are, and 1024w anything sharper.
 const IMAGES = [
   { from: 'backdrop-wide.png', to: 'backdrop-wide.webp', webp: { quality: 80, smartSubsample: true } },
   { from: 'backdrop.png', to: 'backdrop.webp', webp: { quality: 75, smartSubsample: true } },
   { from: 'batter.png', to: 'batter.webp', webp: { quality: 85, alphaQuality: 90 } },
   { from: 'card-art.png', to: 'card-art-1024.webp', width: 1024, webp: { quality: 80 } },
+  { from: 'card-art.png', to: 'card-art-860.webp', width: 860, webp: { quality: 80 } },
   { from: 'card-art.png', to: 'card-art-600.webp', width: 600, webp: { quality: 80 } },
 ];
 const FONTS = ['big-shoulders-display-latin.woff2', 'courier-prime-400-latin.woff2', 'courier-prime-700-latin.woff2'];

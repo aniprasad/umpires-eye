@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import type { Area, Box } from './helpers';
 import {
   attachShot,
@@ -23,6 +24,7 @@ import { seasonMini } from '../fixtures/season-mini';
 import { DATA, errorsBut, hold, mini, saveData, serveSeason } from './season-data';
 
 const MONTH = 'daily/2026-11.json';
+const CLOSE = Math.round((mini.files.get('stats.json') as { umpVsAbs: { close: { pct: number } } }).umpVsAbs.close.pct * 10) / 10;
 
 const LAYOUTS = [
   { state: 'state=pitch&i=3&t=0.2', left: '#btnBall', right: '#btnStrike' },
@@ -35,6 +37,13 @@ function expectCorner(box: Box, area: Area, side: 'left' | 'right', label: strin
 
   expect.soft(gap, `${label} hugs the ${side} edge`).toBeLessThan(area.width * 0.1);
   expect.soft(area.height - (box.y + box.height), `${label} sits at the bottom`).toBeLessThan(area.height * 0.1);
+}
+
+/** The phone on its side: the same screen, wider than tall. */
+async function turn(page: Page): Promise<void> {
+  const { width, height } = viewportOf(page);
+
+  await page.setViewportSize({ width: height, height: width });
 }
 
 test('a round by touch ends on a card that scrolls to Play another ten', async ({ page }, testInfo) => {
@@ -119,6 +128,146 @@ for (const { state, left, right } of LAYOUTS) {
     expect(errors).toEqual([]);
   });
 }
+
+// The M3 review's findings 8 and 10: a touch phone has no keys to press, and the HUD, with nothing to show yet, sat
+// behind the start card's title.
+test('on a touch phone, the start screen has no key caps and no HUD behind its title, and the HUD comes back for the pitch', async ({ page }) => {
+  const errors = trackErrors(page);
+
+  await serveSeason(page);
+  await page.goto(`./?date=${mini.date}`);
+  await waitReady(page);
+  await expect(page.locator('#btnPlay')).toBeVisible();
+  await expect(page.locator('.keys')).toBeHidden();
+  await expect(page.locator('.rotate-hint')).toBeHidden();
+  await expect(page.locator('#matchup')).toBeHidden();
+  await expect(page.locator('#scoreChip')).toBeHidden();
+  await expect(page.locator('#indicator')).toBeHidden();
+  await expect(page.locator('#btnBall')).toBeHidden();
+  await page.locator('#btnPlay').tap();
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+  await expect(page.locator('#matchup')).toBeVisible();
+  await expect(page.locator('#btnBall kbd')).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+// The M3 review's finding 4: a phone's card scrolls a screen or more, and its actions stay in reach.
+for (const turned of [false, true]) {
+  test(`the card's actions stay in reach as it scrolls${turned ? ', with the phone on its side' : ''}`, async ({ page }, testInfo) => {
+    const errors = trackErrors(page);
+    const actions = [page.locator('#btnCopy'), page.locator('#btnAgain')];
+
+    if (turned) await turn(page);
+    await page.goto('./?pool=ws&state=card&correct=7');
+    await waitReady(page);
+    for (const share of [0, 0.5, 1]) {
+      await page.locator('#cards').evaluate((el, s) => {
+        el.scrollTop = s * (el.scrollHeight - el.clientHeight);
+      }, share);
+      for (const button of actions) await expect(button).toBeInViewport({ ratio: 1 });
+      if (share === 0) await attachShot(page, testInfo, 'card-top');
+    }
+    // at the bottom, they're back in their place, above the credit
+    expectApart(await boxOf(page, '.cards-actions'), await boxOf(page, '.cards-foot'), '.cards-actions and .cards-foot');
+    expect(errors).toEqual([]);
+  });
+}
+
+// The M3 review's finding 2: on its side, a phone is about 390 px tall. The start card scrolls with its credit after
+// it and suggests turning upright; a pitch fits as it is, so nothing stops play.
+test('on its side, the start card scrolls clear of its credit and suggests turning upright, and a pitch still fits', async ({ page }, testInfo) => {
+  const errors = trackErrors(page);
+
+  await turn(page);
+  await page.goto('./?pool=ws');
+  await waitReady(page);
+  await attachShot(page, testInfo, 'turned-start');
+  await expect(page.locator('.rotate-hint')).toBeVisible();
+  await expect(page.locator('#matchup')).toBeHidden();
+  await expect(page.locator('#indicator')).toBeHidden();
+  expectApart(await boxOf(page, '#btnPlay'), await boxOf(page, '.footnote'), '#btnPlay and .footnote');
+  await page.locator('#btnPlay').tap();
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+  await attachShot(page, testInfo, 'turned-pitch');
+
+  const area = viewportOf(page);
+  const ball = await boxOf(page, '#btnBall');
+  const strike = await boxOf(page, '#btnStrike');
+  const indicator = await boxOf(page, '#indicator');
+
+  for (const [box, label] of [[ball, '#btnBall'], [strike, '#btnStrike'], [indicator, '#indicator']] as const) expectInside(box, area, label);
+  expectApart(ball, strike, '#btnBall and #btnStrike');
+  expectApart(ball, indicator, '#btnBall and #indicator');
+  expectApart(strike, indicator, '#btnStrike and #indicator');
+  expect(await horizontalOverflow(page)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+// M3's phone measurements: the static paint for a new stance, raster included, from the self-test over a date's Ten;
+// and what the page loads, from ?timing=1's readout, which the owner can also read on a real phone.
+test('measures the paint for a new stance and what the page loads, and ?timing=1 shows them', async ({ page }, testInfo) => {
+  test.setTimeout(150_000);
+
+  const report = page.locator('#selftest');
+  const timing = page.locator('#timing');
+
+  // the readout first, while the cache is empty, so it counts every file
+  await page.goto('./?date=2026-11-14&timing=1');
+  await waitReady(page);
+  // and the shard the start screen fetches once it's idle
+  await expect.poll(() => page.evaluate(() => performance.getEntriesByType('resource').some((e) => e.name.includes('/shards/'))), { timeout: 30_000 }).toBe(true);
+  await expect(timing).toContainText(/static paint per new stance: last \d+ ms/);
+  // the shard alone is over 100 KB
+  await expect(timing).toContainText(/data \d{3,}/);
+  await expect(timing).toHaveAttribute('aria-hidden', 'true');
+  const readout = (await timing.textContent()) ?? '';
+
+  await page.goto('./?date=2026-11-14&selftest=1');
+  await expect(report).toContainText('[STANCE] static layers', { timeout: 120_000 });
+  const stance = /\[STANCE\] static layers[^\n]*/.exec((await report.textContent()) ?? '')?.[0] ?? '';
+
+  testInfo.annotations.push({ type: 'stance', description: stance }, { type: 'timing', description: readout });
+  console.log(`MEASURED ${testInfo.project.name}\n${stance}\n${readout}`);
+  expect(stance).toMatch(/\d+-\d+ ms to paint \(mean \d+\)/);
+  expect(readout).toMatch(/images [1-9]\d*, data [1-9]\d*, code [1-9]\d*/);
+});
+
+// The M3 review's finding 1: the season sets a score against the umps' close calls, which takes more words.
+test("the season's close-call figure fits a phone: Play in view, the chip says close calls, and the card's row keeps one line", async ({ page }, testInfo) => {
+  const errors = trackErrors(page);
+  const label = page.locator('#ubFigLabel');
+
+  await serveSeason(page);
+  await page.goto(`./?date=${mini.date}`);
+  await waitReady(page);
+  await expect(page.locator('#hook')).toHaveText(/, but only [\d.]+% of the close ones\. Can you\?$/);
+  await attachShot(page, testInfo, 'season-start');
+  await expect(page.locator('#btnPlay')).toBeInViewport();
+  await page.goto(`./?date=${mini.date}&state=pitch&i=3&t=0.2`);
+  await waitReady(page);
+  await expect(page.locator('#scSub .sc-short .sc-ph')).toHaveText(['Close calls', `MLB ${CLOSE}%`]);
+  await attachShot(page, testInfo, 'season-chip');
+
+  const area = viewportOf(page);
+  const chip = await boxOf(page, '#scoreChip');
+
+  expectInside(chip, area, '#scoreChip');
+  expectApart(await boxOf(page, '#matchup'), chip, '#matchup and #scoreChip');
+  await page.goto(`./?date=${mini.date}&state=card&correct=7`);
+  await waitReady(page);
+  await expect(label).toHaveText('MLB umps on close calls');
+  await attachShot(page, testInfo, 'season-card');
+  // its height over its height on one unbroken line
+  expect(await label.evaluate((el: HTMLElement) => {
+    const height = el.offsetHeight;
+
+    el.style.whiteSpace = 'nowrap';
+
+    return Math.round(height / el.offsetHeight);
+  })).toBe(1);
+  expect(await horizontalOverflow(page)).toEqual([]);
+  expect(errors).toEqual([]);
+});
 
 test("the season card's set line stays on two lines, for any date and for Another ten", async ({ page }) => {
   const errors = trackErrors(page);

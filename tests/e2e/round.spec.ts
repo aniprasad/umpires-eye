@@ -106,7 +106,8 @@ test('the slow replay plays once and hands the reveal back', async ({ page }) =>
   await expect(replay).toBeDisabled();
   await expect(app).toHaveAttribute('data-phase', 'reveal', { timeout: 8_000 });
   await expect(replay).toBeEnabled();
-  await expect.poll(() => activeId(page)).toBe('btnReplay');
+  // on to Next, whose key cap Space is, rather than back to Watch it slow (the M3 review's finding 3)
+  await expect.poll(() => activeId(page)).toBe('btnNext');
 
   // Quarter speed from 0.3 s before the release to just past the catch, then a 0.7 s hold: about 4 s for this pitch.
   const took = secondsBetween(await phaseMarks(page), 'replay', 'reveal');

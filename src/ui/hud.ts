@@ -2,8 +2,8 @@ import type { UmpFigure } from '../data/source';
 import { REDUCED } from '../game/params';
 import { G, world, type Phase } from '../game/state';
 import type { PreparedPitch } from '../math/kinematics';
-import { figureWords, fmtHeight, type Result } from '../math/words';
-import { UI } from './dom';
+import { countWords, figureWords, fmtHeight, type Result } from '../math/words';
+import { CARD, UI } from './dom';
 
 /** Screen readers hear it even when the same words come twice. */
 export function announce(msg: string): void {
@@ -26,9 +26,15 @@ export function setPhase(ph: Phase): void {
   G.phase = ph;
   UI.app.dataset.phase = ph;
   const calling = ph === 'pitch' || ph === 'start';
+  // The start panel and the card cover the scene, which still shows behind them, as in the mockup. Everything else in
+  // the game leaves the Tab order, the pointer and the accessibility tree meanwhile, but the live region keeps talking.
+  const panel = ph === 'card' ? CARD.root : ph === 'boot' || ph === 'start' ? UI.start : null;
 
   UI.btnBall.hidden = UI.btnStrike.hidden = !calling;
   UI.btnReplay.hidden = UI.btnNext.hidden = calling || ph === 'card';
+  for (const el of UI.app.children) {
+    if (el instanceof HTMLElement) el.inert = !!panel && el !== panel && el !== UI.live;
+  }
 }
 
 export function fillMatchup(P: PreparedPitch, animate: boolean): void {
@@ -58,7 +64,7 @@ export function setIndicator(b: number, s: number, o: number): void {
   UI.wB.style.setProperty('--n', String(b));
   UI.wS.style.setProperty('--n', String(s));
   UI.wO.style.setProperty('--n', String(o));
-  UI.indText.textContent = `Count ${b} balls, ${s} strikes, ${o} out${o === 1 ? '' : 's'}`;
+  UI.indText.textContent = countWords(b, s, o);
 }
 
 export function scoreLine(): { right: number; n: number; ump: number } {
@@ -71,22 +77,17 @@ export function scoreLine(): { right: number; n: number; ump: number } {
 export function updateScore(tick: boolean): void {
   const { right, n, ump } = scoreLine();
   const fw = figureWords(world().figure);
+  const line = n ? fw.scored : fw.chip;
+  // one phrase per line on a phone; once a call is made, a lone phrase sits bare, as it always has
+  const short = n && line.short.length === 1 ? line.short.join('') : line.short.map((s) => `<span class="sc-ph">${s}</span>`).join('');
 
-  // like for like: the real ump's original calls on these same pitches sit next to the hook's figure
+  // like for like: the real ump's original calls on these same pitches sit next to the umps' figure
   // (desktop: long form; phone: "You 2/2" / "Ump 2/2" over the short figure, one phrase per line)
   UI.scMain.innerHTML = n
     ? `<b class="sc-ph">You ${right}/${n}</b><span class="sc-dot"> · </span><span class="sc-ph"><span class="sc-long">Real ump on these</span><span class="sc-short">Ump</span> ${ump}/${n}</span>`
     : (G.mode === 'today' ? "Today's Ten" : 'Another ten');
-  if (n) {
-    UI.scSub.innerHTML = fw.overall
-      ? `<span class="sc-long">Close calls · ${fw.overall}</span><span class="sc-short">${fw.chipShort}</span>`
-      : '<span class="sc-long">Close calls</span><span class="sc-short">Close calls</span>';
-  } else {
-    UI.scSub.innerHTML = fw.chip
-      ? `<span class="sc-long">Close calls · ${fw.chip}</span><span class="sc-short"><span class="sc-ph">Close calls</span><span class="sc-ph">${fw.chipShort}</span></span>`
-      : '<span class="sc-long">Close calls</span><span class="sc-short"><span class="sc-ph">Close calls</span></span>';
-  }
-  UI.vScore.textContent = n ? `You ${right}/${n} · Real ump on these ${ump}/${n}${fw.overall ? ` · ${fw.overall}` : ''}` : '';
+  UI.scSub.innerHTML = `<span class="sc-long">${line.long}</span><span class="sc-short">${short}</span>`;
+  UI.vScore.textContent = n ? `You ${right}/${n} · Real ump on these ${ump}/${n}${fw.verdict ? ` · ${fw.verdict}` : ''}` : '';
   if (tick && !REDUCED) {
     UI.score.classList.remove('tick');
     void UI.score.offsetWidth;

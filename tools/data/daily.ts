@@ -3,12 +3,13 @@
 // the shards and the month files already there, which it keeps as a history lock (docs/M2-DESIGN.md §2.5). The first run
 // needs --from and --through. servedThrough defaults to the day after today in UTC; pass a later date if the commit won't
 // go live by then. --check writes nothing: it reproduces the recorded schedule and fails if any file differs.
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { ManifestDoc } from '../../src/core/schema.ts';
 import { DAILY_DIR, generateDaily, type DailyRun } from './lib/daily.ts';
+import { parseJson, readText } from './lib/files.ts';
 import { OUT_DIR } from './lib/pipeline.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -20,17 +21,19 @@ const { values: args } = parseArgs({
     check: { type: 'boolean', default: false },
   },
 });
-const read = (rel: string): string => readFileSync(join(root, rel), 'utf8');
-const manifestText = read(`${OUT_DIR}/manifest.json`);
-const manifest = JSON.parse(manifestText) as ManifestDoc;
-const shardTexts = new Map(manifest.shards.map((s) => [s.file, read(`${OUT_DIR}/${s.file}`)]));
-const dailyDir = join(root, OUT_DIR, DAILY_DIR);
-const monthTexts = new Map(
-  (existsSync(dailyDir) ? readdirSync(dailyDir) : []).map((name) => [`${DAILY_DIR}/${name}`, read(`${OUT_DIR}/${DAILY_DIR}/${name}`)]),
-);
+const read = (rel: string): string => readText(root, rel);
 let run: DailyRun;
 
 try {
+  // read inside the try, so a missing or broken file is a line too
+  const manifestText = read(`${OUT_DIR}/manifest.json`);
+  const manifest = parseJson(manifestText, 'manifest.json') as ManifestDoc;
+  const shardTexts = new Map(manifest.shards.map((s) => [s.file, read(`${OUT_DIR}/${s.file}`)]));
+  const dailyDir = join(root, OUT_DIR, DAILY_DIR);
+  const monthTexts = new Map(
+    (existsSync(dailyDir) ? readdirSync(dailyDir) : []).map((name) => [`${DAILY_DIR}/${name}`, read(`${OUT_DIR}/${DAILY_DIR}/${name}`)]),
+  );
+
   run = generateDaily(manifestText, shardTexts, monthTexts, {
     ...(args.from === undefined ? {} : { from: args.from }),
     ...(args.through === undefined ? {} : { through: args.through }),

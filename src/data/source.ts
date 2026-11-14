@@ -54,6 +54,8 @@ export interface UmpFigure {
   readonly approx: boolean;
   /** The season a measured figure counts, which the hook names, so it stays right once that season is over. */
   readonly season?: number;
+  /** A measured figure's agreement on close calls, the band the tens are dealt from, which a score is set against. */
+  readonly close?: { readonly pct: number; readonly withinIn: number };
 }
 
 /**

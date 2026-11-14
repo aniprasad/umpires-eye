@@ -102,7 +102,7 @@ export async function hold(page: Page, file: string): Promise<() => void> {
  * Console and page errors, apart from the browser's reports of the one data file a test makes fail. Those are counted
  * instead, so the test can say how many there should be (AGENTS.md).
  */
-export function errorsBut(page: Page, file: string): { errors: string[]; allowed: string[] } {
+export function errorsBut(page: Page, ...files: string[]): { errors: string[]; allowed: string[] } {
   const errors: string[] = [];
   const allowed: string[] = [];
 
@@ -110,7 +110,7 @@ export function errorsBut(page: Page, file: string): { errors: string[]; allowed
     if (message.type() !== 'error') return;
     const { url } = message.location();
 
-    if (url && new URL(url).pathname.endsWith(DATA + file)) allowed.push(message.text());
+    if (url && files.some((file) => new URL(url).pathname.endsWith(DATA + file))) allowed.push(message.text());
     // browsers ask for /favicon.ico on their own, as trackErrors allows
     else if (!url.endsWith('/favicon.ico')) errors.push(`console: ${message.text()}`);
   });

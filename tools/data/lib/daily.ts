@@ -25,6 +25,7 @@ import {
   type StoredGame,
   type StoredPitch,
 } from '../../../src/core/schema.ts';
+import { parseJson } from './files.ts';
 import { OUT_DIR } from './pipeline.ts';
 import { compareGames } from './schedule.ts';
 
@@ -135,7 +136,7 @@ export function readSeason(manifest: ManifestDoc, shardTexts: ReadonlyMap<string
 
     if (text === undefined) throw new Error(`${meta.file} is missing`);
 
-    const doc = JSON.parse(text) as ShardDoc;
+    const doc = parseJson(text, meta.file) as ShardDoc;
     const tables = decodeTables(doc, SHARD_FORMAT);
 
     if (doc.build !== manifest.build) throw new Error(`${meta.file} is from build ${doc.build}, not the manifest's ${manifest.build}`);
@@ -200,7 +201,7 @@ export function readLock(daily: ManifestDaily | undefined, monthTexts: ReadonlyM
 
     if (text === undefined) throw new Error(`${meta.file} is listed in the manifest but missing, so its history is lost`);
 
-    const doc: unknown = JSON.parse(text);
+    const doc: unknown = parseJson(text, meta.file);
 
     if (!isRecord(doc) || doc.month !== meta.month || !isRecord(doc.days)) throw new Error(`${meta.file} isn't the month file for ${meta.month}`);
     for (const [date, day] of Object.entries(doc.days)) {
@@ -352,7 +353,7 @@ export function generateDaily(
   monthTexts: ReadonlyMap<string, string>,
   args: DailyArgs,
 ): DailyRun {
-  const manifest = JSON.parse(manifestText) as ManifestDoc;
+  const manifest = parseJson(manifestText, 'manifest.json') as ManifestDoc;
   const recorded = manifest.daily;
 
   for (const d of [args.from, args.through, args.servedThrough]) {

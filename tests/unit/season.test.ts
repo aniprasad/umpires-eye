@@ -455,16 +455,20 @@ describe('the season source', () => {
     expect(asked).toEqual(['manifest.json no-cache', `${mini.shardUrl} force-cache`]);
   });
 
-  it('gives the ump figure from the stats, to one decimal and labelled season overall, or null without them', async () => {
-    const stats = mini.files.get('stats.json') as { umpVsAbs: { overall: { pct: number } } };
-
-    expect(await serve().source.umpFigure()).toEqual({
+  it('gives the ump figure from the stats, to one decimal and labelled season overall, with its close calls, or null without them', async () => {
+    const stats = mini.files.get('stats.json') as { umpVsAbs: { overall: { pct: number }; close: { pct: number; withinIn: number } } };
+    const overall = {
       pct: Math.round(stats.umpVsAbs.overall.pct * 10) / 10,
       label: 'season overall',
       definition: 'agreement with our ABS reconstruction on 2026 called pitches',
       approx: false,
       season: 2026,
-    });
+    };
+    const noClose = { overall: stats.umpVsAbs.overall };
+
+    expect(await serve().source.umpFigure()).toEqual({ ...overall, close: { pct: Math.round(stats.umpVsAbs.close.pct * 10) / 10, withinIn: 1.5 } });
+    // a build without the close calls still has its overall figure, which the copy then uses alone
+    expect(await serve(withFile('stats.json', { ...stats, umpVsAbs: noClose })).source.umpFigure()).toEqual(overall);
     expect(await serve(withFile('stats.json', undefined)).source.umpFigure()).toBeNull();
   });
 

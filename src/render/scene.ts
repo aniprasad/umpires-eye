@@ -64,6 +64,18 @@ export function staticKeyFor(P: PreparedPitch): string {
   return [P.batter.side, P.batter.heightFt, e.x, e.y, e.z, view.w, view.h, view.dpr, IMG.backdrop.naturalWidth, IMG.bat.naturalWidth].join('|');
 }
 
+/** How long each new stance's static layers took to paint on the main thread, in ms, newest last (?timing=1). */
+export const paintLog: number[] = [];
+
+function paintStatic(back: HTMLCanvasElement, front: HTMLCanvasElement, cam: LensCam, P: PreparedPitch): void {
+  const t0 = performance.now();
+
+  paintBack(back, cam, P);
+  paintFront(front, cam, P);
+  paintLog.push(performance.now() - t0);
+  if (paintLog.length > 100) paintLog.shift();
+}
+
 /** Makes LAY hold this pitch's static scene: a swap if it was painted ahead, otherwise a paint. */
 export function ensureStatic(lens: Lens, P: PreparedPitch): LensCam {
   const key = staticKeyFor(P);
@@ -81,8 +93,7 @@ export function ensureStatic(lens: Lens, P: PreparedPitch): LensCam {
   const cam = lens.camFor(view.w, view.h, P);
 
   scene.cam = cam;
-  paintBack(LAY.back, cam, P);
-  paintFront(LAY.front, cam, P);
+  paintStatic(LAY.back, LAY.front, cam, P);
 
   return cam;
 }
@@ -94,8 +105,7 @@ export function paintAhead(lens: Lens, P: PreparedPitch): void {
   if (key === NEXT.key || key === scene.key) return;
   const cam = lens.camFor(view.w, view.h, P);
 
-  paintBack(NEXT.back, cam, P);
-  paintFront(NEXT.front, cam, P);
+  paintStatic(NEXT.back, NEXT.front, cam, P);
   NEXT.key = key;
   NEXT.cam = cam;
 }
