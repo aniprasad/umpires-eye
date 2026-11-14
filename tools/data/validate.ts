@@ -2,9 +2,11 @@
 // recomputed from what is stored, dealing, sizes, totals, the build id, and Today's Ten in lib/daily-check.ts), judges
 // the report's integrity findings against the allowlist in lib/integrity.ts, and, when the cache is present, checks that
 // a rebuild reproduces every file exactly. Pass --no-rebuild to skip the rebuild; everything else reads only the files.
+// --root <dir> reads the dataset under another checkout's layout, for tests.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { absJudge, inDealBox } from '../../src/core/abs.ts';
 import { dealableCards } from '../../src/core/deal.ts';
 import { decodeTables, type DecodedTables } from '../../src/core/decode.ts';
@@ -33,6 +35,7 @@ import { buildIdProblems } from './lib/build-id.ts';
 import { BOOT_BUDGET_GZIP, MONTH_BUDGET_GZIP, SESSION_BUDGET_GZIP } from './lib/constants.ts';
 import { checkDaily } from './lib/daily-check.ts';
 import { DAILY_DIR, DAILY_REPORT_PATH } from './lib/daily.ts';
+import { parseJson } from './lib/files.ts';
 import { loadInputs } from './lib/inputs.ts';
 import { FAILING_KINDS, judgeFindings, pitchProblems, type FailingKind } from './lib/integrity.ts';
 import { buildDataset, dealingCheck, DEALS_PER_SHARD, OUT_DIR, REPORT_PATH, sessionSizes, sha256 } from './lib/pipeline.ts';
@@ -40,8 +43,9 @@ import { compareGames } from './lib/schedule.ts';
 
 const MARGIN_TOLERANCE_IN = 0.011;
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const rebuild = !process.argv.includes('--no-rebuild');
+const { values: args } = parseArgs({ options: { 'no-rebuild': { type: 'boolean', default: false }, root: { type: 'string' } } });
+const root = args.root === undefined ? resolve(dirname(fileURLToPath(import.meta.url)), '..', '..') : resolve(args.root);
+const rebuild = !args['no-rebuild'];
 const problems: string[] = [];
 const fail = (msg: string): void => {
   problems.push(msg);
@@ -58,8 +62,17 @@ if (!manifestText || !statsText) {
   process.exit(1);
 }
 
-const manifest = JSON.parse(manifestText) as ManifestDoc;
-const stats = JSON.parse(statsText) as StatsDoc;
+let manifest: ManifestDoc;
+let stats: StatsDoc;
+
+try {
+  manifest = parseJson(manifestText, 'manifest.json') as ManifestDoc;
+  stats = parseJson(statsText, 'stats.json') as StatsDoc;
+} catch (e) {
+  console.error(e instanceof Error ? e.message : String(e));
+  process.exit(1);
+}
+
 const listed = manifest.shards.map((s) => s.file).sort();
 const onDisk = readdirSync(join(root, OUT_DIR, 'shards'))
   .map((f) => `shards/${f}`)
@@ -119,11 +132,12 @@ for (const meta of manifest.shards) {
   shardTexts.set(meta.file, text);
   if (Buffer.byteLength(text) !== meta.bytes || sha256(text) !== meta.sha256) fail(`${meta.file}: size or hash differs from the manifest`);
 
-  const doc = JSON.parse(text) as ShardDoc;
+  let doc: ShardDoc;
   let decoded: DecodedTables;
 
   // The app's reader: the format, every cell and the references between tables.
   try {
+    doc = JSON.parse(text) as ShardDoc;
     decoded = decodeTables(doc, SHARD_FORMAT);
   } catch (e) {
     fail(`${meta.file}: ${e instanceof Error ? e.message : String(e)}`);

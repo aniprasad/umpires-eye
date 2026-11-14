@@ -440,6 +440,8 @@ npm run data:typecheck # strict TypeScript check of tools/data
 
 - Set `UE_CACHE_DIR` to put the cache somewhere else.
 - `npm run data:validate -- --no-rebuild` skips the rebuild comparison. Use it when there's no cache. Its checks of Today's Ten never need the cache.
+- `--root <dir>` points `data:validate` at another folder with the repo's layout. A test runs it that way on a tampered synthetic build.
+- A missing file, or one that isn't JSON, is a one-line message that names it, in `data:daily` and `data:validate` alike, not a stack trace.
 - The build is deterministic: the seed is `umpires-eye-2026`, and the files hold no timestamps or gzip sizes.
 - To ship a different mix, change `PER_CLOSE` in `tools/data/lib/pool.ts`, or `PITCHES_PER_SHARD` in `tools/data/lib/pipeline.ts`, and rebuild.
 - MLB sometimes corrects old games. A fetch into an empty cache months later may differ slightly from the committed dataset; `data:validate` will say so.

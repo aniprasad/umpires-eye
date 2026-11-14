@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import type { ManifestDaily } from '../../../src/core/daily.ts';
 import { decodeGames, decodePitches } from '../../../src/core/decode.ts';
 import type { ShardDoc } from '../../../src/core/schema.ts';
@@ -139,6 +144,32 @@ test("validate fails a file whose build stamp it can't take out, instead of skip
   assert.equal(JSON.parse(shuffled).build, build);
   assert.notEqual(shuffled, shard);
   assert.deepEqual(problems(shuffled, stats), [lost('shards/00.json')]);
+});
+
+test('validate runs that check on the files it reads: an edit to the stats that keeps their stamp fails it', () => {
+  const { files } = buildDataset(inputs);
+  const dir = mkdtempSync(join(tmpdir(), 'ue-validate-'));
+  const cli = fileURLToPath(new URL('../validate.ts', import.meta.url));
+  const write = (rel: string, text: string): void => {
+    mkdirSync(dirname(join(dir, rel)), { recursive: true });
+    writeFileSync(join(dir, rel), text);
+  };
+  const validate = (): string => {
+    const run = spawnSync(process.execPath, [cli, '--no-rebuild', '--root', dir], { encoding: 'utf8', timeout: 60_000 });
+
+    return `${run.stdout}${run.stderr}`;
+  };
+  const stats = `${OUT_DIR}/stats.json`;
+
+  try {
+    for (const [rel, text] of files) write(rel, text);
+    // The one synthetic game fails other checks, as it has no schedule; the id check isn't among them.
+    assert.doesNotMatch(validate(), /isn't the hash of the shards and stats/);
+    write(stats, (files.get(stats) ?? '').replace('"pct": 100', '"pct": 99.9'));
+    assert.match(validate(), /isn't the hash of the shards and stats/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('a build keeps the daily block it is given, which leaves the build id and the other files alone', () => {

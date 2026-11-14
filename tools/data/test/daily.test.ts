@@ -6,7 +6,8 @@ import { isDailyReserve, varietyProblems, type DailyDoc } from '../../../src/cor
 import { tenProblems } from '../../../src/core/deal.ts';
 import { decodeTables } from '../../../src/core/decode.ts';
 import { DAILY_FORMAT } from '../../../src/core/schema.ts';
-import { DAILY_REPORT_PATH, readSeason, type DailyRun } from '../lib/daily.ts';
+import { DAILY_REPORT_PATH, generateDaily, readSeason, type DailyRun } from '../lib/daily.ts';
+import { readText } from '../lib/files.ts';
 import { OUT_DIR } from '../lib/pipeline.ts';
 import { atBatFor, daily, idOf, manifestOf, monthsOf, poolFor, synthSeason, withDaily, type SynthGame, type SynthPitch } from './daily-fixtures.ts';
 
@@ -218,4 +219,16 @@ test('data:daily prints a bad argument as its message alone, without a stack tra
   assert.equal(run.status, 1);
   assert.match(run.stderr, /^not-a-date isn't a date, YYYY-MM-DD$/m);
   assert.doesNotMatch(run.stderr, /^\s+at /m);
+});
+
+test("a file that isn't JSON, or isn't there, is a plain Error that names it, which data:daily prints as one line", () => {
+  const months = new Map([...monthsOf(first), ['daily/2026-11.json', 'not JSON']]);
+  const plain = (fn: () => unknown, pattern: RegExp): void => {
+    assert.throws(fn, (e: unknown) => e instanceof Error && e.constructor === Error && pattern.test(e.message));
+  };
+
+  plain(() => daily(season, {}, months, withDaily(season, first)), /^daily\/2026-11\.json isn't JSON$/);
+  plain(() => daily(season, {}, monthsOf(first), 'not JSON'), /^manifest\.json isn't JSON$/);
+  plain(() => generateDaily(season.manifestText, new Map([...season.shardTexts].map(([file]) => [file, '{'])), new Map(), { today: '2026-11-13', from: '2026-11-01', through: '2026-11-02' }), /^shards\/\S+ isn't JSON$/);
+  plain(() => readText(fileURLToPath(new URL('.', import.meta.url)), 'no-such-file.json'), /^no-such-file\.json is missing$/);
 });

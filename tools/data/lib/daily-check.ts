@@ -128,7 +128,7 @@ export function checkDaily(files: DailyFiles, budgets: Budgets = { month: MONTH_
     }
 
     const gz = gzipBytes(text);
-    const doc = JSON.parse(text) as DailyDoc;
+    let doc: DailyDoc;
     let tables: DecodedTables;
 
     verdict.monthGzipBytes[meta.file] = gz;
@@ -136,6 +136,7 @@ export function checkDaily(files: DailyFiles, budgets: Budgets = { month: MONTH_
     if (gz > budgets.month) fail(`${meta.file}: ${gz} gzipped bytes, over the ${budgets.month}-byte budget for a month file`);
     try {
       // The app's reader: the format, every cell and the references between tables.
+      doc = JSON.parse(text) as DailyDoc;
       tables = decodeTables(doc, DAILY_FORMAT);
     } catch (e) {
       fail(`${meta.file}: ${message(e)}`);
