@@ -121,16 +121,17 @@ describe('the ump figure in words (§5.4)', () => {
   const set = [prep(synthPitch())];
   const results = [judged(set[0], 'strike')];
   const cited: UmpFigure = { pct: 94, label: 'MLB umps', definition: 'UmpScorecards via mlb.com', approx: true };
-  const measured: UmpFigure = { pct: 93.2, label: 'season overall', definition: 'agreement with our ABS reconstruction on 2026 called pitches', approx: false, season: 2026 };
+  const overallOnly: UmpFigure = { pct: 93.2, label: 'season overall', definition: 'agreement with our ABS reconstruction on 2026 called pitches', approx: false, season: 2026 };
+  const measured: UmpFigure = { ...overallOnly, close: { pct: 68.3, withinIn: 1.5 } };
   const ump = `The real ump: ${set.filter((P) => P.umpCorrect).length}/1.`;
   const copied = (figure: UmpFigure | null): string | undefined => resultText({ label: 'x', roundLabel: 'y', figure, set, results }).split('\n')[1];
 
   it("reads as M1 wrote it for the World Series' cited figure", () => {
     expect(figureWords(cited)).toEqual({
       hook: 'MLB umpires get about 94% of calls right. Can you?',
-      chip: 'MLB umps ≈ 94%',
-      chipShort: 'MLB ≈ 94%',
-      overall: 'MLB umps ≈ 94% overall',
+      chip: { long: 'Close calls · MLB umps ≈ 94%', short: ['Close calls', 'MLB ≈ 94%'] },
+      scored: { long: 'Close calls · MLB umps ≈ 94% overall', short: ['MLB ≈ 94%'] },
+      verdict: 'MLB umps ≈ 94% overall',
       row: { label: 'MLB umps', value: '≈ 94%' },
       cite: 'MLB umps ≈ 94%: UmpScorecards via mlb.com.',
       copy: 'MLB umps ≈ 94%.',
@@ -138,25 +139,43 @@ describe('the ump figure in words (§5.4)', () => {
     expect(copied(cited)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps ≈ 94%.`);
   });
 
-  it("labels the season's measured figure season overall, defines it, and names its year in the hook", () => {
+  it("sets a score against the season's close calls, and the hook gives both figures (the M3 review's finding 1)", () => {
+    const band = "within 1.5 in of the zone's edge";
+
     expect(figureWords(measured)).toEqual({
+      hook: 'MLB umpires got 93.2% of calls right in 2026, but only 68.3% of the close ones. Can you?',
+      chip: { long: 'MLB umps 68.3% on close calls', short: ['Close calls', 'MLB 68.3%'] },
+      scored: { long: 'MLB umps 68.3% on close calls', short: ['Close calls', 'MLB 68.3%'] },
+      verdict: 'MLB umps 68.3% on close calls',
+      row: { label: 'MLB umps on close calls', value: '68.3%' },
+      cite: `MLB umps 93.2% season overall, and 68.3% on close calls, ${band}: agreement with our ABS reconstruction on 2026 called pitches.`,
+      copy: `MLB umps 68.3% on close calls, ${band}, against our ABS reconstruction.`,
+    });
+    expect(copied(measured)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps 68.3% on close calls, ${band}, against our ABS reconstruction.`);
+    // without its season, the hook claims no time at all, rather than one that may have passed
+    expect(figureWords({ ...measured, season: undefined }).hook).toBe('MLB umpires got 93.2% of calls right, but only 68.3% of the close ones. Can you?');
+  });
+
+  it('keeps the overall words without the close calls, and never puts them beside "Close calls"', () => {
+    const words = figureWords(overallOnly);
+
+    expect(words).toEqual({
       hook: 'MLB umpires got 93.2% of calls right in 2026. Can you?',
-      chip: 'MLB umps 93.2% season overall',
-      chipShort: 'MLB 93.2%',
-      overall: 'MLB umps 93.2% season overall',
+      chip: { long: 'MLB umps 93.2% season overall', short: ['MLB 93.2%'] },
+      scored: { long: 'MLB umps 93.2% season overall', short: ['MLB 93.2%'] },
+      verdict: 'MLB umps 93.2% season overall',
       row: { label: 'MLB umps', value: '93.2%' },
       cite: 'MLB umps 93.2%, season overall: agreement with our ABS reconstruction on 2026 called pitches.',
       copy: 'MLB umps 93.2% against our ABS reconstruction, season overall.',
     });
-    expect(copied(measured)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps 93.2% against our ABS reconstruction, season overall.`);
-    // without its season, the hook claims no time at all, rather than one that may have passed
-    expect(figureWords({ ...measured, season: undefined }).hook).toBe('MLB umpires got 93.2% of calls right. Can you?');
+    expect(JSON.stringify(words)).not.toMatch(/close/i);
   });
 
   it('leaves the figure out when there is none, and the hook asks without a number', () => {
     const words = figureWords(null);
+    const bare = { long: 'Close calls', short: ['Close calls'] };
 
-    expect(words).toEqual({ hook: 'Can you call balls and strikes like an MLB umpire?', chip: null, chipShort: null, overall: null, row: null, cite: null, copy: null });
+    expect(words).toEqual({ hook: 'Can you call balls and strikes like an MLB umpire?', chip: bare, scored: bare, verdict: null, row: null, cite: null, copy: null });
     expect(words.hook).not.toMatch(/\d/);
     expect(copied(null)).toBe(`I called 1 of 1 right (100%). ${ump}`);
   });

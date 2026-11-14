@@ -177,7 +177,7 @@ How the result changes with the method:
   - LCS: 93.28% and 68.93%
   - World Series: 92.05% and 63.41%
 - Our 93.24% uses the ABS zone and rule above. Other sites' accuracy numbers use their own zones and margins, so they aren't directly comparable.
-- **"Season overall" in the app** is this first row: `stats.json`'s `umpVsAbs.overall.pct`, rounded to one decimal, so "MLB umps 93.2%, season overall". Its definition goes with it wherever there's room: "agreement with our ABS reconstruction on 2026 called pitches". Players are compared with the real ump's tally on their own ten, not with this figure. The World Series pool keeps the mockup's cited "≈ 94%" (UmpScorecards via mlb.com).
+- **In the app**, the first two rows are `stats.json`'s `umpVsAbs.overall.pct` and `umpVsAbs.close.pct`, rounded to one decimal. The hook gives both: "MLB umpires got 93.2% of calls right in 2026, but only 68.3% of the close ones." Wherever a player's score is set against the umps (the score chip, the verdict, the card and Copy result), the figure is "MLB umps 68.3% on close calls", since eight of each ten's pitches are close calls; the round's other two are a near call and a calibrator. The citation defines both: "within 1.5 in of the zone's edge" and "agreement with our ABS reconstruction on 2026 called pitches". A `stats.json` without the close row falls back to the overall figure, never beside "Close calls". The World Series pool keeps the mockup's cited "≈ 94%" (UmpScorecards via mlb.com).
 
 **Who challenged** (challenges, then how many were overturned):
 - catchers: 5,738, 3,363 overturned (58.61%)

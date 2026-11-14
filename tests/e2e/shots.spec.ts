@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { CREDIT } from '../../src/core/rules.ts';
 import { attachShot, boxOf, expectApart, expectInside, horizontalOverflow, sceneColours, slugOf, trackErrors, viewportOf, waitReady } from './helpers';
+import { mini, serveSeason } from './season-data';
 
 const VIEWPORTS = [
   { width: 1440, height: 900 },
@@ -54,5 +55,32 @@ for (const viewport of VIEWPORTS) {
         expect(errors).toEqual([]);
       });
     }
+  });
+}
+
+// The M3 review's finding 1 gave the season's hook and its footnote a second figure: the start screen still fits.
+for (const viewport of [...VIEWPORTS, { width: 1280, height: 720 }]) {
+  const size = `${viewport.width}x${viewport.height}`;
+
+  test(`the season's start screen fits its two figures at ${size}`, async ({ page }, testInfo) => {
+    const errors = trackErrors(page);
+
+    await page.setViewportSize(viewport);
+    await serveSeason(page);
+    await page.goto(`./?date=${mini.date}`);
+    await waitReady(page);
+    await expect(page.locator('#hook')).toContainText('of the close ones');
+    await expect(page.locator('#figCite')).toContainText('on close calls');
+    await attachShot(page, testInfo, `season-start-${size}`);
+
+    const area = viewportOf(page);
+    const card = await boxOf(page, '.start-card');
+    const foot = await boxOf(page, '.footnote');
+
+    expectInside(card, area, '.start-card');
+    expectInside(foot, area, '.footnote');
+    expectApart(card, foot, '.start-card and .footnote');
+    expect(await horizontalOverflow(page)).toEqual([]);
+    expect(errors).toEqual([]);
   });
 }

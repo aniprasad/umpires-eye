@@ -77,22 +77,17 @@ export function scoreLine(): { right: number; n: number; ump: number } {
 export function updateScore(tick: boolean): void {
   const { right, n, ump } = scoreLine();
   const fw = figureWords(world().figure);
+  const line = n ? fw.scored : fw.chip;
+  // one phrase per line on a phone; once a call is made, a lone phrase sits bare, as it always has
+  const short = n && line.short.length === 1 ? line.short.join('') : line.short.map((s) => `<span class="sc-ph">${s}</span>`).join('');
 
-  // like for like: the real ump's original calls on these same pitches sit next to the hook's figure
+  // like for like: the real ump's original calls on these same pitches sit next to the umps' figure
   // (desktop: long form; phone: "You 2/2" / "Ump 2/2" over the short figure, one phrase per line)
   UI.scMain.innerHTML = n
     ? `<b class="sc-ph">You ${right}/${n}</b><span class="sc-dot"> · </span><span class="sc-ph"><span class="sc-long">Real ump on these</span><span class="sc-short">Ump</span> ${ump}/${n}</span>`
     : (G.mode === 'today' ? "Today's Ten" : 'Another ten');
-  if (n) {
-    UI.scSub.innerHTML = fw.overall
-      ? `<span class="sc-long">Close calls · ${fw.overall}</span><span class="sc-short">${fw.chipShort}</span>`
-      : '<span class="sc-long">Close calls</span><span class="sc-short">Close calls</span>';
-  } else {
-    UI.scSub.innerHTML = fw.chip
-      ? `<span class="sc-long">Close calls · ${fw.chip}</span><span class="sc-short"><span class="sc-ph">Close calls</span><span class="sc-ph">${fw.chipShort}</span></span>`
-      : '<span class="sc-long">Close calls</span><span class="sc-short"><span class="sc-ph">Close calls</span></span>';
-  }
-  UI.vScore.textContent = n ? `You ${right}/${n} · Real ump on these ${ump}/${n}${fw.overall ? ` · ${fw.overall}` : ''}` : '';
+  UI.scSub.innerHTML = `<span class="sc-long">${line.long}</span><span class="sc-short">${short}</span>`;
+  UI.vScore.textContent = n ? `You ${right}/${n} · Real ump on these ${ump}/${n}${fw.verdict ? ` · ${fw.verdict}` : ''}` : '';
   if (tick && !REDUCED) {
     UI.score.classList.remove('tick');
     void UI.score.offsetWidth;

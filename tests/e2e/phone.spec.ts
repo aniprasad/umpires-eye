@@ -23,6 +23,7 @@ import { seasonMini } from '../fixtures/season-mini';
 import { DATA, errorsBut, hold, mini, saveData, serveSeason } from './season-data';
 
 const MONTH = 'daily/2026-11.json';
+const CLOSE = Math.round((mini.files.get('stats.json') as { umpVsAbs: { close: { pct: number } } }).umpVsAbs.close.pct * 10) / 10;
 
 const LAYOUTS = [
   { state: 'state=pitch&i=3&t=0.2', left: '#btnBall', right: '#btnStrike' },
@@ -119,6 +120,43 @@ for (const { state, left, right } of LAYOUTS) {
     expect(errors).toEqual([]);
   });
 }
+
+// The M3 review's finding 1: the season sets a score against the umps' close calls, which takes more words.
+test("the season's close-call figure fits a phone: Play in view, the chip says close calls, and the card's row keeps one line", async ({ page }, testInfo) => {
+  const errors = trackErrors(page);
+  const label = page.locator('#ubFigLabel');
+
+  await serveSeason(page);
+  await page.goto(`./?date=${mini.date}`);
+  await waitReady(page);
+  await expect(page.locator('#hook')).toHaveText(/, but only [\d.]+% of the close ones\. Can you\?$/);
+  await attachShot(page, testInfo, 'season-start');
+  await expect(page.locator('#btnPlay')).toBeInViewport();
+  await page.goto(`./?date=${mini.date}&state=pitch&i=3&t=0.2`);
+  await waitReady(page);
+  await expect(page.locator('#scSub .sc-short .sc-ph')).toHaveText(['Close calls', `MLB ${CLOSE}%`]);
+  await attachShot(page, testInfo, 'season-chip');
+
+  const area = viewportOf(page);
+  const chip = await boxOf(page, '#scoreChip');
+
+  expectInside(chip, area, '#scoreChip');
+  expectApart(await boxOf(page, '#matchup'), chip, '#matchup and #scoreChip');
+  await page.goto(`./?date=${mini.date}&state=card&correct=7`);
+  await waitReady(page);
+  await expect(label).toHaveText('MLB umps on close calls');
+  await attachShot(page, testInfo, 'season-card');
+  // its height over its height on one unbroken line
+  expect(await label.evaluate((el: HTMLElement) => {
+    const height = el.offsetHeight;
+
+    el.style.whiteSpace = 'nowrap';
+
+    return Math.round(height / el.offsetHeight);
+  })).toBe(1);
+  expect(await horizontalOverflow(page)).toEqual([]);
+  expect(errors).toEqual([]);
+});
 
 test("the season card's set line stays on two lines, for any date and for Another ten", async ({ page }) => {
   const errors = trackErrors(page);
