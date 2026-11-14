@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { WS_TODAY_IDS, type PoolFile } from '../../src/data/ws2026';
+import { boxOf, expectApart } from './helpers';
 
 const POOL = '**/data/ws-2026/pool.json';
 const RELOAD_LEDE = /Check your connection, then reload the page\.$/;
@@ -218,7 +219,7 @@ test.describe('a failure while the modules load', () => {
     await page.goto('./?pool=ws');
     await expect(play).toBeFocused();
     await expect(err).toBeVisible();
-    expect(apart(await err.boundingBox(), await page.locator('.footnote').boundingBox())).toBe(true);
+    expectApart(await boxOf(page, '#err'), await boxOf(page, '.footnote'), '#err and .footnote');
     await close.focus();
     await page.keyboard.press('Enter');
     await expect(err).toBeHidden();
@@ -227,12 +228,3 @@ test.describe('a failure while the modules load', () => {
     await expect(page.locator('#startLede')).toHaveText("The game didn't load. Reload the page.");
   });
 });
-
-type Box = { x: number; y: number; width: number; height: number };
-
-/** Whether two boxes on the screen don't overlap. */
-function apart(a: Box | null, b: Box | null): boolean {
-  if (!a || !b) return false;
-
-  return a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
-}
