@@ -199,6 +199,25 @@ test.describe('Another ten', () => {
     expect(errors).toEqual([]);
   });
 
+  test("a damaged shard: the error box says what's wrong, and the button reloads the page instead of trying again", async ({ page }) => {
+    const errors = trackErrors(page);
+    const again = page.locator('#btnAgain');
+    const shard = mini.files.get(SHARD) as Record<string, unknown>;
+
+    await serveSeason(page);
+    await page.route((url) => url.pathname.endsWith(DATA + SHARD), (route) => route.fulfill({ json: { ...shard, version: 99 } }));
+    await page.goto(`./?date=${mini.date}&state=reveal&i=10`);
+    await waitReady(page);
+    await page.keyboard.press('Space');
+    await again.click();
+    await expect(again).toHaveText("Couldn't load more pitches. Reload the page");
+    await expect(again).toBeEnabled();
+    await expect(page.locator('#err')).toContainText("The pitches for Another ten didn't add up: the version is 99, not 1.");
+    await Promise.all([page.waitForEvent('framenavigated', { timeout: 10_000 }), again.click()]);
+    await waitReady(page);
+    expect(errors).toEqual([]);
+  });
+
   test("NoToday's button says Dealing… while the shard loads, then the round starts", async ({ page }) => {
     const errors = trackErrors(page);
     const cal = seasonMini({ calendar: true });
