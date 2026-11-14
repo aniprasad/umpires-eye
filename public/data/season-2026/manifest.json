@@ -2,8 +2,8 @@
   "format": "umpires-eye.season-manifest",
   "version": 1,
   "season": 2026,
-  "build": "97a8f28c432c",
-  "credit": "MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.",
+  "build": "56882356a76c",
+  "credit": "MLB Stats API, © MLB Advanced Media, L.P. Not affiliated with MLB.",
   "truthNote": "abs and marginIn are our reconstruction of the 2026 ABS call from the feed's tracking, not MLB's official ABS output.",
   "source": "MLB Stats API (statsapi.mlb.com): teams, schedule (with officials), game playByPlay and people endpoints.",
   "coverage": {
@@ -267,155 +267,155 @@
       "file": "shards/00.json",
       "pitches": 3403,
       "dealable": 3402,
-      "bytes": 809139,
-      "sha256": "944c5a6f0356e11131490cf726cb15db651dd13896b2ebe67664527287db346a"
+      "bytes": 809106,
+      "sha256": "7033f41d3e5689cb2f26c7682d4a3b133245df51cb8081dc0195e9441049abd6"
     },
     {
       "file": "shards/01.json",
       "pitches": 3403,
       "dealable": 3403,
-      "bytes": 809822,
-      "sha256": "67c4dbc0186a8ab3a9051ba289300689f100af9009cda7eade9e8484af3b9892"
+      "bytes": 809789,
+      "sha256": "29af0943db00dd5661988b00f57dd44121a98900d9b04bfbfccf313f004dceac"
     },
     {
       "file": "shards/02.json",
       "pitches": 3403,
       "dealable": 3403,
-      "bytes": 808923,
-      "sha256": "b8e0b30b21d6b33f723a9558e4c50b2d81cd1930b4e1546c08f4d305fa2c81f5"
+      "bytes": 808890,
+      "sha256": "4973c4f45cc97e6db7d092d5c13e69bd642e4e801b53c248e2c96d0068f6a5ff"
     },
     {
       "file": "shards/03.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 810123,
-      "sha256": "779ade8f0e2e4c37ad457467edc1b320009c6ae11f9d0b72e0df5213c8a53aea"
+      "bytes": 810090,
+      "sha256": "37495ffd9ba353a5616015c9f1b892327a5704e4d730d12e5b913d17d34aad32"
     },
     {
       "file": "shards/04.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 810681,
-      "sha256": "eb244ec0c2a1ac28105b0e04211cc6b6b49a0b9a8751811fd6786a5c0fbcaae0"
+      "bytes": 810648,
+      "sha256": "1dc7f92d9efdf2ee5dbb30606495795394339980dc97247b70f5713fe7ee544b"
     },
     {
       "file": "shards/05.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 809158,
-      "sha256": "bc247a66279059058ebed4a005155415bff175f03f56beb63f8c156b27ad0ea9"
+      "bytes": 809125,
+      "sha256": "d88514a9fbec0b499f8b3252c23e3e3791f3cf5686583f4ad94bce3351514560"
     },
     {
       "file": "shards/06.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 807429,
-      "sha256": "9436b76f0a5a6932b4c386d774c7de654c98542cc24aecf2c0f575651ec6fca4"
+      "bytes": 807396,
+      "sha256": "8b65dd83674d519af6fdf68fc0185315a3607be112b32ec13751ffddbcc3bcc7"
     },
     {
       "file": "shards/07.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 807741,
-      "sha256": "8a0c219ca06051ff919ba7951ecf43274bd316bc295c7b3024c923c8bae3977b"
+      "bytes": 807708,
+      "sha256": "cbe7316a4222e5429a8989c5bc99f0c2c6dbde47875b4ff632f0b8c22784def1"
     },
     {
       "file": "shards/08.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 807395,
-      "sha256": "42154a779c543326c25a1de4fd120ad76e85f24f6edcd3e3a4b53162c0d5a483"
+      "bytes": 807362,
+      "sha256": "f3f52710fe7cc08d25880d2964d67035b35637183048ac933c52d93e39519b1c"
     },
     {
       "file": "shards/09.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 810057,
-      "sha256": "04352075447acd7cc490a306bc2f6e9e81404e05a3f55e5744897791f395e9b7"
+      "bytes": 810024,
+      "sha256": "ec3c2b884a77ab98bab8a1f2ecf201a05d30ad36fa0020fd4bec0f16f24ab1d8"
     },
     {
       "file": "shards/10.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 809396,
-      "sha256": "daced36598e5eafab4065cb526459a223da03a93282283b14ea728912bbd3780"
+      "bytes": 809363,
+      "sha256": "bab03f092b42f529dc31e5158fd4b4ac6a3552e6433a071e3f156f3825476494"
     },
     {
       "file": "shards/11.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 809399,
-      "sha256": "306a2eb018c7cc3697315dacfd686d787f72a5f68d17fd16eca52c6abe375b4b"
+      "bytes": 809366,
+      "sha256": "76233fa3d110bd852defe08a827be7bf6de0d5cb0e7af3a68e4af1c460527565"
     },
     {
       "file": "shards/12.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 807880,
-      "sha256": "58b0c497a914dae4724d9a7457d0acdfee308eacd0b2d3c96f5b56919176a54e"
+      "bytes": 807847,
+      "sha256": "654dc0edfe2267c9f604a69aa334a5a34f8818cb28cd475f9848319b5fcdea27"
     },
     {
       "file": "shards/13.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 809389,
-      "sha256": "c9fa72d929d3989b744e39913964076cfb26cd85280c3d9a7904f5d8deb25206"
+      "bytes": 809356,
+      "sha256": "09e50264e6e2e6533c66cc6fcea7f0dbbd41160241007050a1c6ab43dba4380d"
     },
     {
       "file": "shards/14.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 808356,
-      "sha256": "f1022f18cb653f19e03e16122abebb6875a2ca49ebbf1d54bd24037cf9b7a4f9"
+      "bytes": 808323,
+      "sha256": "f284c53b7706d7d45ec2e54e44ae8470e51de4ea30dc78eb34bbceb24854232e"
     },
     {
       "file": "shards/15.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 805360,
-      "sha256": "8465f9dfcf3bfb855d243f5c05713764167f8ba3662cd97710ec291074095987"
+      "bytes": 805327,
+      "sha256": "8613ab7683247316fc18bcea139fcdcef3e22f4456c535f51423ac296bee79bd"
     },
     {
       "file": "shards/16.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 809203,
-      "sha256": "ab1e7a2e029d0383922a4a76f01c18a8cda540144b603fcc0b78637f2c5b89ff"
+      "bytes": 809170,
+      "sha256": "daa4431737c52a81aa3dc3925e3a0a2dfb864129d5dfd6c10613e80aba99abef"
     },
     {
       "file": "shards/17.json",
       "pitches": 3402,
       "dealable": 3402,
-      "bytes": 810444,
-      "sha256": "266ae59acb344c744051a5ae040a9e92d516458e575c4eca3f2f759cea29f3c3"
+      "bytes": 810411,
+      "sha256": "189a401a7b11744f0687c784c316adca45a2f26ffbf2dc2bc359a29d038572de"
     },
     {
       "file": "shards/18.json",
       "pitches": 3402,
       "dealable": 3401,
-      "bytes": 808437,
-      "sha256": "40aaa56f42886242b43fdca6357abe5df27114f86a00b69857ed48bc6a3c192e"
+      "bytes": 808404,
+      "sha256": "37d0e11caf9077f18f5c1e7e53cb5d135b8c51a8d79acc0d35208339e3d526df"
     },
     {
       "file": "shards/19.json",
       "pitches": 3402,
       "dealable": 3401,
-      "bytes": 809649,
-      "sha256": "03f407c0a6aca18ccbf949eb15296f9593ba9fbd15d144970b168d2d5647a8cb"
+      "bytes": 809616,
+      "sha256": "d8a2bca3b8f596676d21ca88744e5b226f7abc460d0689c119baf0d7aca6bcfa"
     },
     {
       "file": "shards/20.json",
       "pitches": 3402,
       "dealable": 3401,
-      "bytes": 809611,
-      "sha256": "dfb6254664aa4b769e6cce2e4f607298f7beb4cefb66654cdff7f0fdca8ed774"
+      "bytes": 809578,
+      "sha256": "aab3ba8e7776530827e672b5a4c40d489ab7460d9320088d3d93f456d15f46b7"
     },
     {
       "file": "shards/21.json",
       "pitches": 3402,
       "dealable": 3401,
-      "bytes": 808102,
-      "sha256": "1f05fe3548216b8b639c2e47174eded4ae716aa43ba685ad45c0a3f3e86c0b84"
+      "bytes": 808069,
+      "sha256": "a26aaba6a85539e7a998b1591b8b6e8f997949178dcb85483aea12aa9f700f3b"
     }
   ],
   "daily": {
@@ -430,158 +430,158 @@
       {
         "month": "2026-11",
         "file": "daily/2026-11.json",
-        "bytes": 100757,
-        "sha256": "34e0e7094c7b38e613413ebf3f3da2e46b99c09b701db1289bff86c8a9537f3b"
+        "bytes": 100724,
+        "sha256": "8eade250e9cb4890f773f583f355731d50eac5af737a36254d1bf66a1f730d7e"
       },
       {
         "month": "2026-12",
         "file": "daily/2026-12.json",
-        "bytes": 103049,
-        "sha256": "983f02566bdae636ce5ec0e0e793e5b16e88871e9777ec2fe869f0251a3744f9"
+        "bytes": 103016,
+        "sha256": "251fca7410fc1279ca78baf3fb380b7a695c7c4a6af171d329f8b882bd126895"
       },
       {
         "month": "2027-01",
         "file": "daily/2027-01.json",
-        "bytes": 102836,
-        "sha256": "f78cd22e3950c3a856dfd2404fd24b5096efdcc783a16da0e06865c4dfcd0ff5"
+        "bytes": 102803,
+        "sha256": "244a459892fdcb355f53b241dcd31d0d56b539df8c4186cf94c7426bb8f7237a"
       },
       {
         "month": "2027-02",
         "file": "daily/2027-02.json",
-        "bytes": 93747,
-        "sha256": "dd92b4ff9ae3d7bdc97dea944b5327cc759b0f3044b040623662cb0ec304c008"
+        "bytes": 93714,
+        "sha256": "f8b2daf59660d3a709730c722bce9707891938f361155fd41e6866a1452fbb77"
       },
       {
         "month": "2027-03",
         "file": "daily/2027-03.json",
-        "bytes": 102759,
-        "sha256": "efe85ce05ac5d242dfc174f90f4c3699906caabcbd1d714a49da210eb7ff9a3a"
+        "bytes": 102726,
+        "sha256": "cdd3fef05809d2b4f1c0dad143f01c01b624add9c518220ace7673d28fc5f5bf"
       },
       {
         "month": "2027-04",
         "file": "daily/2027-04.json",
-        "bytes": 99478,
-        "sha256": "c8a545a90d7b993ca832c5ee1053446bdf46b8af1a47cfd9a0abfb17fa35c1f3"
+        "bytes": 99445,
+        "sha256": "676982784e3532f7b1e9605c7c421f194d88d92a6f45ae77b3a026ddd3b461a7"
       },
       {
         "month": "2027-05",
         "file": "daily/2027-05.json",
-        "bytes": 103024,
-        "sha256": "4c7badd7efd33dca8547aaece0d291c5ae5e09e5ad04313e2b244f000b430dc0"
+        "bytes": 102991,
+        "sha256": "28cdbcb6c91b1fcc6f6334c635c41c93849d4042b4c3d7f4a1b89ac1b1f99610"
       },
       {
         "month": "2027-06",
         "file": "daily/2027-06.json",
-        "bytes": 100698,
-        "sha256": "c61329d768db445b4fbdf3a67a22361a1f392776ebe4ed65947afe5405ad7722"
+        "bytes": 100665,
+        "sha256": "115ec777d8abf91e5be8a2993b52871c4ea7566b6456a86ea02ac3ad4898c497"
       },
       {
         "month": "2027-07",
         "file": "daily/2027-07.json",
-        "bytes": 102687,
-        "sha256": "ad7825782d70a8390009dfe0befa563a0626be9943ebf92cdeae1bf9bdd89f40"
+        "bytes": 102654,
+        "sha256": "1f77904cdd346051903b6c6fd12a70577edf08326a07223d8b8f517ab38847f1"
       },
       {
         "month": "2027-08",
         "file": "daily/2027-08.json",
-        "bytes": 102784,
-        "sha256": "c4f18c0ac9f302c268dbce9b13bf6f187c251ebdb865cec2c226af510359f9c3"
+        "bytes": 102751,
+        "sha256": "42812635cd1cfc1054fab2918f2825f985ce9df3eb6af56c89377e26dad912f9"
       },
       {
         "month": "2027-09",
         "file": "daily/2027-09.json",
-        "bytes": 99886,
-        "sha256": "dabc4378ddf8765c9cf1c9722a37893f32dbdcd9a60a2ddec922b2e5b4f5f3d0"
+        "bytes": 99853,
+        "sha256": "79dd531fa08d42932e482fe2b2583405298468dbf999a6b55bc27b6b06c5b27d"
       },
       {
         "month": "2027-10",
         "file": "daily/2027-10.json",
-        "bytes": 102923,
-        "sha256": "8f3b08b27632081efd5af0c426e454a15bd18360077d91bef62f020bf4cb7e43"
+        "bytes": 102890,
+        "sha256": "a37c3153f9c122f6b1683d547962257f725772a2ac431f4423f02e4791e27c4d"
       },
       {
         "month": "2027-11",
         "file": "daily/2027-11.json",
-        "bytes": 101172,
-        "sha256": "13bf7aa0ab27d831f340e6472e77470d7022ca6c2ddbb566d5781754fa30e117"
+        "bytes": 101139,
+        "sha256": "ed4fecdc6a566c4e9f23101a2062c7875a9781aff5c8f9730238773a4266248a"
       },
       {
         "month": "2027-12",
         "file": "daily/2027-12.json",
-        "bytes": 103108,
-        "sha256": "81abb086204bc70495cafd51dbb5745d5003072b54cfbf117f854efa628cc221"
+        "bytes": 103075,
+        "sha256": "5bf1cad90d5754fcab7730718d91089ad3a78eb9996dd3d5b7857c8f202437a5"
       },
       {
         "month": "2028-01",
         "file": "daily/2028-01.json",
-        "bytes": 103596,
-        "sha256": "98ead006bae281ab3ccb0f23793a9c77203164715486c7d8dbc7cb574dc6202c"
+        "bytes": 103563,
+        "sha256": "e38e5e4146f834569927f385f69c92381c0ec8b5eca2e8e2418715c1301dbeb1"
       },
       {
         "month": "2028-02",
         "file": "daily/2028-02.json",
-        "bytes": 96105,
-        "sha256": "04231877337978cf4d54de7328b43f812ac74068261f739191cff42dddf6c061"
+        "bytes": 96072,
+        "sha256": "8e313ec12171115a958fce931f493c74129930a47ca51635a1fa0965b4dfcdc0"
       },
       {
         "month": "2028-03",
         "file": "daily/2028-03.json",
-        "bytes": 103151,
-        "sha256": "4487941880bff43a8e7f7a2d5810fb6fc748c017b6e5cb17adb226a6dc215788"
+        "bytes": 103118,
+        "sha256": "962dc6542184d824e986c7af6e832f175d30bbac76fc58a9e73e05d300947b2c"
       },
       {
         "month": "2028-04",
         "file": "daily/2028-04.json",
-        "bytes": 100311,
-        "sha256": "fc3ea81a5e982ee441fa5053a89c943d632332df71d92600eb2621380a9b7260"
+        "bytes": 100278,
+        "sha256": "b2c87d47fac44a2a85e42e7802026c1756aecaec00fc59ef2fc9127daf6a3629"
       },
       {
         "month": "2028-05",
         "file": "daily/2028-05.json",
-        "bytes": 103341,
-        "sha256": "25ce186709eb4b128fd59c6a79a5802f5656bcc666b9ba08c279af2bfa42be2a"
+        "bytes": 103308,
+        "sha256": "c487cae3572a1c2daade1846bc33ef6de994ac94857ba36404671095b300289a"
       },
       {
         "month": "2028-06",
         "file": "daily/2028-06.json",
-        "bytes": 100742,
-        "sha256": "ed7504b718c084617bd6ba46563190a0bf82ff45539f714ea78be8bb6c52fdd8"
+        "bytes": 100709,
+        "sha256": "08a5776aedf66f65150ac14ac1cc2a2350f3e3eed9230f1382b358a3156fb944"
       },
       {
         "month": "2028-07",
         "file": "daily/2028-07.json",
-        "bytes": 102956,
-        "sha256": "dac294880bb36961b7052bba764cba484ab176cab06d3a0c074388bcb02f1a3c"
+        "bytes": 102923,
+        "sha256": "79b52da82f0d92596480b209678d7953cb1f00c78f8e8d2c9feacd44a2912ce7"
       },
       {
         "month": "2028-08",
         "file": "daily/2028-08.json",
-        "bytes": 102411,
-        "sha256": "0d065ff63e83c87da9b74a1738d968df3bb1172a2c73cb4a28fb543234f51aa2"
+        "bytes": 102378,
+        "sha256": "471b399c540aeeb18256a46835b053fbe1e1359c5c049a9213e56e1b6b4fcdab"
       },
       {
         "month": "2028-09",
         "file": "daily/2028-09.json",
-        "bytes": 99450,
-        "sha256": "b0e8bf3ac51f424a27e871bf007ab4f580a955e911b34c204161c60b7726fcf6"
+        "bytes": 99417,
+        "sha256": "9025d67aa9ca6ec61094b4f842aa8fd671377535a5c9655f35c7c20cc6d4a6df"
       },
       {
         "month": "2028-10",
         "file": "daily/2028-10.json",
-        "bytes": 103231,
-        "sha256": "536d86f6df4dfd7110d6a8d18bcc74a8b2ff18eb4d3bb6994a22eaa301493fb0"
+        "bytes": 103198,
+        "sha256": "551f32c0a39283426ef77685b2006c14b4c4e6efd92fb6216d63c9af5963fb1e"
       },
       {
         "month": "2028-11",
         "file": "daily/2028-11.json",
-        "bytes": 100464,
-        "sha256": "720602fb78c0dfc96fbad5c4c099fd7d1ab09f947fbbe1b6dbfcd31f8932a66a"
+        "bytes": 100431,
+        "sha256": "c00423eb7b89aafa95554fcb7d952d7853a1db08d3be96afee5d4d358e6d34bc"
       },
       {
         "month": "2028-12",
         "file": "daily/2028-12.json",
-        "bytes": 102603,
-        "sha256": "ff1057997c115246aec749c82c6b50628089cc7fd715a445977d5d63555ce105"
+        "bytes": 102570,
+        "sha256": "f1c8d83c9e772a19ea3cbd78006aecc7ce44f866f757803d4c175beacdcba57a"
       }
     ]
   }
