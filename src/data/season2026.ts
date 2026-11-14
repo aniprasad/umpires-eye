@@ -365,6 +365,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
       label: 'season overall',
       definition: `agreement with our ABS reconstruction on ${stats.season} called pitches`,
       approx: false,
+      season: stats.season,
     };
   });
 
