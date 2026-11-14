@@ -199,7 +199,8 @@ describe('the season source', () => {
     expect(await source.today('2026-11-16')).toEqual({ kind: 'none', dateKey: '2026-11-16', reason: 'outside-horizon' });
     // there's no December file, and past the schedule that's no error
     expect(await source.today('2026-12-01')).toEqual({ kind: 'none', dateKey: '2026-12-01', reason: 'outside-horizon' });
-    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'daily/2026-12.json no-cache']);
+    // a date asked for once the manifest has arrived checks it for a new build (§2.2)
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'manifest.json no-cache', 'manifest.json no-cache', 'daily/2026-12.json no-cache']);
     expect(await source.today(mini.unavailableDate)).toEqual({ kind: 'none', dateKey: mini.unavailableDate, reason: 'unavailable' });
   });
 
@@ -248,6 +249,37 @@ describe('the season source', () => {
     const lasting = serve(mini.files, (path) => (path.startsWith('daily/') ? stale.clone() : undefined));
 
     await expect(lasting.source.today(mini.date)).rejects.toMatchObject({ kind: 'data', message: expect.stringMatching(/from build old000000000, the manifest from build/) });
+  });
+
+  it('checks the manifest again for a later date, and a new build drops the old month files (§2.2)', async () => {
+    const month = mini.files.get('daily/2026-11.json') as Record<string, unknown>;
+    let build = '';
+    const { source, asked } = serve(mini.files, (path) => {
+      if (!build) return undefined;
+      if (path === 'manifest.json') return Response.json({ ...manifest, build });
+
+      return path === 'daily/2026-11.json' ? Response.json({ ...month, build }) : undefined;
+    });
+
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    // the same build: November's file serves the next date from memory
+    expect(await source.today(mini.unavailableDate)).toMatchObject({ kind: 'none', reason: 'unavailable' });
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'manifest.json no-cache']);
+    build = 'new000000000';
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    expect(asked.slice(3)).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache']);
+  });
+
+  it("keeps the manifest it has when the check gets no answer, and stops at one it can't read", async () => {
+    let answer: Response | undefined;
+    const { source, asked } = serve(mini.files, (path) => (path === 'manifest.json' ? answer?.clone() : undefined));
+
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    answer = new Response('Not Found', { status: 404 });
+    expect((await source.today(mini.date)).kind).toBe('ten');
+    expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'manifest.json no-cache']);
+    answer = Response.json({ ...manifest, version: 2 });
+    await expect(source.today(mini.date)).rejects.toMatchObject({ kind: 'data', message: expect.stringMatching(/version 2, not/) });
   });
 
   it("deals Another ten from one shard, loaded on the first deck(): dealable rows only, none of Today's, in file order", async () => {

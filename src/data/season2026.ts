@@ -168,6 +168,8 @@ export interface SeasonOptions {
 /** The season source. It's ready at once: its lens is the deal box, and its files load when the game asks for them. */
 export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): PitchSource {
   let manifest: Promise<Manifest> | null = null;
+  // Whether a manifest has arrived. A date asked for after that checks it for a new build; one in flight is fresh.
+  let arrived = false;
   const months = new Map<string, (signal?: AbortSignal) => Promise<MonthFile>>();
   // The shards this page has dealt from, or is about to. Another ten never goes back to one (§3).
   const used = new Set<number>();
@@ -177,10 +179,17 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   const fetchManifest = async (cache: RequestCache): Promise<Manifest> => readManifest(await get('manifest.json', MANIFEST, cache));
   // The manifest the page goes by, until a build check brings a newer one.
   const theManifest = (signal?: AbortSignal): Promise<Manifest> => {
-    manifest ??= fetchManifest('no-cache').catch((e: unknown) => {
-      manifest = null;
-      throw e;
-    });
+    manifest ??= fetchManifest('no-cache').then(
+      (m) => {
+        arrived = true;
+
+        return m;
+      },
+      (e: unknown) => {
+        manifest = null;
+        throw e;
+      },
+    );
 
     return abortable(manifest, signal);
   };
@@ -193,6 +202,29 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     if (got.manifest !== known) manifest = Promise.resolve(got.manifest);
 
     return got.file;
+  }
+
+  /**
+   * A tab can stay open across a deploy, so a date asked for once the manifest has arrived asks for it again (§2.2).
+   * It's no-cache: an unchanged one costs a 304. A new build replaces the old manifest and drops the month files
+   * matched to it. Without an answer, the manifest the page has still serves the dates it has month files for; only a
+   * manifest this page can't read stops it.
+   */
+  async function revalidate(known: Promise<Manifest>, signal?: AbortSignal): Promise<void> {
+    let fresh: Manifest;
+
+    try {
+      fresh = await abortable(fetchManifest('no-cache'), signal);
+    } catch (e) {
+      if (e instanceof LoadError && e.kind !== 'data') return;
+      throw e;
+    }
+    const was = await known;
+
+    // a build check elsewhere may have brought a newer manifest meanwhile; it stands
+    if (manifest !== known || fresh.build === was.build) return;
+    manifest = Promise.resolve(fresh);
+    months.clear();
   }
 
   async function loadMonth(month: string): Promise<MonthFile> {
@@ -223,6 +255,8 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
 
   async function today(dateKey: string, signal?: AbortSignal): Promise<TodayResult> {
     const month = monthOf(dateKey);
+
+    if (arrived && manifest) await revalidate(manifest, signal);
     const known = theManifest(signal);
 
     // The month file loads alongside the manifest (§4.1), but the manifest decides: past the schedule's ends, the month
