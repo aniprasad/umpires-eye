@@ -1,4 +1,4 @@
-// Today's Ten as a schedule (docs/M2-DESIGN.md §2): the month files that hold it, and the rules that the data tools
+// Today's Ten as a schedule: the month files that hold it, and the rules that the data tools
 // writing them and the app reading them must agree on.
 import type { Card } from './deal.ts';
 import { unitHash } from './rng.ts';
@@ -24,7 +24,7 @@ export interface VarietyCard extends Card {
 }
 
 /**
- * Why a ten breaks Today's Ten's variety rules (docs/M2-DESIGN.md §2.4), or nothing if it doesn't. Each problem starts
+ * Why a ten breaks Today's Ten's variety rules, or nothing if it doesn't. Each problem starts
  * with its rule's name. The calibrator counts toward spreading games and batter sides, but it's an easy call by design,
  * so the pitch families and the two-strike or three-ball count are looked for among the nine. Only the schedule applies
  * these rules: Another ten keeps the mockup's.

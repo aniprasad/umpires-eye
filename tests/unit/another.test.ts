@@ -44,7 +44,7 @@ function sourceOf(piles: readonly (readonly Pitch[])[], onNext: (k: number) => v
   return { nexts, deck: () => Promise.resolve(first) };
 }
 
-describe('Another ten over a page (§3)', () => {
+describe('Another ten over a page', () => {
   it("never deals Today's Ten or a pitch dealt earlier on the page, and starts over only once the deck can't deal", async () => {
     // the World Series deck with Today's Ten put back, for the dealer to leave out
     const deck = ws.pitches.filter(playable);
@@ -123,7 +123,7 @@ function randomDeck(name: string, n: number, rand: Rand): Pitch[] {
   });
 }
 
-describe('Another ten, property-style (§7.2)', () => {
+describe('Another ten, property-style', () => {
   it('over 1,000 seeds and random decks, every ten keeps the rules, and a deck is left only when it cannot deal', async () => {
     const problems: string[] = [];
     let [moves, startOvers, givenUp] = [0, 0, 0];

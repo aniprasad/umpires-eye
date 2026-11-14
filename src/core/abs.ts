@@ -21,7 +21,7 @@ export function absJudge(x: number, z: number, top: number, bottom: number, radi
   return { strike: d <= radius, marginIn: (radius - d) * 12, dx, dz };
 }
 
-/** The brief's square-cornered rule. It differs from absJudge only at the corners. */
+/** The rule with square corners: the zone grown by the ball's radius. It differs from absJudge only at the corners. */
 export function boxStrike(x: number, z: number, top: number, bottom: number, radius: number = BALL_R): boolean {
   return Math.abs(x) <= PLATE_HALF + radius && z >= bottom - radius && z <= top + radius;
 }

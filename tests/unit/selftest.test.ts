@@ -42,8 +42,8 @@ describe("the mockup's self-test guarantees", () => {
   });
 });
 
-// The figures the mockup's notes quote, compared the way the mockup printed them (toFixed). They pin the port to the
-// mockup's math, seeds and random draws.
+// The mockup's own figures, compared the way it printed them (toFixed). They pin the port to the mockup's math, seeds
+// and random draws.
 describe('the figures recorded for the mockup', () => {
   it("Today's Ten: calibrator first, 8 close calls, the real ump 7/10 and 8/10 after ABS", () => {
     const s = run('makeup').stats;

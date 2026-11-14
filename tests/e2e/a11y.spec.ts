@@ -1,5 +1,5 @@
-// Keyboard and screen-reader access (the M1 review's N7): what Tab reaches in each phase, that each control it reaches
-// has a name, and where focus goes when a round starts. Focus in Failed and Broken is states.spec.ts's (§5.1).
+// Keyboard and screen-reader access: what Tab reaches in each phase, that each control it reaches has a name, and where
+// focus goes when a round starts. Focus in Failed and Broken is states.spec.ts's.
 import { expect, test, type Page } from '@playwright/test';
 import { activeId, callPitch, openPaused, stepClockUntil, trackErrors, waitReady } from './helpers';
 import { hold, mini, serveSeason } from './season-data';
@@ -128,7 +128,7 @@ test('after Watch it slow, Space goes on to the next pitch, as its key cap says'
   expect(errors).toEqual([]);
 });
 
-// The M3 review's finding 4: at 1280x720 the card's actions start below the fold, and focus mustn't land out of sight.
+// At 1280x720 the card's actions start below the fold, and focus mustn't land out of sight.
 test('a round that ends on a short screen moves focus to Copy result, in view', async ({ page }) => {
   test.setTimeout(120_000);
 

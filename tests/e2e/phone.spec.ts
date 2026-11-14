@@ -129,8 +129,8 @@ for (const { state, left, right } of LAYOUTS) {
   });
 }
 
-// The M3 review's findings 8 and 10: a touch phone has no keys to press, and the HUD, with nothing to show yet, sat
-// behind the start card's title.
+// A touch phone has no keys to press, and before the pitch the HUD has nothing to show but would sit behind the start
+// card's title.
 test('on a touch phone, the start screen has no key caps and no HUD behind its title, and the HUD comes back for the pitch', async ({ page }) => {
   const errors = trackErrors(page);
 
@@ -151,7 +151,7 @@ test('on a touch phone, the start screen has no key caps and no HUD behind its t
   expect(errors).toEqual([]);
 });
 
-// The M3 review's finding 4: a phone's card scrolls a screen or more, and its actions stay in reach.
+// A phone's card scrolls a screen or more, so its actions have to stay in reach.
 for (const turned of [false, true]) {
   test(`the card's actions stay in reach as it scrolls${turned ? ', with the phone on its side' : ''}`, async ({ page }, testInfo) => {
     const errors = trackErrors(page);
@@ -173,8 +173,8 @@ for (const turned of [false, true]) {
   });
 }
 
-// The M3 review's finding 2: on its side, a phone is about 390 px tall. The start card scrolls with its credit after
-// it and suggests turning upright; a pitch fits as it is, so nothing stops play.
+// On its side, a phone is about 390 px tall. The start card scrolls with its credit after it and suggests turning
+// upright; a pitch fits as it is, so nothing stops play.
 test('on its side, the start card scrolls clear of its credit and suggests turning upright, and a pitch still fits', async ({ page }, testInfo) => {
   const errors = trackErrors(page);
 
@@ -203,8 +203,8 @@ test('on its side, the start card scrolls clear of its credit and suggests turni
   expect(errors).toEqual([]);
 });
 
-// M3's phone measurements: the static paint for a new stance, raster included, from the self-test over a date's Ten;
-// and what the page loads, from ?timing=1's readout, which the owner can also read on a real phone.
+// The phone measurements: the static paint for a new stance, raster included, from the self-test over a date's Ten;
+// and what the page loads, from ?timing=1's readout, which can also be read on a real phone.
 test('measures the paint for a new stance and what the page loads, and ?timing=1 shows them', async ({ page }, testInfo) => {
   test.setTimeout(150_000);
 
@@ -232,7 +232,7 @@ test('measures the paint for a new stance and what the page loads, and ?timing=1
   expect(readout).toMatch(/images [1-9]\d*, data [1-9]\d*, code [1-9]\d*/);
 });
 
-// The M3 review's finding 1: the season sets a score against the umps' close calls, which takes more words.
+// The season sets a score against the umps' close calls, which takes more words.
 test("the season's close-call figure fits a phone: Play in view, the chip says close calls, and the card's row keeps one line", async ({ page }, testInfo) => {
   const errors = trackErrors(page);
   const label = page.locator('#ubFigLabel');

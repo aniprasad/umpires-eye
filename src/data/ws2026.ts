@@ -17,10 +17,10 @@ export const WS_TODAY_IDS: readonly string[] = [
 
 export const WS_LABEL = '2026 World Series';
 
-/** The figure M1 cites: UmpScorecards, via mlb.com. */
+/** The figure the mockup cites: UmpScorecards, via mlb.com. */
 const WS_UMP_FIGURE: UmpFigure = { pct: 94, label: 'MLB umps', definition: 'UmpScorecards via mlb.com', approx: true };
 
-/** A game as public/data/ws-2026/pool.json (the mockup's pool.json, minified) stores it. */
+/** A game as public/data/ws-2026/pool.json (art/data/ws-2026-pool.json, minified) stores it. */
 export interface PoolGame {
   gamePk: number;
   /** The game's number in the Series, 1 to 5. */
@@ -49,7 +49,7 @@ export interface WorldSeries {
   readonly today: readonly Pitch[];
   /** What Another ten deals from: the playable pitches, in played order, without Today's Ten. */
   readonly deck: readonly Pitch[];
-  /** Today's Ten and every playable pitch, as M1 fitted the lens. */
+  /** Today's Ten and every playable pitch, as the mockup fits the lens. */
   readonly lensPoints: readonly PlayPoint[];
 }
 

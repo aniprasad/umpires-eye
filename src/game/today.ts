@@ -1,4 +1,4 @@
-// Today's Ten keeps to the local date while the start screen shows it (docs/M2-DESIGN.md §2.2).
+// Today's Ten keeps to the local date while the start screen shows it.
 import { nextDayStart } from '../data/dates';
 import type { TodayResult } from '../data/source';
 

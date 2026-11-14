@@ -1,4 +1,4 @@
-// The season files' rows as the game's pitches (docs/M2-DESIGN.md §4.4). Only dealable rows become pitches: the data
+// The season files' rows as the game's pitches. Only dealable rows become pitches: the data
 // tools mark a row otherwise when it lacks what the game needs to show it, or flies too slowly to stay in frame, and
 // the app trusts that mark rather than deriving it again.
 import type { DecodedTables } from '../core/decode.ts';
@@ -94,7 +94,7 @@ export function rowReader(tables: DecodedTables, season: number): RowReader {
 }
 
 /**
- * The deal box's edges at mid-plate, every 0.1 ft (§4.6). Every dealable season pitch crosses inside the box, so a lens
+ * The deal box's edges at mid-plate, every 0.1 ft. Every dealable season pitch crosses inside the box, so a lens
  * fitted to its edges frames each one, whichever shard is loaded.
  */
 export function boxLensPoints(): PlayPoint[] {

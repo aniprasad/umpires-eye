@@ -1,9 +1,6 @@
 <!--
-THESIS: You are the plate umpire. A real World Series pitch arrives at real speed along its tracked path, seen from the umpire's slot, and you call it before the truth appears. Refuses the stats-chart dot, the TV K-Zone 3x3 grid, and neon betting-app chrome.
-OWN-WORLD: Night game under the lights. Batter's-eye green-black, floodlit clay and grass, chalk white, umpire navy, and one magenta signal (#E20074) reserved for ABS truth. The UI lives in the ump's own tools: the palm indicator, chalk lines, and a late-80s umpire card.
-STORY: Feel how fast and hard the call is. Learn that the zone moves with the batter. See that real umps miss. Want one more pitch, then copy your result.
-FIRST VIEWPORT: Full-bleed ump's-eye scene: pitcher small on the mound, batter at true height beside the plate, catcher low and soft, matchup card top-left, indicator bottom-right, Ball/Strike controls at the bottom corners, Start overlay with "Play ball".
-FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geometry canvas foreground. No seed key (impeccable scripts are unavailable on this machine).
+The design: a night game under the lights, seen from the plate umpire's slot. One magenta (#E20074) is reserved for ABS
+truth, and the UI lives in the ump's own tools: the palm indicator, chalk lines and a late-80s umpire card.
 -->
 <!doctype html>
 <html lang="en">
@@ -128,7 +125,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
 <noscript><p style="padding:24px">Umpire's Eye needs JavaScript to replay the pitches.</p></noscript>
 <script>
   // Before the modules, so that an error while they load still reaches the error box, and the start screen offers a
-  // reload rather than loading for good (the M1 review's N12). Once the main module runs, an error is only reported.
+  // reload rather than loading for good. Once the main module runs, an error is only reported.
   (function () {
     var loading = true;
     // puts the start screen back as it was before a takeover, once the app runs
@@ -138,7 +135,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
     var back = null;
 
     // Another site's script, such as one an extension adds to every page, isn't ours to report, and the browser often
-    // hides its error as a bare "Script error." (the M3 review's code risk 1).
+    // hides its error as a bare "Script error."
     function ours(url) {
       try {
         return new URL(url, location.href).origin === location.origin;
@@ -185,8 +182,8 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
     }
 
     // Every module has run, so whatever took the start screen over didn't stop them. A rejected promise can't be traced
-    // to its script, and another site's may come first (the M3 review's NB1): the app takes the start screen back, so
-    // Play starts a round rather than reloading the page, and the error stays in the box.
+    // to its script, and another site's may come first: the app takes the start screen back, so Play starts a round
+    // rather than reloading the page, and the error stays in the box.
     addEventListener('ue:running', function () {
       loading = false;
       if (undo) undo();

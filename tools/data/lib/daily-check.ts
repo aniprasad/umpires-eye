@@ -1,4 +1,4 @@
-// data:validate's checks on Today's Ten (docs/M2-DESIGN.md §2.9). They read only the files, so they run without the MLB
+// data:validate's checks on Today's Ten. They read only the files, so they run without the MLB
 // cache, and they don't trust data:daily: each rule is checked on its own before check mode reproduces the month files.
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
@@ -184,7 +184,7 @@ export function checkDaily(files: DailyFiles, budgets: Budgets = { month: MONTH_
           if (!rowOf.has(id)) fail(`${where}: no row for ${id}`);
           else if (!same(rowOf.get(id), season.pitches.get(id)?.row)) fail(`${where}: ${id}'s row differs from its shard's`);
         }
-        // A served day stays as everyone played it, so a rule it no longer keeps is reported, not failed (§2.5).
+        // A served day stays as everyone played it, so a rule it no longer keeps is reported, not failed.
         if (problems.length) (date <= daily.servedThrough ? verdict.notes : verdict.failures).push(`${where}: ${problems.join('; ')}`);
       } else {
         if (date > daily.servedThrough) fail(`${where}: unavailable, but after servedThrough, ${daily.servedThrough}: it should have been dealt again`);

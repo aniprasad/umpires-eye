@@ -6,7 +6,7 @@ import { asFile, pitchCells, shardDoc } from './fixtures.ts';
 
 describe('the daily reserve', () => {
   it('rests on the ID alone', () => {
-    // M2-DESIGN §1.3 names the first three, non-dealable challenged pitches, as outside the reserve.
+    // The first three are challenged pitches that can't be dealt, and fall outside the reserve; the last two are in it.
     const ids = ['822806-17-2', '823728-4-4', '824320-68-3', '849799-1-1', '849799-65-7'];
 
     expect(ids.map(isDailyReserve)).toEqual([false, false, false, true, true]);

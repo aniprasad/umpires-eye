@@ -30,7 +30,7 @@ const loadImg = (img: HTMLImageElement, src: string): Promise<HTMLImageElement> 
 });
 
 /**
- * The season's Ten for a date, with the start screen Loading meanwhile, and Failed or Broken until it loads (§5.1).
+ * The season's Ten for a date, with the start screen Loading meanwhile, and Failed or Broken until it loads.
  * Before each new try it calls again(), so whatever else failed with the first load can try again too.
  */
 async function seasonToday(source: PitchSource, dateKey: string, again: () => void): Promise<TodayResult> {
@@ -68,8 +68,8 @@ async function boot(): Promise<void> {
 
   try {
     const source = await openSource(sourceIdOf(POOL, SELFTEST), import.meta.env.BASE_URL);
-    // The stats load alongside today's files (§4.1). Play never waits for them; the figure shows when they come. A
-    // failed load is dropped, so asking again after Try again fetches them again (the M3 review's finding 6).
+    // The stats load alongside today's files. Play never waits for them; the figure shows when they come. A failed
+    // load is dropped, so asking again after Try again fetches them again.
     let figure = source.umpFigure();
     const dateKey = DATE ?? dateKeyOf(new Date());
 
@@ -83,7 +83,7 @@ async function boot(): Promise<void> {
       showCardFigure(f);
     });
   } catch (e) {
-    // only the World Series loads anything before it opens, and it keeps M1's failure
+    // only the World Series loads anything before it opens; the season's loads show Failed or Broken in seasonToday
     dataFailed(e);
 
     return;

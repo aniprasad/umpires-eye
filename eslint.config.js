@@ -13,7 +13,7 @@ export default tseslint.config(
     },
     plugins: { '@stylistic': stylistic },
     rules: {
-      // The owner's style (AGENTS.md): a blank line after declarations, and before a return that follows other statements.
+      // The house style (AGENTS.md): a blank line after declarations, and before a return that follows other statements.
       '@stylistic/padding-line-between-statements': [
         'error',
         { blankLine: 'always', prev: ['const', 'let', 'var'], next: '*' },

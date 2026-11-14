@@ -32,7 +32,7 @@ const PK: readonly Key[] = [
 
 const REL_KEY = PT.indexOf(0);
 const HAND = PJ.indexOf('tHa');
-/** How far the frame may pull the hand toward the glove side before the figure throws from the other side (§4.7). */
+/** How far the frame may pull the hand toward the glove side before the figure throws from the other side. */
 const MAX_GLOVE_PULL = 0.5;
 
 interface PitcherFrame {
@@ -49,7 +49,7 @@ const FRAMES = new WeakMap<PreparedPitch, PitcherFrame>();
 const bodyX = (arm: number, relX: number): number => clamp(relX - arm * 1.10, -1.0, 1.0);
 
 /**
- * The world x sign of the figure's throwing side, from the release point (§4.7). It's the listed hand's, unless that
+ * The world x sign of the figure's throwing side, from the release point. It's the listed hand's, unless that
  * frame would drag the hand more than 0.5 ft across the body to the release point, as for a release past the plate's
  * centre line; then it's the other side's, which reaches the release point. The matchup card keeps the listed hand.
  */

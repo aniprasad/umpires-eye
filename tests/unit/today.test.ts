@@ -52,7 +52,7 @@ describe('the start of the next local date', () => {
   });
 });
 
-describe('loading the Ten for a date (§2.2)', () => {
+describe('loading the Ten for a date', () => {
   const ten = (dateKey: string): TodayResult => ({ kind: 'ten', dateKey, pitches: [] });
 
   /** A load per date, each finishing when the test says, and the signals they were given. */
@@ -117,7 +117,7 @@ describe('the words for a date', () => {
   });
 });
 
-describe('the ump figure in words (§5.4)', () => {
+describe('the ump figure in words', () => {
   const set = [prep(synthPitch())];
   const results = [judged(set[0], 'strike')];
   const cited: UmpFigure = { pct: 94, label: 'MLB umps', definition: 'UmpScorecards via mlb.com', approx: true };
@@ -126,7 +126,7 @@ describe('the ump figure in words (§5.4)', () => {
   const ump = `The real ump: ${set.filter((P) => P.umpCorrect).length}/1.`;
   const copied = (figure: UmpFigure | null): string | undefined => resultText({ label: 'x', roundLabel: 'y', figure, set, results }).split('\n')[1];
 
-  it("reads as M1 wrote it for the World Series' cited figure", () => {
+  it("keeps the World Series' words for its cited figure", () => {
     expect(figureWords(cited)).toEqual({
       hook: 'MLB umpires get about 94% of calls right. Can you?',
       chip: { long: 'Close calls · MLB umps ≈ 94%', short: ['Close calls', 'MLB ≈ 94%'] },
@@ -139,7 +139,7 @@ describe('the ump figure in words (§5.4)', () => {
     expect(copied(cited)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps ≈ 94%.`);
   });
 
-  it("sets a score against the season's close calls, and the hook gives both figures (the M3 review's finding 1)", () => {
+  it("sets a score against the season's close calls, and the hook gives both figures", () => {
     const band = "within 1.5 in of the zone's edge";
 
     expect(figureWords(measured)).toEqual({

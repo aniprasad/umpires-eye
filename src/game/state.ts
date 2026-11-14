@@ -21,7 +21,7 @@ export interface World {
   lens: Lens;
   /** Deals Another ten for this page, asking the source for its deck when it's first wanted. */
   another: AnotherTen;
-  /** The ump figure, once the source has it; null until then, and for good if it couldn't load (§5.4). */
+  /** The ump figure, once the source has it; null until then, and for good if it couldn't load. */
   figure: UmpFigure | null;
 }
 

@@ -5,7 +5,7 @@ import { seasonMini, type SeasonMini } from '../fixtures/season-mini';
 
 export const mini = seasonMini();
 export const DATA = '/data/season-2026/';
-// More page time than the idle callback, or Safari's 2 s stand-in for it, waits before the prefetch (§4.1).
+// More page time than the idle callback, or Safari's 2 s stand-in for it, waits before the prefetch.
 export const PAST_IDLE_MS = 5_000;
 
 /** Serves a synthetic season in place of the real one, and records every data request, ?v= included. */

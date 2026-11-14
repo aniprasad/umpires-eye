@@ -153,7 +153,7 @@ describe('the season adapter (rows to pitches)', () => {
   });
 });
 
-describe('which season rows reach a deck (§7.1)', () => {
+describe('which season rows reach a deck', () => {
   // A crossing inside the deal box with no extension, and a full row that takes 0.7 s to reach the plate. The data tools
   // store both as not dealable. Then a dealable row, and one held back for Today's Ten.
   const idleArm = pitchCells({ atBat: 1, extension: null, dealable: 0, ...trajThrough(0.2, 2.5) });
@@ -163,7 +163,7 @@ describe('which season rows reach a deck (§7.1)', () => {
   const held = atBats.find((n) => isDailyReserve(`900001-${n}-1`)) ?? 0;
   const shard = { ...shardDoc([idleArm, lob, pitchCells({ atBat: kept }), pitchCells({ atBat: held })]), build: mini.build };
 
-  it('deals neither row stored as not dealable, though M1 would have dealt the one with no extension', async () => {
+  it('deals neither row stored as not dealable, though playable() would pass the one with no extension', async () => {
     const { source } = serve(withFile('shards/00.json', shard));
     const deck = await source.deck();
 
@@ -171,7 +171,7 @@ describe('which season rows reach a deck (§7.1)', () => {
     expect(() => read([idleArm]).pitch(0)).toThrow("isn't dealable");
     // even marked dealable, its null extension is refused rather than read as 0
     expect(() => read([{ ...idleArm, dealable: 1 }]).pitch(0)).toThrow('has no extension');
-    // M1's rule, given the null turned into 0, sees a crossing inside the box and a quick enough flight
+    // playable(), given the null turned into 0, sees a crossing inside the box and a quick enough flight
     expect(playable(synthPitch({ traj: trajThrough(0.2, 2.5), mid: { x: 0.2, z: 2.5, t: 0 }, extension: Number(null) }))).toBe(true);
     expect(read([{ ...lob, dealable: 1 }]).pitch(0).flightTime).toBeCloseTo(0.7, 9);
   });
@@ -200,12 +200,12 @@ describe('the season source', () => {
     expect(await source.today('2026-11-16')).toEqual({ kind: 'none', dateKey: '2026-11-16', reason: 'outside-horizon' });
     // there's no December file, and past the schedule that's no error
     expect(await source.today('2026-12-01')).toEqual({ kind: 'none', dateKey: '2026-12-01', reason: 'outside-horizon' });
-    // a date asked for once the manifest has arrived checks it for a new build (§2.2)
+    // a date asked for once the manifest has arrived checks it for a new build
     expect(asked).toEqual(['manifest.json no-cache', 'daily/2026-11.json no-cache', 'manifest.json no-cache', 'manifest.json no-cache', 'daily/2026-12.json no-cache']);
     expect(await source.today(mini.unavailableDate)).toEqual({ kind: 'none', dateKey: mini.unavailableDate, reason: 'unavailable' });
   });
 
-  it("asks for the date's month file alongside the manifest, not after it (§4.1)", async () => {
+  it("asks for the date's month file alongside the manifest, not after it", async () => {
     const { held, open } = gate();
     const { source, asked } = serve(mini.files, undefined, undefined, (path) => (path === 'manifest.json' ? held() : Promise.resolve()));
     const today = source.today(mini.date);
@@ -252,7 +252,7 @@ describe('the season source', () => {
     await expect(lasting.source.today(mini.date)).rejects.toMatchObject({ kind: 'data', message: expect.stringMatching(/from build old000000000, the manifest from build/) });
   });
 
-  it('checks the manifest again for a later date, and a new build drops the old month files (§2.2)', async () => {
+  it('checks the manifest again for a later date, and a new build drops the old month files', async () => {
     const month = mini.files.get('daily/2026-11.json') as Record<string, unknown>;
     let build = '';
     const { source, asked } = serve(mini.files, (path) => {
@@ -484,7 +484,7 @@ describe('the season source', () => {
   });
 });
 
-describe('the season lens (§4.6)', () => {
+describe('the season lens', () => {
   it('frames every crossing inside the deal box, as a lens fitted to its edges', () => {
     const { xMax, zMin, zMax } = DEAL_BOX;
     const inside = Array.from({ length: 21 * 19 }, (_, i) => ({

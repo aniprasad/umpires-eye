@@ -1,4 +1,4 @@
-// data:daily's schedule (docs/M2-DESIGN.md §2): Today's Ten for each date of the horizon, drawn from the daily reserve,
+// data:daily's schedule: Today's Ten for each date of the horizon, drawn from the daily reserve,
 // with the month files already written as a history lock. Pure: it takes the files' texts and returns new ones.
 import { createHash } from 'node:crypto';
 import {
@@ -342,7 +342,7 @@ function monthText(month: string, days: ReadonlyArray<[string, DailyDay]>, seaso
 }
 
 /**
- * The schedule from the shards and the history lock (docs/M2-DESIGN.md §2.5). A day in the history stays as it is while
+ * The schedule from the shards and the history lock. A day in the history stays as it is while
  * all ten of its pitches are still dealable in the pool. A day that has lost one stays, unavailable, if it may have been
  * served, and is dealt again if it can't have been. So is a day not yet served that no longer passes the rules of the
  * round. Every other date up to the last is dealt fresh. No ID is ever scheduled twice.

@@ -4,7 +4,7 @@ import { CREDIT } from './src/core/rules.ts';
 // A relative base lets the same build run from GitHub Pages' project path, from any folder, or from preview.
 export default defineConfig({
   base: './',
-  // No single-page fallback: a data file the server lacks is a 404, as on GitHub Pages, not the app's page (§5.3).
+  // No single-page fallback: a data file the server lacks is a 404, as on GitHub Pages, not the app's page.
   appType: 'mpa',
   plugins: [
     {
