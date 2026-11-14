@@ -17,7 +17,7 @@ export function showSelfTest(): boolean {
       ? runSelfTest(seasonSelfTestContext(w.today, w.lens), SEASON_CHECKS)
       : { lines: ["UMPIRE'S EYE SELF-TEST", `There's no Today's Ten for ${w.dateKey} to check. Pick a date that has one with ?date=.`, 'RESULT: FAIL (1) no ten'], failures: ['no ten'] };
   const [title, ...rest] = lines;
-  const source = ws ? 'the World Series pool, with the mockup\'s figures' : `the 2026 season's Today's Ten for ${w.dateKey}; the pool-wide checks are data:validate's`;
+  const source = ws ? 'the World Series pool, with the mockup\'s figures' : `the 2026 season's Today's Ten for ${w.dateKey}, without the checks that need the whole pool`;
 
   document.title = failures.length ? 'SELFTEST FAIL' : 'SELFTEST PASS';
   UI.selftest.hidden = false;

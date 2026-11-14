@@ -48,7 +48,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 | `?state=pitch&i=3&t=0.2` | Pitch 3 of Today's Ten, frozen 0.2 s after release (`t` may be negative: the windup). |
 | `?state=reveal&i=4&call=strike` | The reveal for pitch 4 after a strike call. |
 | `?state=card&correct=8` | The umpire card for a round with 8 right. |
-| `?selftest=1` | The self-test report, on the World Series pool, since its figures are the mockup's. The page title becomes `SELFTEST PASS` or `SELFTEST FAIL`. With `?pool=season`, or a `?pool=` the app doesn't know, it checks the season's Today's Ten for the date instead; the season's pool-wide checks are `data:validate`'s. |
+| `?selftest=1` | The self-test report, on the World Series pool, since its figures are the mockup's. The page title becomes `SELFTEST PASS` or `SELFTEST FAIL`. With `?pool=season`, or a `?pool=` the app doesn't know, it checks the season's Today's Ten for the date instead, without the checks that need the whole pool (`docs/M2-DESIGN.md` §7.5). |
 | `?pool=ws` | The 2026 World Series pool, as in the mockup. Without a `?pool=`, or with a value the app doesn't know, it plays the 2026 season (`?pool=season`). |
 | `?date=2026-11-14` | Today's Ten for that date rather than the local one, and no switch at midnight. Anything that isn't a valid date is ignored. A date without a Ten offers Another ten instead. |
 | `?canvasFilter=fallback` | Draws the depth of field without the canvas `filter`, as WebKit does. |
