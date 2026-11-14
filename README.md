@@ -34,7 +34,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 - Projects:
   - `desktop-edge` and `desktop-webkit`: a keyboard round on the World Series pool, season rounds and Today's Ten by date (midnight, time zones, a date without a Ten), on small synthetic files, screenshots at 1440×900 and 1024×768, the self-test page on the World Series and on a season date, the depth-of-field checks, the season's loading and error states with Another ten's "Dealing…", and the World Series' failure states (pitch data or card art that won't load). The tests from before the season pin `?pool=ws`.
   - `native-reference` (Edge): draws the native canvas filter's reference for the depth-of-field check, at each desktop project's size and density. It runs in the first phase, beside every project without dependencies, in its own worker, and comes along whenever a desktop project runs. In UI mode or the VS Code extension, tick it too: they keep `test-results/` between runs, and the check refuses a reference drawn from another build.
-  - `speed-edge` and `speed-webkit`: a live pitch's frame times with the fallback filter, against the mockup's in the same engine. Each runs one test at a time, because copies side by side slow each other's samples.
+  - `speed-edge` and `speed-webkit`: the work a live pitch does each frame with the fallback filter, and its frame times against the mockup's in the same engine. No frame repaints the static scene, and a frame reads pixels back only to blur the mitt anew, which most frames don't, since its blur is kept while it holds still. The frame times are only a coarse backstop, since a shared machine's load moves them. Each project runs one test at a time, because copies side by side slow each other's samples.
   - `iphone` (WebKit) and `pixel` (Edge): touch rounds in device emulation, the card's set line, which must keep to two lines, the season's loading, Try again and "Dealing…" by tap, the touch layout (no key caps, the card's actions in reach, a phone on its side), and the paint and load measurements that `?timing=1` shows.
   - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`. By default the mockup's footnotes take the height of the port's longer credit line, so the rest of the screen lines up. Set `UE_PARITY_ALIGN=0` to compare the pages untouched.
 - Run one project with `npx playwright test --project=desktop-webkit`.
@@ -53,6 +53,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 | `?date=2026-11-14` | Today's Ten for that date rather than the local one, and no switch at midnight. Anything that isn't a valid date is ignored. A date without a Ten offers Another ten instead. |
 | `?canvasFilter=fallback` | Draws the depth of field without the canvas `filter`, as WebKit does. |
 | `?timing=1` | A plain-text readout over the scene, for checking a real phone: how long each new stance's static layers took to paint on the main thread during play, and the KB the page has loaded so far (images, data, code; compressed bodies). |
+| `?work=1` | Puts the count of static paints on `window.ueWork`, for the speed test to read frame by frame. Nothing shows. |
 
 ## How it's built
 
@@ -63,7 +64,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 - `src/game/` and `src/ui/`: the flow (start, ten pitches, reveal, card), input, the HUD, the verdict panel and the card. `src/game/another.ts` deals Another ten for a page, so no pitch comes up twice, and `src/game/today.ts` keeps the start screen's Today's Ten on the local date, through midnight.
   - While the start panel or the card is up, the rest of the game is inert, so Tab and screen readers stay on it. After Watch it slow, focus goes on to Next.
   - On touch screens there are no key caps, the card's actions stay in a bar at the bottom while it scrolls, and a phone on its side scrolls its start card and suggests turning upright.
-  - `index.html` listens for errors before the modules load: if the app's code fails to load, Play becomes Reload. Errors from other sites' scripts, such as extensions', are ignored, and the error box sits at the top and can be closed.
+  - `index.html` listens for errors before the modules load: if the app's code fails to load, Play becomes Reload. Error events from other sites' scripts, such as extensions', are ignored. A rejected promise can't be traced to its script, so every unhandled one is reported in the error box; one that comes before the app starts turns Play into Reload only until it does, when the app takes the start screen back. The error box sits at the top and can be closed.
 - `src/selftest/`: the mockup's self-test checks as pure functions, and the season's, over a date's Today's Ten. Vitest runs them, and so does `?selftest=1`.
 
 ## Assets

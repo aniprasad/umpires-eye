@@ -67,9 +67,13 @@ export function staticKeyFor(P: PreparedPitch): string {
 /** How long each new stance's static layers took to paint on the main thread, in ms, newest last (?timing=1). */
 export const paintLog: number[] = [];
 
+/** Static paints since the page loaded, which the speed test counts frame by frame (?work=1). */
+export const work = { staticPaints: 0 };
+
 function paintStatic(back: HTMLCanvasElement, front: HTMLCanvasElement, cam: LensCam, P: PreparedPitch): void {
   const t0 = performance.now();
 
+  work.staticPaints++;
   paintBack(back, cam, P);
   paintFront(front, cam, P);
   paintLog.push(performance.now() - t0);
