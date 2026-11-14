@@ -42,6 +42,31 @@ test("while the month file is slow, Play says it's loading, the panel is busy, a
   expect(errors).toEqual([]);
 });
 
+// The M3 review's finding 6: the stats failed with the first load, and Try again brought the pitches back but never the
+// ump figure.
+test('Try again brings back the ump figure too, when it failed along with the pitches', async ({ page }) => {
+  const { errors, allowed } = errorsBut(page, MONTH, 'stats.json');
+  const play = page.locator('#btnPlay');
+  let missing = true;
+
+  await serveSeason(page);
+  for (const file of [MONTH, 'stats.json']) {
+    await page.route((url) => url.pathname.endsWith(DATA + file), (route) => (missing ? route.fulfill({ status: 404, body: 'Not Found' }) : route.fallback()));
+  }
+  await page.goto(`./?date=${mini.date}`);
+  await expect(play).toHaveText('Try again');
+  await expect(page.locator('#hook')).toHaveText('Can you call balls and strikes like an MLB umpire?');
+  // the stats' 404 too, so their failed load has been dropped before the player tries again
+  await expect.poll(() => allowed.length).toBeGreaterThanOrEqual(2);
+  missing = false;
+  await play.click();
+  await waitReady(page);
+  await expect(page.locator('#hook')).toHaveText(/, but only [\d.]+% of the close ones\. Can you\?$/);
+  await expect(page.locator('#scSub .sc-long')).toHaveText(/^MLB umps [\d.]+% on close calls$/);
+  expect(allowed.length).toBeGreaterThanOrEqual(2);
+  expect(errors).toEqual([]);
+});
+
 test('two failed tries, then one that works: the page gets there without the player', async ({ page }) => {
   const { errors, allowed } = errorsBut(page, MONTH);
   let tries = 0;

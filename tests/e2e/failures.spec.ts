@@ -75,6 +75,16 @@ test("the server answers a data file it doesn't have with a 404, as GitHub Pages
   expect(res.status()).toBe(404);
 });
 
+test('the tab has the mask icon, served as SVG', async ({ page }) => {
+  await page.goto('./?pool=ws');
+
+  const href = await page.locator('link[rel="icon"]').getAttribute('href');
+  const res = await page.request.get(new URL(href ?? '', page.url()).href);
+
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('image/svg+xml');
+});
+
 test("card art that won't load is reported, and the game still starts", async ({ page }) => {
   const errors = pageErrors(page);
 

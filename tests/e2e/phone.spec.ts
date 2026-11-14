@@ -203,6 +203,35 @@ test('on its side, the start card scrolls clear of its credit and suggests turni
   expect(errors).toEqual([]);
 });
 
+// M3's phone measurements: the static paint for a new stance, raster included, from the self-test over a date's Ten;
+// and what the page loads, from ?timing=1's readout, which the owner can also read on a real phone.
+test('measures the paint for a new stance and what the page loads, and ?timing=1 shows them', async ({ page }, testInfo) => {
+  test.setTimeout(150_000);
+
+  const report = page.locator('#selftest');
+  const timing = page.locator('#timing');
+
+  // the readout first, while the cache is empty, so it counts every file
+  await page.goto('./?date=2026-11-14&timing=1');
+  await waitReady(page);
+  // and the shard the start screen fetches once it's idle
+  await expect.poll(() => page.evaluate(() => performance.getEntriesByType('resource').some((e) => e.name.includes('/shards/'))), { timeout: 30_000 }).toBe(true);
+  await expect(timing).toContainText(/static paint per new stance: last \d+ ms/);
+  // the shard alone is over 100 KB
+  await expect(timing).toContainText(/data \d{3,}/);
+  await expect(timing).toHaveAttribute('aria-hidden', 'true');
+  const readout = (await timing.textContent()) ?? '';
+
+  await page.goto('./?date=2026-11-14&selftest=1');
+  await expect(report).toContainText('[STANCE] static layers', { timeout: 120_000 });
+  const stance = /\[STANCE\] static layers[^\n]*/.exec((await report.textContent()) ?? '')?.[0] ?? '';
+
+  testInfo.annotations.push({ type: 'stance', description: stance }, { type: 'timing', description: readout });
+  console.log(`MEASURED ${testInfo.project.name}\n${stance}\n${readout}`);
+  expect(stance).toMatch(/\d+-\d+ ms to paint \(mean \d+\)/);
+  expect(readout).toMatch(/images [1-9]\d*, data [1-9]\d*, code [1-9]\d*/);
+});
+
 // The M3 review's finding 1: the season sets a score against the umps' close calls, which takes more words.
 test("the season's close-call figure fits a phone: Play in view, the chip says close calls, and the card's row keeps one line", async ({ page }, testInfo) => {
   const errors = trackErrors(page);
