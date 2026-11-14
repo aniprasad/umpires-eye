@@ -18,8 +18,8 @@ import { showFigure } from './ui/hud';
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-window.addEventListener('error', (e) => fail(`Error: ${e.message} (line ${e.lineno})`));
-window.addEventListener('unhandledrejection', (e) => fail(`Error: ${message(e.reason)}`));
+// Every module has loaded, so the error listeners in index.html leave the start screen to the app from here on.
+dispatchEvent(new Event('ue:running'));
 
 const loadImg = (img: HTMLImageElement, src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
   img.onload = () => resolve(img);

@@ -88,3 +88,67 @@ test("card art that won't load is reported, and the game still starts", async ({
   await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
   expect(errors).toEqual([]);
 });
+
+// The built app is one module; its errors reach index.html's listeners, which run first (the M1 review's N12).
+test.describe('a failure while the modules load', () => {
+  const ENTRY = /\/assets\/index-[\w-]+\.js$/;
+
+  async function expectReload(page: Page, cause: RegExp): Promise<void> {
+    const play = page.locator('#btnPlay');
+
+    await expect(page.locator('html')).toHaveAttribute('data-ready', 'error');
+    await expect(page.locator('html')).toHaveAttribute('data-error', 'app');
+    await expect(page.locator('#err')).toContainText(cause);
+    await expect(page.locator('#startLede')).toHaveText("The game didn't load. Reload the page.");
+    await expect(play).toHaveText('Reload');
+    await expect(play).toBeEnabled();
+    await expect(play).toBeFocused();
+    await Promise.all([page.waitForEvent('framenavigated', { timeout: 10_000 }), play.click()]);
+    // the reloaded page fails the same way
+    await expect(page.locator('#startLede')).toHaveText("The game didn't load. Reload the page.");
+  }
+
+  test('a module that throws as it loads: the error box says so, and Play becomes Reload', async ({ page }) => {
+    const errors = pageErrors(page);
+
+    await page.route(ENTRY, (route) => route.fulfill({ contentType: 'text/javascript', body: "throw new Error('A module threw as it loaded');" }));
+    await page.goto('./?pool=ws');
+    await expectReload(page, /Error: .*A module threw as it loaded/);
+    expect(errors).toEqual(['A module threw as it loaded', 'A module threw as it loaded']);
+  });
+
+  test("the app's code that won't load: the error box names the file, and Play becomes Reload", async ({ page }) => {
+    const errors = pageErrors(page);
+    const failed: string[] = [];
+
+    page.on('console', (m) => {
+      if (m.type() === 'error') failed.push(m.location().url);
+    });
+    await page.route(ENTRY, (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' }));
+    await page.goto('./?pool=ws');
+    await expectReload(page, /Could not load \S*\/assets\/index-[\w-]+\.js/);
+    // the entry module's 404, once per load
+    expect(failed).toHaveLength(2);
+    for (const url of failed) expect(url).toMatch(ENTRY);
+    expect(errors).toEqual([]);
+  });
+
+  test('an error once the app runs is only reported: the error box says so, and Play still plays', async ({ page }) => {
+    const errors = pageErrors(page);
+    const play = page.locator('#btnPlay');
+
+    await page.goto('./?pool=ws');
+    await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
+    await page.evaluate(() => {
+      setTimeout(() => {
+        throw new Error('A later fault');
+      });
+    });
+    await expect(page.locator('#err')).toContainText(/Error: .*A later fault/);
+    await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
+    await expect(play).toHaveText('Play ball');
+    await play.click();
+    await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+    expect(errors).toEqual(['A later fault']);
+  });
+});

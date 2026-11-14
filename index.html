@@ -121,6 +121,42 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
 <pre id="err" role="alert" hidden></pre>
 <pre id="selftest" hidden></pre>
 <noscript><p style="padding:24px">Umpire's Eye needs JavaScript to replay the pitches.</p></noscript>
+<script>
+  // Before the modules, so that an error while they load still reaches the error box, and the start screen offers a
+  // reload rather than loading for good (the M1 review's N12). Once the main module runs, an error is only reported.
+  (function () {
+    var loading = true;
+
+    function report(msg) {
+      var err = document.getElementById('err');
+      var play = document.getElementById('btnPlay');
+      var lede = "The game didn't load. Reload the page.";
+
+      err.hidden = false;
+      err.textContent += msg + '\n';
+      if (!loading) return;
+      loading = false;
+      document.documentElement.dataset.ready = 'error';
+      document.documentElement.dataset.error = 'app';
+      document.getElementById('startLede').textContent = lede;
+      document.getElementById('live').textContent = lede;
+      play.textContent = 'Reload';
+      play.disabled = false;
+      play.onclick = function () { location.reload(); };
+      play.focus();
+    }
+
+    addEventListener('ue:running', function () { loading = false; });
+    // in the capture phase, to hear a script that fails to load as well; an image that fails is the app's to report
+    addEventListener('error', function (e) {
+      if (e.target === window) report('Error: ' + e.message + ' (line ' + e.lineno + ')');
+      else if (e.target instanceof HTMLScriptElement) report('Could not load ' + e.target.src);
+    }, true);
+    addEventListener('unhandledrejection', function (e) {
+      report('Error: ' + (e.reason instanceof Error ? e.reason.message : String(e.reason)));
+    });
+  })();
+</script>
 <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
