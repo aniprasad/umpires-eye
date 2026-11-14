@@ -260,4 +260,29 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
   .card-btn { width: 100%; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .cards.enter .ucard-front, .cards.enter .ucard-back, .card-btn { animation: none !important; transition: none !important; } }
+
+/* ---------- touch phones (the M3 fresh-eyes review); a narrow desktop window keeps the mockup's layout ---------- */
+.rotate-hint { display: none; margin: 16px 0 0; font: 400 15px/1.4 var(--body); color: var(--chalk-2); }
+@media (pointer: coarse) {
+  /* finding 8: there's no keyboard to press */
+  .keys, .ctl kbd { display: none; }
+}
+@media (pointer: coarse) and (max-width: 640px) {
+  /* finding 10: the scene's chrome has nothing to show before a pitch, and the start card's copy reaches it */
+  .app[data-phase="start"] .hud, .app[data-phase="start"] .indicator, .app[data-phase="start"] .ctl { visibility: hidden; }
+}
+@media (pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 500px) {
+  /* finding 4: the card scrolls a screen or more, and its actions stay in reach */
+  .cards-actions { position: sticky; bottom: 0; z-index: 4; flex-wrap: nowrap; width: 100%; gap: 10px; margin-top: 24px; padding: 14px 0 calc(14px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, #060d09 72%, rgba(6, 13, 9, 0)); }
+  .cards-actions .card-btn { flex: 1 1 auto; width: auto; min-width: 0; padding: 14px 12px 13px; font-size: 18px; letter-spacing: .06em; }
+}
+@media (pointer: coarse) and (max-height: 500px) and (min-width: 641px) {
+  /* finding 2: a phone on its side scrolls its start card with the credit after it, as in portrait, and suggests
+     turning upright; a pitch fits as it is */
+  .start { display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 18px 24px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .start-card { margin-top: auto; }
+  .footnote { position: static; width: auto; max-width: 60ch; margin: 22px 0 auto; transform: none; }
+  .app[data-phase="start"] .hud, .app[data-phase="start"] .indicator, .app[data-phase="start"] .ctl { visibility: hidden; }
+  .rotate-hint { display: block; }
+}
 /*@@CSS@@*/

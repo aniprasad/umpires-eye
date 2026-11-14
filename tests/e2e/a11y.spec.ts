@@ -128,6 +128,26 @@ test('after Watch it slow, Space goes on to the next pitch, as its key cap says'
   expect(errors).toEqual([]);
 });
 
+// The M3 review's finding 4: at 1280x720 the card's actions start below the fold, and focus mustn't land out of sight.
+test('a round that ends on a short screen moves focus to Copy result, in view', async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const errors = trackErrors(page);
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openPaused(page, './?pool=ws');
+  await page.keyboard.press('Enter');
+  for (let n = 1; n <= 10; n++) {
+    await callPitch(page, 'S');
+    await expect.poll(() => activeId(page)).toBe('btnNext');
+    await page.keyboard.press('Space');
+  }
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'card');
+  await expect.poll(() => activeId(page)).toBe('btnCopy');
+  await expect(page.locator('#btnCopy')).toBeInViewport({ ratio: 1 });
+  expect(errors).toEqual([]);
+});
+
 test("Another ten from the card moves focus to the game, as the card's buttons go", async ({ page }) => {
   const errors = trackErrors(page);
 
