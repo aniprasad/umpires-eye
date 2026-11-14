@@ -56,14 +56,14 @@ test('Try again brings back the ump figure too, when it failed along with the pi
   await page.goto(`./?date=${mini.date}`);
   await expect(play).toHaveText('Try again');
   await expect(page.locator('#hook')).toHaveText('Can you call balls and strikes like an MLB umpire?');
-  // the stats' 404 too, so their failed load has been dropped before the player tries again
-  await expect.poll(() => allowed.length).toBeGreaterThanOrEqual(2);
+  // the stats' 404 too, so their failed load has been dropped before the player tries again; one 404 each
+  await expect.poll(() => allowed.length).toBe(2);
   missing = false;
   await play.click();
   await waitReady(page);
   await expect(page.locator('#hook')).toHaveText(/, but only [\d.]+% of the close ones\. Can you\?$/);
   await expect(page.locator('#scSub .sc-long')).toHaveText(/^MLB umps [\d.]+% on close calls$/);
-  expect(allowed.length).toBeGreaterThanOrEqual(2);
+  expect(allowed).toHaveLength(2);
   expect(errors).toEqual([]);
 });
 

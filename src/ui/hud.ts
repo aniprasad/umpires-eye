@@ -28,7 +28,8 @@ export function setPhase(ph: Phase): void {
   const calling = ph === 'pitch' || ph === 'start';
   // The start panel and the card cover the scene, which still shows behind them, as in the mockup. Everything else in
   // the game leaves the Tab order, the pointer and the accessibility tree meanwhile, but the live region keeps talking.
-  const panel = ph === 'card' ? CARD.root : ph === 'boot' || ph === 'start' ? UI.start : null;
+  // 'boot' is only the HTML's first phase and never comes through here; CSS hides the scene's controls until it ends.
+  const panel = ph === 'card' ? CARD.root : ph === 'start' ? UI.start : null;
 
   UI.btnBall.hidden = UI.btnStrike.hidden = !calling;
   UI.btnReplay.hidden = UI.btnNext.hidden = calling || ph === 'card';
