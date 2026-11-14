@@ -77,7 +77,13 @@ test('a month file missing inside the schedule: Failed, with Try again and no ot
   await expect(page.locator('#indicator')).toBeHidden();
   expect(shards(asked)).toEqual([]);
   missing = false;
+  const release = await hold(page, MONTH);
+
   await page.keyboard.press('Enter');
+  // loading again, in Loading's words rather than Failed's
+  await expect(page.locator('#startLede')).toHaveText("Today's Ten: real pitches from the 2026 season, at real speed, from the plate umpire's eye.");
+  await expect(play).toHaveText("Loading today's pitches");
+  release();
   await waitReady(page);
   await expect(play).toHaveText('Play ball');
   await expect(page.locator('#app')).toHaveAttribute('data-ten', mini.ten.map((pitch) => pitch.id).join(' '));

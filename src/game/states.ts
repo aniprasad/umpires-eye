@@ -13,6 +13,8 @@ let onPress: (() => void) | null = null;
 // Broken lasts until the page reloads: a later date that loaded would leave the error box's detail over a page that
 // looked fine.
 let broken = false;
+// index.html's number-free lede, for a load that follows Failed. A midnight switch keeps the last date's lede instead.
+const LOADING_LEDE = UI.startLede.textContent;
 
 export const isBroken = (): boolean => broken;
 
@@ -24,6 +26,7 @@ export function showLoading(): void {
 
   if (onPress) window.removeEventListener('online', onPress);
   onPress = null;
+  if (de.dataset.ready === 'error') UI.startLede.textContent = LOADING_LEDE;
   delete de.dataset.ready;
   delete de.dataset.error;
   UI.start.setAttribute('aria-busy', 'true');
