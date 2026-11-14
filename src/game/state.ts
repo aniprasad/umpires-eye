@@ -1,4 +1,4 @@
-import type { PitchSource, TodayResult } from '../data/source';
+import type { PitchSource, TodayResult, UmpFigure } from '../data/source';
 import type { PreparedPitch } from '../math/kinematics';
 import { prep } from '../math/kinematics';
 import { createLens, type Lens } from '../math/lens';
@@ -21,6 +21,8 @@ export interface World {
   lens: Lens;
   /** Deals Another ten for this page, asking the source for its deck when it's first wanted. */
   another: AnotherTen;
+  /** The ump figure, once the source has it; null until then, and for good if it couldn't load (§5.4). */
+  figure: UmpFigure | null;
 }
 
 let current: World | null = null;
@@ -35,6 +37,7 @@ export function createWorld(source: PitchSource, today: TodayResult): World {
     lens: createLens(source.lensPoints),
     // The season's decks hold none of the daily reserve, so a later date's Ten is left out too.
     another: anotherTen(source, pitches),
+    figure: null,
   };
 }
 

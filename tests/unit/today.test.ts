@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { dateKeyOf } from '../../src/core/daily.ts';
 import { dateLabel, nextDayStart } from '../../src/data/dates';
-import type { TodayResult } from '../../src/data/source';
+import type { TodayResult, UmpFigure } from '../../src/data/source';
 import { latestToday } from '../../src/game/today';
 import { prep } from '../../src/math/kinematics';
 import { noTodayLede, seasonLede } from '../../src/math/deal';
 import { judged } from '../../src/math/flow';
-import { resultText, setLine } from '../../src/math/words';
+import { figureWords, resultText, setLine } from '../../src/math/words';
 import { synthPitch } from './fixtures';
 
 const HOUR = 3_600_000;
@@ -105,14 +105,57 @@ describe('the words for a date', () => {
   });
 
   it('put the date after the round in a copied result, and in place of the round on the card', () => {
-    const copied = resultText({ label: '2026 season', roundLabel: "Today's Ten", date: 'November 14, 2026', set, results });
+    const copied = resultText({ label: '2026 season', roundLabel: "Today's Ten", date: 'November 14, 2026', figure: null, set, results });
 
     expect(copied.split('\n')[0]).toBe("Umpire's Eye · 2026 season · Today's Ten · November 14, 2026");
     expect(setLine('2026 season', "Today's Ten", 'November 14, 2026')).toBe('2026 season set · November 14, 2026');
   });
 
   it('leave a round without a date as it was', () => {
-    expect(resultText({ label: '2026 season', roundLabel: 'Another ten', set, results }).split('\n')[0]).toBe("Umpire's Eye · 2026 season · Another ten");
+    expect(resultText({ label: '2026 season', roundLabel: 'Another ten', figure: null, set, results }).split('\n')[0]).toBe("Umpire's Eye · 2026 season · Another ten");
     expect(setLine('2026 World Series', "Today's Ten", null)).toBe("2026 World Series set · Today's Ten");
+  });
+});
+
+describe('the ump figure in words (§5.4)', () => {
+  const set = [prep(synthPitch())];
+  const results = [judged(set[0], 'strike')];
+  const cited: UmpFigure = { pct: 94, label: 'MLB umps', definition: 'UmpScorecards via mlb.com', approx: true };
+  const measured: UmpFigure = { pct: 93.2, label: 'season overall', definition: 'agreement with our ABS reconstruction on 2026 called pitches', approx: false };
+  const ump = `The real ump: ${set.filter((P) => P.umpCorrect).length}/1.`;
+  const copied = (figure: UmpFigure | null): string | undefined => resultText({ label: 'x', roundLabel: 'y', figure, set, results }).split('\n')[1];
+
+  it("reads as M1 wrote it for the World Series' cited figure", () => {
+    expect(figureWords(cited)).toEqual({
+      hook: 'MLB umpires get about 94% of calls right. Can you?',
+      chip: 'MLB umps ≈ 94%',
+      chipShort: 'MLB ≈ 94%',
+      overall: 'MLB umps ≈ 94% overall',
+      row: { label: 'MLB umps', value: '≈ 94%' },
+      cite: 'MLB umps ≈ 94%: UmpScorecards via mlb.com.',
+      copy: 'MLB umps ≈ 94%.',
+    });
+    expect(copied(cited)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps ≈ 94%.`);
+  });
+
+  it("labels the season's measured figure season overall, and defines it", () => {
+    expect(figureWords(measured)).toEqual({
+      hook: 'MLB umpires got 93.2% of calls right this season. Can you?',
+      chip: 'MLB umps 93.2% season overall',
+      chipShort: 'MLB 93.2%',
+      overall: 'MLB umps 93.2% season overall',
+      row: { label: 'MLB umps', value: '93.2%' },
+      cite: 'MLB umps 93.2%, season overall: agreement with our ABS reconstruction on 2026 called pitches.',
+      copy: 'MLB umps 93.2%, season overall.',
+    });
+    expect(copied(measured)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps 93.2%, season overall.`);
+  });
+
+  it('leaves the figure out when there is none, and the hook asks without a number', () => {
+    const words = figureWords(null);
+
+    expect(words).toEqual({ hook: 'Can you call balls and strikes like an MLB umpire?', chip: null, chipShort: null, overall: null, row: null, cite: null, copy: null });
+    expect(words.hook).not.toMatch(/\d/);
+    expect(copied(null)).toBe(`I called 1 of 1 right (100%). ${ump}`);
   });
 });

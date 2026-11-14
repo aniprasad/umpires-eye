@@ -182,7 +182,8 @@ test('the default is the 2026 season, and says so while it loads', async ({ page
   release();
   await waitReady(page);
   await expect(page.locator('#startLede')).toHaveText(/^Today's Ten for November 14, 2026: real pitches from the 2026 season/);
-  await expect(page.locator('.footnote')).toContainText('ABS truth reconstructed from tracking data. Players', { useInnerText: true });
+  // only the World Series' footnote counts its real challenges
+  await expect(page.locator('.footnote')).not.toContainText('real challenges', { useInnerText: true });
   await page.keyboard.press('Enter');
   await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
   await expect(page.locator('#app')).toHaveAttribute('data-pitch', mini.ten[0].id);

@@ -82,3 +82,39 @@ export async function saveData(page: Page): Promise<void> {
     Object.defineProperty(navigator, 'connection', { value: { saveData: true }, configurable: true });
   });
 }
+
+/** Holds a data file's answers until the test lets them go. Routes run newest first, so this one sees them first. */
+export async function hold(page: Page, file: string): Promise<() => void> {
+  let release = (): void => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await page.route((url) => url.pathname.endsWith(DATA + file), async (route) => {
+    await held;
+    await route.fallback();
+  });
+
+  return release;
+}
+
+/**
+ * Console and page errors, apart from the browser's reports of the one data file a test makes fail. Those are counted
+ * instead, so the test can say how many there should be (AGENTS.md).
+ */
+export function errorsBut(page: Page, file: string): { errors: string[]; allowed: string[] } {
+  const errors: string[] = [];
+  const allowed: string[] = [];
+
+  page.on('console', (message) => {
+    if (message.type() !== 'error') return;
+    const { url } = message.location();
+
+    if (url && new URL(url).pathname.endsWith(DATA + file)) allowed.push(message.text());
+    // browsers ask for /favicon.ico on their own, as trackErrors allows
+    else if (!url.endsWith('/favicon.ico')) errors.push(`console: ${message.text()}`);
+  });
+  page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+
+  return { errors, allowed };
+}

@@ -127,7 +127,7 @@ describe('words on the reveal and the card', () => {
     const rules = readFileSync(new URL('../../AGENTS.md', import.meta.url), 'utf8');
     const credit = /Credit the data: "([^"]+)"/.exec(rules)?.[1];
     const set = [prep(synthPitch())];
-    const text = resultText({ label: WS_LABEL, roundLabel: "Today's Ten", set, results: [judged(set[0], 'strike')] });
+    const text = resultText({ label: WS_LABEL, roundLabel: "Today's Ten", figure: null, set, results: [judged(set[0], 'strike')] });
 
     expect(credit).toMatch(/MLB Stats API/);
     expect(text.split('\n').at(-1)).toContain(credit);

@@ -122,6 +122,7 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
 .wordmark svg { width: .66em; height: .66em; flex: none; }
 .hook { margin: 24px 0 0; font: 800 clamp(24px, 2.6vw, 32px)/1.12 var(--display); letter-spacing: .03em; text-transform: uppercase; text-wrap: balance; }
 .lede { margin: 14px auto 0; max-width: 46ch; font: 400 18px/1.5 var(--body); color: var(--chalk-2); text-wrap: pretty; }
+.slow { margin: 14px auto 0; font: 400 14px/1.4 var(--body); color: var(--chalk-3); }
 .keys { display: flex; justify-content: center; gap: 30px; margin: 26px 0 0; padding: 0; list-style: none; font: 700 18px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; }
 .keys li { display: inline-flex; align-items: center; gap: 7px; }
 .keys kbd { font-size: 14px; padding: 6px 9px 5px; opacity: .9; }
@@ -136,6 +137,8 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
 .app[data-phase="card"] .hud, .app[data-phase="card"] .indicator, .app[data-phase="card"] .ctl, .app[data-phase="card"] .verdict { display: none; }
 /* NoToday: no pitch to show behind the start panel */
 .app[data-phase="start"][data-ten="none"] .hud, .app[data-phase="start"][data-ten="none"] .indicator, .app[data-phase="start"][data-ten="none"] .ctl { display: none; }
+/* nor while the pitches load, or if they don't: the HUD's placeholders aren't real */
+.app[data-phase="boot"] .hud, .app[data-phase="boot"] .indicator, .app[data-phase="boot"] .ctl { display: none; }
 
 @media (max-width: 1180px) and (min-width: 641px) {
   .verdict { left: var(--edge); transform: none; width: min(640px, calc(100% - 2 * var(--edge))); }
@@ -218,6 +221,7 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
 .ub-head span + span { max-width: 132px; font-size: 12px; line-height: 1.25; font-weight: 400; letter-spacing: 0; text-transform: none; text-align: right; }
 .ub-stats { display: grid; gap: 4px; margin: 11px 0 0; font: 400 14.5px/1.2 var(--type); text-transform: uppercase; }
 .ub-stats div { display: flex; align-items: baseline; gap: 6px; }
+.ub-stats div[hidden] { display: none; }
 .ub-stats dt { flex: none; }
 .ub-stats i { flex: 1; min-width: 12px; border-bottom: 2px dotted rgba(41, 36, 30, .55); transform: translateY(-3px); }
 .ub-stats dd { margin: 0; font-weight: 700; text-align: right; }

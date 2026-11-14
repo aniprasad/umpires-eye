@@ -31,7 +31,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
       <p class="mu-pit"><span class="vs">vs</span> <span id="muPitcher">Pitcher</span> <small id="muPitcherMeta">RHP</small></p>
       <p class="mu-game" id="muGame">2026 World Series</p>
     </section>
-    <p class="score-chip" id="scoreChip"><span class="sc-main" id="scMain">Today's Ten</span><span class="sc-sub" id="scSub"><span class="sc-long">Close calls · MLB umps ≈ 94%</span><span class="sc-short"><span class="sc-ph">Close calls</span><span class="sc-ph">MLB ≈ 94%</span></span></span></p>
+    <p class="score-chip" id="scoreChip"><span class="sc-main" id="scMain">Today's Ten</span><span class="sc-sub" id="scSub"><span class="sc-long">Close calls</span><span class="sc-short"><span class="sc-ph">Close calls</span></span></span></p>
   </header>
 
   <div class="indicator" id="indicator" role="group" aria-label="Umpire indicator">
@@ -68,15 +68,16 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
         <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 15c0-6 7-10 15-10s15 4 15 10v11c0 10-7 17-15 18-8-1-15-8-15-18z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M9.5 21h29M10 30h28M14 38h20M24 5v39" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
         <span>Umpire's Eye</span>
       </h1>
-      <h2 class="hook">MLB umpires get about 94% of calls right. Can you?</h2>
+      <h2 class="hook" id="hook">Can you call balls and strikes like an MLB umpire?</h2>
       <p class="lede" id="startLede">Today's Ten: real pitches from the 2026 season, at real speed, from the plate umpire's eye.</p>
       <ul class="keys" aria-label="Controls">
         <li><kbd>S</kbd><kbd>→</kbd><span>Strike</span></li>
         <li><kbd>B</kbd><kbd>←</kbd><span>Ball</span></li>
       </ul>
       <button class="btn-play" id="btnPlay" type="button" disabled>Loading the ballpark</button>
+      <p class="slow" id="slowHint" hidden>Still loading. A slow connection can take a while.</p>
     </div>
-    <p class="footnote">Real pitches: %DATA_CREDIT% ABS truth reconstructed from tracking data<span class="ws-only" hidden> and matches all 29 real challenges in the Series</span>. Players, field and catch are illustrations.</p>
+    <p class="footnote">Real pitches: %DATA_CREDIT% ABS truth reconstructed from tracking data<span class="ws-only" hidden> and matches all 29 real challenges in the Series</span>.<span id="figCite" hidden></span> Players, field and catch are illustrations.</p>
   </section>
   <section class="cards" id="cards" aria-labelledby="cardsTitle" hidden>
     <div class="cards-inner">
@@ -97,7 +98,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
             <div><dt>Pitches</dt><i></i><dd id="ubPitches">10</dd></div>
             <div><dt>Correct</dt><i></i><dd id="ubCorrect">0</dd></div>
             <div><dt>The real ump</dt><i></i><dd id="ubUmp">6/10</dd></div>
-            <div><dt>MLB umps</dt><i></i><dd>≈ 94%</dd></div>
+            <div id="ubFigRow" hidden><dt id="ubFigLabel">MLB umps</dt><i></i><dd id="ubFig"></dd></div>
             <div><dt>Toughest</dt><i></i><dd id="ubTough">None</dd></div>
           </dl>
           <figure class="ub-map">
@@ -105,7 +106,7 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
             <svg id="ubMap" viewBox="0 6 240 140" role="img" aria-label="Miss map"></svg>
             <figcaption class="ub-legend"><span class="lx">×</span> missed &nbsp;<span class="ld">●</span> right &nbsp;· catcher's view</figcaption>
           </figure>
-          <footer class="ub-foot">MLB umps ≈ 94%: UmpScorecards via mlb.com. The real ump: original calls vs ABS on these pitches.</footer>
+          <footer class="ub-foot" id="ubFoot">The real ump: original calls vs ABS on these pitches.</footer>
         </section>
       </div>
       <div class="cards-actions">

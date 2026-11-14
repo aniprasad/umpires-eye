@@ -22,6 +22,7 @@ import { announce, fillMatchup, setIndicator, setPhase, toast, updateScore } fro
 import { fillVerdict, placeVerdict } from '../ui/verdict';
 import { DATE, Q, REDUCED, SELFTEST, STATE } from './params';
 import { curP, G, setToday, world, type World } from './state';
+import { endLoading, isBroken, pressFailure, showFailure, showLoading } from './states';
 import { latestToday, watchMidnight } from './today';
 
 const sNow = (now: number): number => (G.frozenS !== null ? G.frozenS : (now - G.trel) / 1000);
@@ -88,6 +89,14 @@ export function render(now: number): void {
   g.globalAlpha = 1;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawReveal(g, cam, P, st);
+}
+
+/** NoToday has no pitch to draw, so the night behind its panel is empty, as it is while the page loads. */
+function clearScene(): void {
+  const g = ctx2d(UI.scene);
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, UI.scene.width, UI.scene.height);
 }
 
 export function beginPitch(i: number, opts: { first?: boolean } = {}): void {
@@ -222,6 +231,8 @@ const todayLoads = latestToday((dateKey, signal) => world().source.today(dateKey
 let playWhenLoaded = false;
 
 export function startGame(): void {
+  // Try again, or Reload
+  if (pressFailure()) return;
   if (G.phase !== 'start') return;
   if (todayLoads.busy()) {
     playWhenLoaded = true;
@@ -230,7 +241,7 @@ export function startGame(): void {
   }
   // NoToday's button deals Another ten, whatever the date
   if (!G.set.length) {
-    void playAnother();
+    void playAnother(UI.btnPlay);
 
     return;
   }
@@ -246,27 +257,39 @@ export function startGame(): void {
 }
 
 let dealing = false;
+const AGAIN = 'Play another ten';
 
 /**
  * "Play another ten", on the card or in NoToday: the next ten from the source's decks, with none of Today's Ten and no
- * pitch dealt earlier on this page (§3). Under Save-Data, this is when the season's shard loads.
+ * pitch dealt earlier on this page (§3). Under Save-Data, this is when the season's shard loads. While a deck loads, the
+ * button says so (§5.2). A deck that's ready deals before the next paint, so then it never shows. If the deck can't
+ * load, the button offers to try again.
  */
-export async function playAnother(): Promise<void> {
+export async function playAnother(btn: HTMLButtonElement): Promise<void> {
   const w = world();
   let ten: Pitch[];
 
   // one deal per press, however long the deck takes
   if (dealing) return;
   dealing = true;
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  btn.textContent = 'Dealing…';
   try {
     ten = await w.another.deal();
   } catch (e) {
-    fail(e instanceof LoadError ? `More pitches didn't load: ${e.message}` : e instanceof Error ? e.message : String(e));
+    // a load that failed is the button's to say; anything else is a fault for the error box
+    if (!(e instanceof LoadError)) fail(e instanceof Error ? e.message : String(e));
+    btn.textContent = "Couldn't load more pitches. Try again";
+    announce("Couldn't load more pitches.");
 
     return;
   } finally {
     dealing = false;
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
   }
+  btn.textContent = AGAIN;
   G.set = ten.map(prep);
   G.mode = 'pool';
   G.results = [];
@@ -369,7 +392,7 @@ export function wireInput(): void {
   UI.btnNext.addEventListener('click', nextPitch);
   UI.btnPlay.addEventListener('click', startGame);
   CARD.copy.addEventListener('click', () => void copyResult());
-  CARD.again.addEventListener('click', () => void playAnother());
+  CARD.again.addEventListener('click', () => void playAnother(CARD.again));
   window.addEventListener('keydown', onKey);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('resize', onResize);
@@ -407,6 +430,7 @@ function markToday(w: World): void {
 function showStart(): void {
   const w = world();
 
+  endLoading();
   G.set = w.today;
   G.mode = 'today';
   G.results = [];
@@ -425,9 +449,11 @@ function showStart(): void {
     updateScore(false);
     invalidateStatic();
     render(performance.now());
+    if (!isWorldSeries(w.source)) announce("Today's Ten is ready.");
   } else {
     UI.startLede.textContent = noTodayLede(dateLabel(w.dateKey), w.source.label);
     UI.btnPlay.textContent = 'Play another ten';
+    clearScene();
     // Another ten is all there is to play, so its shard loads at once (§4.1). The press parses it, so the parse never
     // holds up this screen's first paint.
     if (!saveData()) w.source.prefetch?.();
@@ -477,7 +503,7 @@ const clockDate = (): string | null => (DATE === null && !isWorldSeries(world().
 function checkDate(): boolean {
   const dateKey = clockDate();
 
-  if (dateKey === null || G.phase !== 'start' || dateKey === world().dateKey) return false;
+  if (dateKey === null || G.phase !== 'start' || isBroken() || dateKey === world().dateKey) return false;
   void switchDate(dateKey);
 
   return true;
@@ -487,14 +513,14 @@ function checkDate(): boolean {
 async function switchDate(dateKey: string): Promise<void> {
   let today: TodayResult | null;
 
-  UI.btnPlay.disabled = true;
-  UI.btnPlay.textContent = "Loading today's pitches";
-  delete document.documentElement.dataset.ready;
+  showLoading();
   try {
     today = await todayLoads.load(dateKey);
   } catch (e) {
     playWhenLoaded = false;
-    dataFailed(e);
+    await showFailure(e);
+    // Try again, or back online: the date the clock says by then
+    void switchDate(clockDate() ?? dateKey);
 
     return;
   }
@@ -527,7 +553,11 @@ export function bootFlow(): void {
         if (G.phase === 'start') w.source.prefetch?.();
       });
     }
-    if (clockDate() !== null) watchMidnight(() => void checkDate());
+    if (clockDate() !== null) {
+      watchMidnight(() => void checkDate());
+      // a midnight while the page booted, after it read the date (§2.2)
+      checkDate();
+    }
   }
   requestAnimationFrame(frame);
 }

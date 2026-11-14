@@ -19,7 +19,10 @@ import {
 import { dateLabel } from '../../src/data/dates';
 import { SEASON_LABEL } from '../../src/data/season2026';
 import { setLine } from '../../src/math/words';
-import { mini, serveSeason } from './season-data';
+import { seasonMini } from '../fixtures/season-mini';
+import { DATA, errorsBut, hold, mini, saveData, serveSeason } from './season-data';
+
+const MONTH = 'daily/2026-11.json';
 
 const LAYOUTS = [
   { state: 'state=pitch&i=3&t=0.2', left: '#btnBall', right: '#btnStrike' },
@@ -143,5 +146,50 @@ test("the season card's set line stays on two lines, for any date and for Anothe
   }, lines);
 
   expect(counts).toEqual(Array.from({ length: lines.length + 1 }, () => 2));
+  expect(errors).toEqual([]);
+});
+
+test("the season's start screen says it's loading, then that it didn't load, and a tap on Try again loads it", async ({ page }) => {
+  const { errors, allowed } = errorsBut(page, MONTH);
+  const play = page.locator('#btnPlay');
+  let missing = true;
+
+  await serveSeason(page);
+  await page.route((url) => url.pathname.endsWith(DATA + MONTH), (route) => (missing ? route.fulfill({ status: 404, body: 'Not Found' }) : route.fallback()));
+  const release = await hold(page, MONTH);
+
+  await page.goto(`./?date=${mini.date}`);
+  await expect(play).toHaveText("Loading today's pitches");
+  await expect(play).toBeDisabled();
+  await expect(page.locator('#start')).toHaveAttribute('aria-busy', 'true');
+  release();
+  await expect(page.locator('html')).toHaveAttribute('data-error', 'missing');
+  await expect(play).toHaveText('Try again');
+  expectInside(await boxOf(page, '#btnPlay'), viewportOf(page), 'Try again');
+  missing = false;
+  await play.tap();
+  await waitReady(page);
+  await expect(play).toHaveText('Play ball');
+  expect(allowed).toHaveLength(1);
+  expect(errors).toEqual([]);
+});
+
+test("NoToday's tap says Dealing… while the shard loads, then the round starts", async ({ page }) => {
+  const errors = trackErrors(page);
+  const cal = seasonMini({ calendar: true });
+  const play = page.locator('#btnPlay');
+
+  // under Save-Data, nothing loads the shard before the tap
+  await saveData(page);
+  await serveSeason(page, cal);
+  const release = await hold(page, cal.shardUrl.split('?')[0] ?? '');
+
+  await page.goto(`./?date=${cal.unavailableDate}`);
+  await expect(page.locator('html')).toHaveAttribute('data-ready', 'none');
+  await play.tap();
+  await expect(play).toHaveText('Dealing…');
+  await expect(play).toBeDisabled();
+  release();
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
   expect(errors).toEqual([]);
 });

@@ -2,14 +2,18 @@ import backdropWideUrl from './assets/img/backdrop-wide.webp';
 import backdropUrl from './assets/img/backdrop.webp';
 import batterUrl from './assets/img/batter.webp';
 import { dateKeyOf } from './core/daily.ts';
+import type { PitchSource, TodayResult } from './data/source';
 import { openSource, sourceIdOf } from './data/sources';
+import { isWorldSeries } from './data/ws2026';
 import { bootFlow, dataFailed, wireInput } from './game/flow';
 import { DATE, POOL, SELFTEST } from './game/params';
 import { createWorld, setWorld } from './game/state';
+import { showFailure, showLoading } from './game/states';
 import { BACKDROPS } from './render/backdrop';
 import { IMG, sizeCanvases } from './render/env';
 import { paintTiming, showSelfTest } from './selftest/page';
 import { CARD, fail, UI } from './ui/dom';
+import { showFigure } from './ui/hud';
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -21,6 +25,18 @@ const loadImg = (img: HTMLImageElement, src: string): Promise<HTMLImageElement> 
   img.onerror = () => reject(new Error(`Could not load ${src}`));
   img.src = src;
 });
+
+/** The season's Ten for a date, with the start screen Loading meanwhile, and Failed or Broken until it loads (§5.1). */
+async function seasonToday(source: PitchSource, dateKey: string): Promise<TodayResult> {
+  for (;;) {
+    showLoading();
+    try {
+      return await source.today(dateKey);
+    } catch (e) {
+      await showFailure(e);
+    }
+  }
+}
 
 async function boot(): Promise<void> {
   sizeCanvases(UI.scene);
@@ -43,12 +59,15 @@ async function boot(): Promise<void> {
 
   try {
     const source = await openSource(sourceIdOf(POOL, SELFTEST), import.meta.env.BASE_URL);
+    // The stats load alongside today's files (§4.1). Play never waits for them; the figure shows when they come.
+    const figure = source.umpFigure();
+    const dateKey = DATE ?? dateKeyOf(new Date());
 
-    // The stats load alongside today's files (§4.1). Play never waits for them; T11 shows the figure.
-    void source.umpFigure();
     // a date without a Ten is no failure: the start screen offers Another ten (NoToday)
-    setWorld(createWorld(source, await source.today(DATE ?? dateKeyOf(new Date()))));
+    setWorld(createWorld(source, isWorldSeries(source) ? await source.today(dateKey) : await seasonToday(source, dateKey)));
+    void figure.then(showFigure);
   } catch (e) {
+    // only the World Series loads anything before it opens, and it keeps M1's failure
     dataFailed(e);
 
     return;
