@@ -46,9 +46,9 @@ export interface Deck {
 export interface UmpFigure {
   /** Percent of calls the umps got right. */
   readonly pct: number;
-  /** Whose calls, e.g. "MLB umps". */
+  /** Whose calls a cited figure counts, e.g. "MLB umps", or what a measured one covers, e.g. "season overall". */
   readonly label: string;
-  /** Where the figure comes from, or what it measures. */
+  /** Where the figure comes from, or what it measures, to follow a colon: "UmpScorecards via mlb.com". */
   readonly definition: string;
   /** True for a rounded, cited figure, written with "≈". */
   readonly approx: boolean;

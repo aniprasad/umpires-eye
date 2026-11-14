@@ -321,7 +321,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     return {
       pct: Math.round(stats.pct * 10) / 10,
       label: 'season overall',
-      definition: `Agreement with our ABS reconstruction on ${stats.season} called pitches.`,
+      definition: `agreement with our ABS reconstruction on ${stats.season} called pitches`,
       approx: false,
     };
   });

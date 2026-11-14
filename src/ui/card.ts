@@ -1,12 +1,13 @@
 import { PLATE_HALF } from '../core/rules.ts';
 import { dateLabel } from '../data/dates';
+import type { UmpFigure } from '../data/source';
 import { isWorldSeries } from '../data/ws2026';
 import { REDUCED } from '../game/params';
 import { G, world } from '../game/state';
 import { seriesGames } from '../math/deal';
 import { cardStateResults } from '../math/flow';
 import { clamp } from '../math/util';
-import { resultText, setLine, toughest, type Result } from '../math/words';
+import { figureWords, resultText, setLine, toughest, type Result } from '../math/words';
 import { CARD, UI } from './dom';
 import { announce, setPhase } from './hud';
 
@@ -81,6 +82,7 @@ export function showCards(instant = false): void {
   CARD.tough.classList.toggle('long', tough.length > 14);
   CARD.set.textContent = setLine(label, roundLabel(), roundDate());
   CARD.caption.textContent = label;
+  showCardFigure(world().figure);
   CARD.sum.innerHTML = `Round complete. You called <b>${right} of ${n}</b> right. On these same pitches the real ump got <b>${ump} of ${n}</b> on the field${after !== ump ? `, ${after} after ABS challenges` : ''}.`;
   if (games.length) CARD.sum.title = games.length > 1 ? `Games ${games.join(', ')}` : `Game ${games[0]}`;
   else CARD.sum.removeAttribute('title');
@@ -94,6 +96,16 @@ export function showCards(instant = false): void {
   announce(`Round complete. You called ${right} of ${n} right, ${pct} percent. The real ump got ${ump} of ${n}.`);
 }
 
+/** The card back's ump figure row and its citation; without a figure, the row goes and the citation leaves it out. */
+function showCardFigure(f: UmpFigure | null): void {
+  const { row, cite } = figureWords(f);
+
+  CARD.figRow.hidden = !row;
+  CARD.figLabel.textContent = row?.label ?? '';
+  CARD.fig.textContent = row?.value ?? '';
+  CARD.foot.textContent = `${cite ? `${cite} ` : ''}The real ump: original calls vs ABS on these pitches.`;
+}
+
 /** ?state=card&correct=N: the card for a round with N right, the misses on the closest pitches. */
 export function bootCard(correct: number): void {
   G.results = cardStateResults(G.set, correct);
@@ -102,7 +114,8 @@ export function bootCard(correct: number): void {
 }
 
 export async function copyResult(): Promise<void> {
-  const text = resultText({ label: world().source.label, roundLabel: roundLabel(), date: roundDate(), set: G.set, results: G.results });
+  const w = world();
+  const text = resultText({ label: w.source.label, roundLabel: roundLabel(), date: roundDate(), figure: w.figure, set: G.set, results: G.results });
   let ok = false;
 
   try {

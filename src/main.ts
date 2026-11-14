@@ -10,6 +10,7 @@ import { BACKDROPS } from './render/backdrop';
 import { IMG, sizeCanvases } from './render/env';
 import { paintTiming, showSelfTest } from './selftest/page';
 import { CARD, fail, UI } from './ui/dom';
+import { showFigure } from './ui/hud';
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -43,11 +44,12 @@ async function boot(): Promise<void> {
 
   try {
     const source = await openSource(sourceIdOf(POOL, SELFTEST), import.meta.env.BASE_URL);
+    // The stats load alongside today's files (§4.1). Play never waits for them; the figure shows when they come.
+    const figure = source.umpFigure();
 
-    // The stats load alongside today's files (§4.1). Play never waits for them; T11 shows the figure.
-    void source.umpFigure();
     // a date without a Ten is no failure: the start screen offers Another ten (NoToday)
     setWorld(createWorld(source, await source.today(DATE ?? dateKeyOf(new Date()))));
+    void figure.then(showFigure);
   } catch (e) {
     dataFailed(e);
 

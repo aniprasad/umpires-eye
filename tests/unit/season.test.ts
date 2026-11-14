@@ -382,7 +382,7 @@ describe('the season source', () => {
     expect(await serve().source.umpFigure()).toEqual({
       pct: Math.round(stats.umpVsAbs.overall.pct * 10) / 10,
       label: 'season overall',
-      definition: 'Agreement with our ABS reconstruction on 2026 called pitches.',
+      definition: 'agreement with our ABS reconstruction on 2026 called pitches',
       approx: false,
     });
     expect(await serve(withFile('stats.json', undefined)).source.umpFigure()).toBeNull();

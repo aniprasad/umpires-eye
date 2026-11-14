@@ -1,4 +1,5 @@
 import { CREDIT, PLATE_HALF } from '../core/rules.ts';
+import type { UmpFigure } from '../data/source';
 import type { PreparedPitch } from './kinematics';
 import type { Call } from './types';
 
@@ -99,19 +100,76 @@ export function toughest(results: readonly (Result | undefined)[]): string {
 /**
  * The text "Copy result" puts on the clipboard. A round with a date, a season's Today's Ten, names it after the round.
  */
-export function resultText(opts: { label: string; roundLabel: string; date?: string | null; set: readonly PreparedPitch[]; results: readonly (Result | undefined)[] }): string {
-  const { label, roundLabel, date, set, results } = opts;
+export function resultText(opts: {
+  label: string;
+  roundLabel: string;
+  date?: string | null;
+  figure: UmpFigure | null;
+  set: readonly PreparedPitch[];
+  results: readonly (Result | undefined)[];
+}): string {
+  const { label, roundLabel, date, figure, set, results } = opts;
   const n = set.length;
   const right = results.filter((r) => r && r.correct).length;
   const ump = set.filter((P) => P.umpCorrect).length;
+  const { copy } = figureWords(figure);
 
   return [
     `Umpire's Eye · ${label} · ${roundLabel}${date ? ` · ${date}` : ''}`,
-    `I called ${right} of ${n} right (${Math.round((right / n) * 100)}%). The real ump: ${ump}/${n}. MLB umps ≈ 94%.`,
+    `I called ${right} of ${n} right (${Math.round((right / n) * 100)}%). The real ump: ${ump}/${n}.${copy ? ` ${copy}` : ''}`,
     `Toughest: ${toughest(results)}`,
     set.map((_P, k) => (results[k]?.correct ? '✓' : '✗')).join(''),
     `Real pitches: ${CREDIT}`,
   ].join('\n');
+}
+
+/** The ump figure's words in each place that shows it (§5.4). */
+export interface FigureWords {
+  /** The start screen's hook. */
+  readonly hook: string;
+  /** The score chip before a call, after "Close calls", and its phone form. */
+  readonly chip: string | null;
+  readonly chipShort: string | null;
+  /** The score chip and the verdict once a call is made. */
+  readonly overall: string | null;
+  /** The card back's row. */
+  readonly row: { readonly label: string; readonly value: string } | null;
+  /** The figure with its definition, as the card cites it. */
+  readonly cite: string | null;
+  /** The figure in a copied result. */
+  readonly copy: string | null;
+}
+
+/**
+ * A cited figure reads as M1 wrote it, "MLB umps ≈ 94%". A measured one is the season's, and says so: "MLB umps 93.2%
+ * season overall". Without a figure, every place leaves it out, and the hook asks its question without one.
+ */
+export function figureWords(f: UmpFigure | null): FigureWords {
+  if (!f) return { hook: 'Can you call balls and strikes like an MLB umpire?', chip: null, chipShort: null, overall: null, row: null, cite: null, copy: null };
+  if (f.approx) {
+    const fig = `${f.label} ≈ ${f.pct}%`;
+
+    return {
+      hook: `MLB umpires get about ${f.pct}% of calls right. Can you?`,
+      chip: fig,
+      chipShort: `MLB ≈ ${f.pct}%`,
+      overall: `${fig} overall`,
+      row: { label: f.label, value: `≈ ${f.pct}%` },
+      cite: `${fig}: ${f.definition}.`,
+      copy: `${fig}.`,
+    };
+  }
+  const fig = `MLB umps ${f.pct}%`;
+
+  return {
+    hook: `MLB umpires got ${f.pct}% of calls right this season. Can you?`,
+    chip: `${fig} ${f.label}`,
+    chipShort: `MLB ${f.pct}%`,
+    overall: `${fig} ${f.label}`,
+    row: { label: 'MLB umps', value: `${f.pct}%` },
+    cite: `${fig}, ${f.label}: ${f.definition}.`,
+    copy: `${fig}, ${f.label}.`,
+  };
 }
 
 /**
