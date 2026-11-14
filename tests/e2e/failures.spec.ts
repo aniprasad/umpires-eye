@@ -151,4 +151,78 @@ test.describe('a failure while the modules load', () => {
     await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
     expect(errors).toEqual(['A later fault']);
   });
+
+  // The M3 review's code risk 1: an extension's script can throw on any page, often as a bare "Script error.".
+  test("errors from another site's scripts are ignored, even while the modules load", async ({ page, browserName }) => {
+    const FOREIGN = 'https://scripts.example.com/';
+    const failed: string[] = [];
+    const fault = (what: string): string => `window.ran = (window.ran || 0) + 1; throw new Error('${what}');`;
+    const tags = ['<script src="muted.js"></script>', '<script crossorigin="anonymous" src="open.js"></script>', '<script src="missing.js"></script>'];
+
+    page.on('console', (m) => {
+      if (m.type() === 'error') failed.push(m.location().url);
+    });
+    // Registered before index.html's listeners, to show that the page did hear each error.
+    await page.addInitScript(() => {
+      const heard: string[] = [];
+
+      Object.assign(window, { heard });
+      addEventListener('error', (e) => {
+        if (e.target === window) heard.push((e as ErrorEvent).message);
+        else if (e.target instanceof HTMLScriptElement) heard.push(e.target.src);
+      }, true);
+    });
+    await page.route(`${FOREIGN}muted.js`, (route) => route.fulfill({ contentType: 'text/javascript', body: fault('A muted fault') }));
+    await page.route(`${FOREIGN}open.js`, (route) => route.fulfill({ contentType: 'text/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: fault('An open fault') }));
+    await page.route(`${FOREIGN}missing.js`, (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' }));
+    // after index.html's own script and before the modules run
+    await page.route(/\/\?pool=ws$/, async (route) => {
+      const res = await route.fetch();
+      const body = (await res.text()).replace('</body>', tags.map((t) => t.replace('src="', `src="${FOREIGN}`)).join('') + '</body>');
+
+      await route.fulfill({ response: res, body });
+    });
+    await page.goto('./?pool=ws');
+    await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
+
+    const seen = await page.evaluate(() => {
+      const w = window as unknown as { ran?: number; heard?: string[] };
+
+      return { ran: w.ran, heard: w.heard };
+    });
+
+    expect(seen).toEqual({ ran: 2, heard: ['Script error.', expect.stringMatching(/An open fault$/), `${FOREIGN}missing.js`] });
+    await expect(page.locator('#err')).toBeHidden();
+    await expect(page.locator('#btnPlay')).toHaveText('Play ball');
+    // the foreign script's 404, which WebKit logs twice
+    expect(failed).toEqual(Array<string>(browserName === 'webkit' ? 2 : 1).fill(`${FOREIGN}missing.js`));
+  });
+
+  // The M3 review's finding 9: the box sat over the data credit, and nothing closed it.
+  test('the error box can be dismissed, and keeps clear of the credit', async ({ page }) => {
+    const err = page.locator('#err');
+    const close = page.getByRole('button', { name: 'Dismiss the error' });
+    const play = page.locator('#btnPlay');
+
+    await page.route(ENTRY, (route) => route.fulfill({ contentType: 'text/javascript', body: "throw new Error('A module threw as it loaded');" }));
+    await page.goto('./?pool=ws');
+    await expect(play).toBeFocused();
+    await expect(err).toBeVisible();
+    expect(apart(await err.boundingBox(), await page.locator('.footnote').boundingBox())).toBe(true);
+    await close.focus();
+    await page.keyboard.press('Enter');
+    await expect(err).toBeHidden();
+    await expect(close).toBeHidden();
+    await expect(play).toBeFocused();
+    await expect(page.locator('#startLede')).toHaveText("The game didn't load. Reload the page.");
+  });
 });
+
+type Box = { x: number; y: number; width: number; height: number };
+
+/** Whether two boxes on the screen don't overlap. */
+function apart(a: Box | null, b: Box | null): boolean {
+  if (!a || !b) return false;
+
+  return a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+}

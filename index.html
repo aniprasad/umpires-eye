@@ -118,7 +118,10 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
   </section>
   <p id="live" class="sr-only" aria-live="polite"></p>
 </div>
-<pre id="err" role="alert" hidden></pre>
+<div class="err-wrap">
+  <pre id="err" role="alert" hidden></pre>
+  <button class="err-close" id="errClose" type="button" aria-label="Dismiss the error">×</button>
+</div>
 <pre id="selftest" hidden></pre>
 <noscript><p style="padding:24px">Umpire's Eye needs JavaScript to replay the pitches.</p></noscript>
 <script>
@@ -126,9 +129,21 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
   // reload rather than loading for good (the M1 review's N12). Once the main module runs, an error is only reported.
   (function () {
     var loading = true;
+    var err = document.getElementById('err');
+    var close = document.getElementById('errClose');
+    var back = null;
+
+    // Another site's script, such as one an extension adds to every page, isn't ours to report, and the browser often
+    // hides its error as a bare "Script error." (the M3 review's code risk 1).
+    function ours(url) {
+      try {
+        return new URL(url, location.href).origin === location.origin;
+      } catch (e) {
+        return false;
+      }
+    }
 
     function report(msg) {
-      var err = document.getElementById('err');
       var play = document.getElementById('btnPlay');
       var lede = "The game didn't load. Reload the page.";
 
@@ -149,11 +164,24 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
     addEventListener('ue:running', function () { loading = false; });
     // in the capture phase, to hear a script that fails to load as well; an image that fails is the app's to report
     addEventListener('error', function (e) {
-      if (e.target === window) report('Error: ' + e.message + ' (line ' + e.lineno + ')');
-      else if (e.target instanceof HTMLScriptElement) report('Could not load ' + e.target.src);
+      if (e.target === window) {
+        if (e.filename ? ours(e.filename) : e.message !== 'Script error.') report('Error: ' + e.message + ' (line ' + e.lineno + ')');
+      } else if (e.target instanceof HTMLScriptElement && ours(e.target.src)) report('Could not load ' + e.target.src);
     }, true);
     addEventListener('unhandledrejection', function (e) {
       report('Error: ' + (e.reason instanceof Error ? e.reason.message : String(e.reason)));
+    });
+
+    // Closing the box clears it, so a later error shows on its own; keyboard focus goes back to where it came from.
+    close.addEventListener('focus', function (e) { back = e.relatedTarget; });
+    close.addEventListener('click', function () {
+      var had = document.activeElement === close;
+
+      err.hidden = true;
+      err.textContent = '';
+      if (!had) return;
+      if (back && back.isConnected) back.focus();
+      if (document.activeElement === close || document.activeElement === document.body) document.getElementById('app').focus();
     });
   })();
 </script>

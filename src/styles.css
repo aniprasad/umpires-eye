@@ -24,7 +24,12 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
 #scene { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 
 /* error surface: never silent */
-#err { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 99; margin: 0; padding: 12px 14px; background: #3a0b12; color: #fff; font: 13px/1.4 var(--type); border-radius: 8px; white-space: pre-wrap; }
+/* At the top, where it can't cover Ball and Strike or the data credit, and closable (the M3 review's finding 9). */
+.err-wrap { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); z-index: 99; pointer-events: none; }
+#err { max-height: 40vh; overflow: auto; margin: 0; padding: 12px 48px 12px 14px; background: #3a0b12; color: #fff; font: 13px/1.4 var(--type); border-radius: 8px; white-space: pre-wrap; pointer-events: auto; }
+.err-close { position: absolute; top: 1px; right: 4px; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #fff; font: 22px/1 var(--body); cursor: pointer; pointer-events: auto; }
+.err-close:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+#err[hidden] + .err-close { display: none; }
 #selftest { position: fixed; inset: 0; z-index: 98; margin: 0; padding: 20px 24px; overflow: auto; background: rgba(5, 10, 8, .96); color: var(--chalk); font: 12px/1.45 var(--type); white-space: pre-wrap; }
 
 /* ---------- matchup card ---------- */
