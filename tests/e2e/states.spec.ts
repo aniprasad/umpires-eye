@@ -129,6 +129,7 @@ test('a manifest of the wrong version: Broken, with the detail in the error box,
   await expect(page.locator('#startLede')).toHaveText('The pitch data is out of date or damaged. Reload the page.');
   await expect(play).toHaveText('Reload');
   await expect(play).toBeEnabled();
+  await expect(play).toBeFocused();
   await expect(page.locator('#err')).toContainText('version 99');
   await Promise.all([page.waitForEvent('framenavigated'), play.click()]);
   await expect(page.locator('html')).toHaveAttribute('data-error', 'data');

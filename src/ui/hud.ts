@@ -26,9 +26,13 @@ export function setPhase(ph: Phase): void {
   G.phase = ph;
   UI.app.dataset.phase = ph;
   const calling = ph === 'pitch' || ph === 'start';
+  // The start panel and the card cover the scene, so its controls leave the Tab order and the pointer. On the start
+  // screen, Ball and Strike still show behind the panel, as in the mockup.
+  const covered = ph === 'boot' || ph === 'start' || ph === 'card';
 
   UI.btnBall.hidden = UI.btnStrike.hidden = !calling;
   UI.btnReplay.hidden = UI.btnNext.hidden = calling || ph === 'card';
+  for (const b of [UI.btnBall, UI.btnStrike, UI.btnReplay, UI.btnNext]) b.inert = covered;
 }
 
 export function fillMatchup(P: PreparedPitch, animate: boolean): void {

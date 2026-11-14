@@ -134,7 +134,8 @@ export function beginPitch(i: number, opts: { first?: boolean } = {}): void {
   announce(`Pitch ${i + 1} of ${G.set.length}. ${P.batter.name}, bats ${P.batter.side === 'R' ? 'right' : 'left'}, against ${P.pitcher.name}.`);
   const active = document.activeElement as HTMLElement | null;
 
-  if (!active || active === document.body || active.offsetParent === null) UI.app.focus({ preventScroll: true });
+  // a press of Play leaves focus in the start panel, which fades out and then hides it
+  if (!active || active === document.body || active.offsetParent === null || UI.start.contains(active)) UI.app.focus({ preventScroll: true });
 }
 
 export function tryCall(call: Call): void {
