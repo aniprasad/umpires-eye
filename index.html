@@ -131,6 +131,8 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
   // reload rather than loading for good (the M1 review's N12). Once the main module runs, an error is only reported.
   (function () {
     var loading = true;
+    // puts the start screen back as it was before a takeover, once the app runs
+    var undo = null;
     var err = document.getElementById('err');
     var close = document.getElementById('errClose');
     var back = null;
@@ -146,24 +148,50 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
     }
 
     function report(msg) {
+      var root = document.documentElement;
       var play = document.getElementById('btnPlay');
+      var startLede = document.getElementById('startLede');
+      var live = document.getElementById('live');
       var lede = "The game didn't load. Reload the page.";
+      var was;
 
       err.hidden = false;
       err.textContent += msg + '\n';
       if (!loading) return;
       loading = false;
-      document.documentElement.dataset.ready = 'error';
-      document.documentElement.dataset.error = 'app';
-      document.getElementById('startLede').textContent = lede;
-      document.getElementById('live').textContent = lede;
+      was = { ready: root.getAttribute('data-ready'), error: root.getAttribute('data-error'), lede: startLede.textContent, live: live.textContent, play: play.textContent, disabled: play.disabled };
+      undo = function () {
+        put(root, 'data-ready', was.ready);
+        put(root, 'data-error', was.error);
+        startLede.textContent = was.lede;
+        live.textContent = was.live;
+        play.textContent = was.play;
+        play.disabled = was.disabled;
+        play.onclick = null;
+      };
+      root.dataset.ready = 'error';
+      root.dataset.error = 'app';
+      startLede.textContent = lede;
+      live.textContent = lede;
       play.textContent = 'Reload';
       play.disabled = false;
       play.onclick = function () { location.reload(); };
       play.focus();
     }
 
-    addEventListener('ue:running', function () { loading = false; });
+    function put(el, name, value) {
+      if (value === null) el.removeAttribute(name);
+      else el.setAttribute(name, value);
+    }
+
+    // Every module has run, so whatever took the start screen over didn't stop them. A rejected promise can't be traced
+    // to its script, and another site's may come first (the M3 review's NB1): the app takes the start screen back, so
+    // Play starts a round rather than reloading the page, and the error stays in the box.
+    addEventListener('ue:running', function () {
+      loading = false;
+      if (undo) undo();
+      undo = null;
+    });
     // in the capture phase, to hear a script that fails to load as well; an image that fails is the app's to report
     addEventListener('error', function (e) {
       if (e.target === window) {

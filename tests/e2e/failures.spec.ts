@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { WS_TODAY_IDS, type PoolFile } from '../../src/data/ws2026';
 import { boxOf, expectApart } from './helpers';
+import { mini, serveSeason } from './season-data';
 
 const POOL = '**/data/ws-2026/pool.json';
 const RELOAD_LEDE = /Check your connection, then reload the page\.$/;
@@ -208,6 +209,55 @@ test.describe('a failure while the modules load', () => {
     // the foreign script's 404, which WebKit logs twice
     expect(failed).toEqual(Array<string>(browserName === 'webkit' ? 2 : 1).fill(`${FOREIGN}missing.js`));
   });
+
+  // The M3 review's NB1: a rejected promise can't be traced to its script, so another site's took the start screen over
+  // too, and once the game had booted, Play still reloaded the page.
+  for (const [source, query] of [['the season', `?date=${mini.date}`], ['the World Series', '?pool=ws']] as const) {
+    test(`another site's rejected promise while the modules load: ${source} boots, takes Play back and deals a round`, async ({ page }) => {
+      const FOREIGN = 'https://scripts.example.com/';
+      const errors = pageErrors(page);
+      const play = page.locator('#btnPlay');
+      let release = (): void => undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+
+      await serveSeason(page);
+      // the game's code waits until the rejection has taken the start screen over
+      await page.route(ENTRY, async (route) => {
+        await held;
+        await route.fallback();
+      });
+      // with CORS, so that the browser tracks its rejections; a muted script's aren't
+      await page.route(`${FOREIGN}reject.js`, (route) => route.fulfill({
+        contentType: 'text/javascript',
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: "Promise.reject(new Error('A foreign rejection'));",
+      }));
+      await page.route((url) => url.pathname === '/', async (route) => {
+        const res = await route.fetch();
+        const body = (await res.text()).replace('</body>', `<script crossorigin="anonymous" src="${FOREIGN}reject.js"></script></body>`);
+
+        await route.fulfill({ response: res, body });
+      });
+      await page.goto(`./${query}`, { waitUntil: 'commit' });
+      await expect(play).toHaveText('Reload');
+      release();
+      await expect(page.locator('html')).toHaveAttribute('data-ready', '1');
+      await expect(page.locator('html')).not.toHaveAttribute('data-error');
+      await expect(page.locator('#startLede')).not.toHaveText(/didn't load/);
+      await expect(play).toHaveText('Play ball');
+      // still reported, in the box that can be closed
+      await expect(page.locator('#err')).toContainText('Error: A foreign rejection');
+      await page.evaluate(() => Object.assign(window, { sameDocument: true }));
+      await play.click();
+      await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
+      // time for a reload, had Play asked for one, to replace the page
+      await page.waitForTimeout(1_000);
+      expect(await page.evaluate(() => 'sameDocument' in window).catch(() => false)).toBe(true);
+      expect(errors.filter((message) => !message.includes('A foreign rejection'))).toEqual([]);
+    });
+  }
 
   // The M3 review's finding 9: the box sat over the data credit, and nothing closed it.
   test('the error box can be dismissed, and keeps clear of the credit', async ({ page }) => {

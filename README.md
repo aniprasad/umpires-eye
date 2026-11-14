@@ -63,7 +63,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 - `src/game/` and `src/ui/`: the flow (start, ten pitches, reveal, card), input, the HUD, the verdict panel and the card. `src/game/another.ts` deals Another ten for a page, so no pitch comes up twice, and `src/game/today.ts` keeps the start screen's Today's Ten on the local date, through midnight.
   - While the start panel or the card is up, the rest of the game is inert, so Tab and screen readers stay on it. After Watch it slow, focus goes on to Next.
   - On touch screens there are no key caps, the card's actions stay in a bar at the bottom while it scrolls, and a phone on its side scrolls its start card and suggests turning upright.
-  - `index.html` listens for errors before the modules load: if the app's code fails to load, Play becomes Reload. Errors from other sites' scripts, such as extensions', are ignored, and the error box sits at the top and can be closed.
+  - `index.html` listens for errors before the modules load: if the app's code fails to load, Play becomes Reload. Error events from other sites' scripts, such as extensions', are ignored. A rejected promise can't be traced to its script, so every unhandled one is reported in the error box; one that comes before the app starts turns Play into Reload only until it does, when the app takes the start screen back. The error box sits at the top and can be closed.
 - `src/selftest/`: the mockup's self-test checks as pure functions, and the season's, over a date's Today's Ten. Vitest runs them, and so does `?selftest=1`.
 
 ## Assets
