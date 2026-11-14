@@ -74,8 +74,7 @@ describe('dealing from 1,000 seeded random sets of cards', () => {
 });
 
 describe('only rows whose stored dealable flag is set reach a deck', () => {
-  // Each held-back row crosses mid-plate inside the deal box. M1's playable() checked only that box, so it would have
-  // dealt all three.
+  // Each held-back row crosses mid-plate inside the deal box, so a rule that checked only the box would deal all three.
   const rows = [
     pitchCells({ atBat: 1 }),
     // Kept in the pool for its challenge, but without an extension it can't be drawn (like 822806-17-2).

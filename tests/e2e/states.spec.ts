@@ -1,5 +1,5 @@
-// The season's start screen while Today's Ten loads, and when it can't (docs/M2-DESIGN.md §5.1), and Another ten's button
-// while its deck loads (§5.2). The World Series keeps M1's, which failures.spec.ts covers.
+// The season's start screen while Today's Ten loads, and when it can't, and Another ten's button while its deck loads.
+// The World Series keeps its own, which failures.spec.ts covers.
 import { expect, test } from '@playwright/test';
 import { seasonMini } from '../fixtures/season-mini';
 import { trackErrors, waitReady } from './helpers';
@@ -42,8 +42,6 @@ test("while the month file is slow, Play says it's loading, the panel is busy, a
   expect(errors).toEqual([]);
 });
 
-// The M3 review's finding 6: the stats failed with the first load, and Try again brought the pitches back but never the
-// ump figure.
 test('Try again brings back the ump figure too, when it failed along with the pitches', async ({ page }) => {
   const { errors, allowed } = errorsBut(page, MONTH, 'stats.json');
   const play = page.locator('#btnPlay');

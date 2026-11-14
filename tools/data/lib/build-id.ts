@@ -1,4 +1,4 @@
-// The build id (docs/M2-DESIGN.md §4.3): the start of a sha256 over the shards and stats as they are before the id is
+// The build id: the start of a sha256 over the shards and stats as they are before the id is
 // stamped in. It names their content, so a rebuild from the same inputs keeps it, and data:daily writing the manifest's
 // daily block leaves it alone.
 import { createHash } from 'node:crypto';

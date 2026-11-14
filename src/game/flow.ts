@@ -30,7 +30,7 @@ const sNow = (now: number): number => (G.frozenS !== null ? G.frozenS : (now - G
 /** The device asks for less data (Save-Data, which Chromium reports and Safari doesn't). */
 const saveData = (): boolean => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
 
-// Safari has no requestIdleCallback; §4.1 waits 2 s there instead.
+// Safari has no requestIdleCallback, so a 2 s wait stands in for it there.
 const whenIdle = (run: () => void): void => {
   if (typeof requestIdleCallback === 'function') requestIdleCallback(() => run());
   else window.setTimeout(run, 2000);
@@ -246,7 +246,7 @@ export function startGame(): void {
 
     return;
   }
-  // a Ten from a date the clock has left gives way to the new date's, and the round starts on that (§2.2)
+  // a Ten from a date the clock has left gives way to the new date's, and the round starts on that
   if (checkDate()) {
     playWhenLoaded = true;
 
@@ -264,9 +264,9 @@ let reloadFrom: HTMLButtonElement | null = null;
 
 /**
  * "Play another ten", on the card or in NoToday: the next ten from the source's decks, with none of Today's Ten and no
- * pitch dealt earlier on this page (§3). Under Save-Data, this is when the season's shard loads. While a deck loads, the
- * button says so (§5.2). A deck that's ready deals before the next paint, so then it never shows. If the deck can't
- * load, the button offers to try again; if its data is damaged, a reload, as Broken does (§5.1).
+ * pitch dealt earlier on this page. Under Save-Data, this is when the season's shard loads. While a deck loads, the
+ * button says so. A deck that's ready deals before the next paint, so then it never shows. If the deck can't load, the
+ * button offers to try again; if its data is damaged, a reload, as Broken does.
  */
 export async function playAnother(btn: HTMLButtonElement): Promise<void> {
   const w = world();
@@ -437,7 +437,7 @@ function markToday(w: World): void {
 }
 
 /**
- * The start screen for the World's date: Today's Ten, ready to play, or NoToday, which offers Another ten instead (§5.1).
+ * The start screen for the World's date: Today's Ten, ready to play, or NoToday, which offers Another ten instead.
  * Then the page says it's ready.
  */
 function showStart(): void {
@@ -469,7 +469,7 @@ function showStart(): void {
     UI.startLede.textContent = noTodayLede(dateLabel(w.dateKey), w.source.label);
     UI.btnPlay.textContent = 'Play another ten';
     clearScene();
-    // Another ten is all there is to play, so its shard loads at once (§4.1). The press parses it, so the parse never
+    // Another ten is all there is to play, so its shard loads at once. The press parses it, so the parse never
     // holds up this screen's first paint.
     if (!saveData()) w.source.prefetch?.();
   }
@@ -512,7 +512,7 @@ function bootState(): void {
 const clockDate = (): string | null => (DATE === null && !isWorldSeries(world().source) ? dateKeyOf(new Date()) : null);
 
 /**
- * Puts the clock's date's Ten on the start screen if the date has moved on from the screen's (§2.2). Only the start screen
+ * Puts the clock's date's Ten on the start screen if the date has moved on from the screen's. Only the start screen
  * follows the clock: a round keeps the date it began on. Says whether the date had moved on.
  */
 function checkDate(): boolean {
@@ -561,7 +561,7 @@ export function bootFlow(): void {
   if (w.today.length && (STATE === 'pitch' || STATE === 'reveal' || STATE === 'card')) bootState();
   else {
     showStart();
-    // Another ten's shard loads while the player reads the start screen, unless the device asks for less data (§4.1).
+    // Another ten's shard loads while the player reads the start screen, unless the device asks for less data.
     // Safari's stand-in can come after Play; the card loads it then.
     if (w.today.length && !saveData()) {
       whenIdle(() => {
@@ -570,7 +570,7 @@ export function bootFlow(): void {
     }
     if (clockDate() !== null) {
       watchMidnight(() => void checkDate());
-      // a midnight while the page booted, after it read the date (§2.2)
+      // a midnight while the page booted, after it read the date
       checkDate();
     }
   }

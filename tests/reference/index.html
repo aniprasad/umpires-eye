@@ -1,9 +1,6 @@
 <!--
-THESIS: You are the plate umpire. A real World Series pitch arrives at real speed along its tracked path, seen from the umpire's slot, and you call it before the truth appears. Refuses the stats-chart dot, the TV K-Zone 3x3 grid, and neon betting-app chrome.
-OWN-WORLD: Night game under the lights. Batter's-eye green-black, floodlit clay and grass, chalk white, umpire navy, and one magenta signal (#E20074) reserved for ABS truth. The UI lives in the ump's own tools: the palm indicator, chalk lines, and a late-80s umpire card.
-STORY: Feel how fast and hard the call is. Learn that the zone moves with the batter. See that real umps miss. Want one more pitch, then copy your result.
-FIRST VIEWPORT: Full-bleed ump's-eye scene: pitcher small on the mound, batter at true height beside the plate, catcher low and soft, matchup card top-left, indicator bottom-right, Ball/Strike controls at the bottom corners, Start overlay with "Play ball".
-FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geometry canvas foreground. No seed key (impeccable scripts are unavailable on this machine).
+The design: a night game under the lights, seen from the plate umpire's slot. One magenta (#E20074) is reserved for ABS
+truth, and the UI lives in the ump's own tools: the palm indicator, chalk lines and a late-80s umpire card.
 -->
 <!doctype html>
 <html lang="en">
@@ -14,9 +11,9 @@ FORM: "Through the Mask", rank 1 of 7. Raster far background with an exact-geome
 <meta name="description" content="Be the plate umpire. Real 2026 World Series pitches at real speed from the umpire's slot. Call ball or strike, then see the ABS zone and the real call.">
 <meta name="theme-color" content="#07100c">
 <style>
-@font-face { font-family: "Big Shoulders Display"; src: url("assets/fonts/big-shoulders-display-latin.woff2") format("woff2"); font-weight: 500 900; font-display: swap; }
-@font-face { font-family: "Courier Prime"; src: url("assets/fonts/courier-prime-400-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Courier Prime"; src: url("assets/fonts/courier-prime-700-latin.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Big Shoulders Display"; src: url("../../art/fonts/big-shoulders-display-latin.woff2") format("woff2"); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: "Courier Prime"; src: url("../../art/fonts/courier-prime-400-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Courier Prime"; src: url("../../art/fonts/courier-prime-700-latin.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
   --night: #07100c; --night-2: #0c1913; --night-3: #142219;
@@ -264,7 +261,6 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
   .card-btn { width: 100%; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .cards.enter .ucard-front, .cards.enter .ucard-back, .card-btn { animation: none !important; transition: none !important; } }
-/*@@CSS@@*/
 </style>
 </head>
 <body>
@@ -337,7 +333,7 @@ kbd { font: 700 12px/1 var(--body); letter-spacing: 0; padding: 4px 6px 3px; bor
       <div class="cards-row">
         <figure class="ucard ucard-front" aria-label="Your umpire card, front">
           <div class="uc-frame">
-            <img src="assets/card-art.png" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
+            <img src="../../art/card-art.png" alt="Illustrated umpire crouched behind home plate under stadium lights" width="1024" height="1536">
             <div class="uc-badge" aria-label="Accuracy"><span id="ucNum">0</span><small>%</small></div>
             <div class="uc-plate">You</div>
           </div>
@@ -435,9 +431,9 @@ const NEAR = 0.2;
 // The pitcher sits in the focal plane and the ball is never blurred (the eye tracks it).
 const DOF = { ap: 0.077, focus: 60 };
 const dofBlur = (cam, depth) => cam.F * DOF.ap * Math.abs(1 / Math.max(depth, 0.3) - 1 / DOF.focus);
-// photographic batter, keyed offline from assets/batter-src.png (anchors in batter.png pixels): helmet top,
+// photographic batter, keyed offline from its source photo (anchors in batter.png pixels): helmet top,
 // mean sole line, the stance centre between the cleats, and each cleat's centre; one image, mirrored for lefties
-const BATTER_IMG = { src: 'assets/batter.png', top: 123, sole: 1424.5, footX: 404, backX: 72, frontX: 736, stance: 0.9 };
+const BATTER_IMG = { src: '../../art/batter.png', top: 123, sole: 1424.5, footX: 404, backX: 72, frontX: 736, stance: 0.9 };
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -672,7 +668,7 @@ const BY_ID = new Map(POOL.pitches.map((p) => [p.id, p]));
 // Today's Ten: one easy calibrator first, then eight close calls within 1.5 in of the ABS edge (four balls, four
 // strikes; the real ump right on five, near the 63% umps managed on pitches this close all Series), then the
 // Series' last called strike three. Game 5 supplies what it can; Games 1 and 2 add the breaking and offspeed
-// pitches Game 5 has none of this close. Calibrator first, the rest in Series order. (ten.json keeps the
+// pitches Game 5 has none of this close. Calibrator first, the rest in Series order. (data/ten.js keeps the
 // original all-Game 5 round.)
 const TODAY_IDS = ['849799-1-1', '849805-40-6', '849802-14-2', '849802-31-5', '849799-5-4',
   '849799-9-1', '849799-13-2', '849799-31-1', '849799-51-1', '849799-65-7'];
@@ -742,8 +738,8 @@ const COL = {
 // far background: 45 ft of batter's eye + wall at 400 ft sets the scale (true angular size, no cheat);
 // metrics measured on each image (rows/columns in image px)
 const BACKDROPS = {
-  wide: { src: 'assets/backdrop-wide.png', wallRow: 502.5, eyeTop: 378, cx: 766, ft: 45, towers: [[88, 125], [387, 222], [1137, 223], [1442, 121]] },
-  old: { src: 'assets/backdrop.png', wallRow: 478, cover: true, towers: [[232, 78], [1303, 78]] },
+  wide: { src: '../../art/backdrop-wide.png', wallRow: 502.5, eyeTop: 378, cx: 766, ft: 45, towers: [[88, 125], [387, 222], [1137, 223], [1442, 121]] },
+  old: { src: '../../art/backdrop.png', wallRow: 478, cover: true, towers: [[232, 78], [1303, 78]] },
 };
 function drawBackdrop(g, cam) {
   const img = IMG.backdrop, bd = IMG.bd;
@@ -2325,7 +2321,7 @@ sizeCanvases();
 if (SELFTEST) { try { selftest(); } catch (e) { fail('Self-test crashed: ' + e.message); } }
 const assets = Promise.all([
   loadImg(IMG.backdrop, BACKDROPS.wide.src).then(() => { IMG.bd = BACKDROPS.wide; }, () => loadImg(IMG.backdrop, BACKDROPS.old.src).then(() => { IMG.bd = BACKDROPS.old; })),
-  loadImg(IMG.card, 'assets/card-art.png'),
+  loadImg(IMG.card, '../../art/card-art.png'),
   loadImg(IMG.bat, BATTER_IMG.src).catch(() => null),          // if it fails, the procedural batter stands in
   document.fonts ? document.fonts.load('800 32px "Big Shoulders Display"').catch(() => null) : null,
 ]);

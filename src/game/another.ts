@@ -1,4 +1,4 @@
-// Another ten over a page session (docs/M2-DESIGN.md §3): no pitch is dealt twice on a page. When a deck can't deal
+// Another ten over a page session: no pitch is dealt twice on a page. When a deck can't deal
 // another ten, the source's next deck takes over; once none is left, the page starts over, still without Today's Ten.
 import { mulberry32 } from '../core/rng.ts';
 import type { Deck, PitchSource } from '../data/source';

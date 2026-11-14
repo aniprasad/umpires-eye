@@ -1,4 +1,4 @@
-// Today's Ten keeps to the local date (docs/M2-DESIGN.md §2.2), and a date without one offers Another ten (NoToday, §5.1).
+// Today's Ten keeps to the local date, and a date without one offers Another ten (NoToday).
 // The pages run on Playwright's clock, set to the instant each test names, in the time zone it names.
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -303,8 +303,8 @@ test.describe('NoToday', () => {
 
     page.on('console', (message) => {
       if (message.type() !== 'error') return;
-      // A month file's address follows from its date, so it's asked for alongside the manifest (§4.1), and past the
-      // schedule the browser reports its 404. That one, and only that one, is expected.
+      // A month file's address follows from its date, so it's asked for alongside the manifest, and past the schedule
+      // the browser reports its 404. That one, and only that one, is expected.
       if (message.location().url.endsWith('/data/season-2026/daily/2027-01.json')) notFound.push(message.text());
       else errors.push(`console: ${message.text()}`);
     });
@@ -321,7 +321,7 @@ test.describe('NoToday', () => {
     await expect(page.locator('.indicator')).toBeHidden();
     await expect(page.locator('#btnStrike')).toBeHidden();
     await expect(page.locator('#err')).toBeHidden();
-    // Another ten is all there is to play, so its shard loads before the press (§4.1)
+    // Another ten is all there is to play, so its shard loads before the press
     await expect.poll(() => shards(asked)).toEqual([cal.shardUrl]);
     expect(dailyAsked(asked)).toEqual(['daily/2027-01.json']);
     await page.keyboard.press('Enter');

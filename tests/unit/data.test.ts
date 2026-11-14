@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PLATE_HALF } from '../../src/core/rules.ts';
+import { CREDIT, PLATE_HALF } from '../../src/core/rules.ts';
 import { LoadError, type LoadErrorKind } from '../../src/data/source';
 import { sourceIdOf } from '../../src/data/sources';
 import { fromPoolFile, loadWorldSeries, worldSeriesSource, WS_LABEL, WS_TODAY_IDS, type PoolPitch } from '../../src/data/ws2026';
@@ -34,7 +33,7 @@ describe('the World Series source', () => {
     expect(() => fromPoolFile({ games: [game], pitches })).toThrow(WS_TODAY_IDS[0]);
   });
 
-  it("gives each pitch its game, its game's plate umpire and M1's played order, in place of the game number", () => {
+  it("gives each pitch its game, its game's plate umpire and its played order, in place of the game number", () => {
     const g5 = { gamePk: 5, gameNumber: 5, date: '2026-10-28', away: 'MIL', home: 'TB', venue: 'Tropicana Field', plateUmpire: 'Vic Carapazza' };
     const p = fromPoolFile({ games: [game, g5], pitches: [...todayPool(), poolPitch({ id: '5-12-3', gamePk: 5, gameNumber: 5 })] }).pitches.at(-1);
 
@@ -57,7 +56,7 @@ describe('the World Series source', () => {
     expect(await source.umpFigure()).toMatchObject({ pct: 94, approx: true });
   });
 
-  it("rejects with the kind of failure the start screen needs, in M1's words", async () => {
+  it('rejects with the kind of failure the start screen needs, and words that say what went wrong', async () => {
     const file = { games: [game], pitches: todayPool() };
     const cases: [Response | Error, LoadErrorKind, RegExp][] = [
       [new Response('Not Found', { status: 404, statusText: 'Not Found' }), 'missing', /^Could not load the pitch data \(404 Not Found\)\.$/],
@@ -128,13 +127,11 @@ describe('words on the reveal and the card', () => {
     expect(toughest([judged(P, 'ball')])).toMatch(/^Four-Seam Fastball, /);
   });
 
-  it('ends the copied result with the data credit AGENTS.md requires', () => {
-    const rules = readFileSync(new URL('../../AGENTS.md', import.meta.url), 'utf8');
-    const credit = /Credit the data: "([^"]+)"/.exec(rules)?.[1];
+  it('ends the copied result with the data credit', () => {
     const set = [prep(synthPitch())];
     const text = resultText({ label: WS_LABEL, roundLabel: "Today's Ten", figure: null, set, results: [judged(set[0], 'strike')] });
 
-    expect(credit).toMatch(/MLB Stats API/);
-    expect(text.split('\n').at(-1)).toContain(credit);
+    expect(CREDIT).toMatch(/MLB Stats API/);
+    expect(text.split('\n').at(-1)).toContain(CREDIT);
   });
 });

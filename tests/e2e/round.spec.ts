@@ -106,7 +106,7 @@ test('the slow replay plays once and hands the reveal back', async ({ page }) =>
   await expect(replay).toBeDisabled();
   await expect(app).toHaveAttribute('data-phase', 'reveal', { timeout: 8_000 });
   await expect(replay).toBeEnabled();
-  // on to Next, whose key cap Space is, rather than back to Watch it slow (the M3 review's finding 3)
+  // on to Next, whose key cap Space is, rather than back to Watch it slow
   await expect.poll(() => activeId(page)).toBe('btnNext');
 
   // Quarter speed from 0.3 s before the release to just past the catch, then a 0.7 s hold: about 4 s for this pitch.
@@ -178,7 +178,7 @@ test('the default is the 2026 season, and says so while it loads', async ({ page
     if (req.url().includes('/data/ws-2026/')) pool.push(req.url());
   });
   await page.goto(`./?date=${mini.date}`);
-  // until the pitches are in, there are no numbers to give (§5.1)
+  // until the pitches are in, there are no numbers to give
   await expect(page.locator('#startLede')).toHaveText("Today's Ten: real pitches from the 2026 season, at real speed, from the plate umpire's eye.");
   release();
   await waitReady(page);

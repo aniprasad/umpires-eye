@@ -1,4 +1,4 @@
-// The 2026 season (docs/M2-DESIGN.md §4): Today's Ten from a month file, Another ten from a shard, and the ump figure
+// The 2026 season: Today's Ten from a month file, Another ten from a shard, and the ump figure
 // from stats.json. Nothing loads before the game asks: today() reads the manifest and one month file, prefetch() the
 // text of one shard, the first deck() parses it, and umpFigure() reads the stats.
 import { isDailyReserve, monthOf, type DailyDay } from '../core/daily.ts';
@@ -177,7 +177,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   // Whether a manifest has arrived. A date asked for after that checks it for a new build; one in flight is fresh.
   let arrived = false;
   const months = new Map<string, (signal?: AbortSignal) => Promise<MonthFile>>();
-  // The shards this page has dealt from, or is about to. Another ten never goes back to one (§3).
+  // The shards this page has dealt from, or is about to. Another ten never goes back to one.
   const used = new Set<number>();
   const texts = new Map<number, (signal?: AbortSignal) => Promise<string>>();
   // Loads are shared, so none takes a caller's signal (shared() above).
@@ -202,14 +202,14 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
 
   /**
    * The manifest the page goes by from now on. A new build drops the month files read under the old one, whichever
-   * check found it, so a later date reads the new build's file (§2.2).
+   * check found it, so a later date reads the new build's file.
    */
   function useManifest(fresh: Manifest, was: Manifest): void {
     manifest = Promise.resolve(fresh);
     if (fresh.build !== was.build) months.clear();
   }
 
-  /** A file, paired with the manifest of its build (§4.3). */
+  /** A file, paired with the manifest of its build. */
   async function sameBuild<F extends Built>(file: F, refetch: (fresh: Manifest) => Promise<F>, what: string): Promise<F> {
     const known = await theManifest();
     const got = await matchBuild(known, file, { manifest: () => fetchManifest('reload'), file: refetch }, what);
@@ -220,7 +220,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
   }
 
   /**
-   * A tab can stay open across a deploy, so a date asked for once the manifest has arrived asks for it again (§2.2).
+   * A tab can stay open across a deploy, so a date asked for once the manifest has arrived asks for it again.
    * It's no-cache: an unchanged one costs a 304. A new build replaces the old manifest and drops the month files
    * matched to it. Without an answer, the manifest the page has still serves the dates it has month files for; only a
    * manifest this page can't read stops it.
@@ -273,7 +273,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     if (arrived && manifest) await revalidate(manifest, signal);
     const known = theManifest(signal);
 
-    // The month file loads alongside the manifest (§4.1), but the manifest decides: past the schedule's ends, the month
+    // The month file loads alongside the manifest, but the manifest decides: past the schedule's ends, the month
     // file's answer is ignored, errors included.
     monthFile(month).catch(() => undefined);
     const { daily } = await known;
@@ -383,7 +383,7 @@ export function seasonSource({ root, net, rand = Math.random }: SeasonOptions): 
     today,
     prefetch,
     deck,
-    // play never waits for the stats: without them, the copy leaves the figure out (§5.4)
+    // play never waits for the stats: without them, the copy leaves the figure out
     umpFigure: () => figure().catch(() => null),
   };
 }

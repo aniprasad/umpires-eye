@@ -28,7 +28,7 @@ export interface PhaseMark {
   t: number;
 }
 
-const MOCKUP_HTML = new URL('../../mockup/index.html', import.meta.url);
+const MOCKUP_HTML = new URL('../reference/index.html', import.meta.url);
 const POOL_JSON = new URL('../../public/data/ws-2026/pool.json', import.meta.url);
 const STRIKE_KEYS: readonly CallKey[] = ['S', 's', 'ArrowRight'];
 // Boxes come back in fractional CSS pixels; half a pixel absorbs the rounding without hiding a real overlap.

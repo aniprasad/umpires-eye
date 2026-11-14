@@ -101,7 +101,7 @@ test("card art that won't load is reported, and the game still starts", async ({
   expect(errors).toEqual([]);
 });
 
-// The built app is one module; its errors reach index.html's listeners, which run first (the M1 review's N12).
+// The built app is one module; its errors reach index.html's listeners, which run first.
 test.describe('a failure while the modules load', () => {
   const ENTRY = /\/assets\/index-[\w-]+\.js$/;
 
@@ -164,7 +164,7 @@ test.describe('a failure while the modules load', () => {
     expect(errors).toEqual(['A later fault']);
   });
 
-  // The M3 review's code risk 1: an extension's script can throw on any page, often as a bare "Script error.".
+  // An extension's script can throw on any page, often as a bare "Script error.".
   test("errors from another site's scripts are ignored, even while the modules load", async ({ page, browserName }) => {
     const FOREIGN = 'https://scripts.example.com/';
     const failed: string[] = [];
@@ -210,8 +210,8 @@ test.describe('a failure while the modules load', () => {
     expect(failed).toEqual(Array<string>(browserName === 'webkit' ? 2 : 1).fill(`${FOREIGN}missing.js`));
   });
 
-  // The M3 review's NB1: a rejected promise can't be traced to its script, so another site's took the start screen over
-  // too, and once the game had booted, Play still reloaded the page.
+  // A rejected promise can't be traced to its script, so another site's takes the start screen over too. Once the game
+  // has booted, Play must take it back, not reload the page.
   for (const [source, query] of [['the season', `?date=${mini.date}`], ['the World Series', '?pool=ws']] as const) {
     test(`another site's rejected promise while the modules load: ${source} boots, takes Play back and deals a round`, async ({ page }) => {
       const FOREIGN = 'https://scripts.example.com/';
@@ -259,7 +259,6 @@ test.describe('a failure while the modules load', () => {
     });
   }
 
-  // The M3 review's finding 9: the box sat over the data credit, and nothing closed it.
   test('the error box can be dismissed, and keeps clear of the credit', async ({ page }) => {
     const err = page.locator('#err');
     const close = page.getByRole('button', { name: 'Dismiss the error' });

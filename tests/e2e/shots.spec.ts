@@ -58,7 +58,7 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
-// The M3 review's finding 1 gave the season's hook and its footnote a second figure: the start screen still fits.
+// The season's hook and its footnote both give a second figure, and the start screen must still fit them.
 for (const viewport of [...VIEWPORTS, { width: 1280, height: 720 }]) {
   const size = `${viewport.width}x${viewport.height}`;
 

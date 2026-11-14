@@ -1,5 +1,5 @@
-// The run lock behind npm run e2e. Two full Playwright runs at once overload this machine and WebKit then misses its
-// timeouts, whatever ports they use, so runs from every checkout take turns through one file in the OS temp folder.
+// The run lock behind npm run e2e. Full Playwright runs on one machine take turns, whatever ports they use, so one
+// run's browsers can't slow another's into timeouts. Runs from every checkout share one file in the OS temp folder.
 import { linkSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

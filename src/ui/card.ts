@@ -7,7 +7,7 @@ import { G, world } from '../game/state';
 import { seriesGames } from '../math/deal';
 import { cardStateResults } from '../math/flow';
 import { clamp } from '../math/util';
-import { figureWords, resultText, setLine, toughest, type Result } from '../math/words';
+import { cardFoot, figureWords, resultText, setLine, toughest, type Result } from '../math/words';
 import { CARD, UI } from './dom';
 import { announce, setPhase } from './hud';
 
@@ -94,20 +94,20 @@ export function showCards(instant = false): void {
   CARD.root.scrollTop = 0;
   if (!instant) {
     CARD.copy.focus({ preventScroll: true });
-    // a short screen leaves the actions below the fold, and focus mustn't land out of sight (the M3 review's finding 4)
+    // a short screen leaves the actions below the fold, and focus mustn't land out of sight
     if (CARD.copy.getBoundingClientRect().bottom > innerHeight) CARD.copy.scrollIntoView({ block: 'end' });
   }
   announce(`Round complete. You called ${right} of ${n} right, ${pct} percent. The real ump got ${ump} of ${n}.`);
 }
 
-/** The card back's ump figure row and its citation; without a figure, the row goes and the citation leaves it out. */
+/** The card back's ump figure row and its foot; without a figure, the row goes and the foot leaves it out. */
 export function showCardFigure(f: UmpFigure | null): void {
-  const { row, cite } = figureWords(f);
+  const { row } = figureWords(f);
 
   CARD.figRow.hidden = !row;
   CARD.figLabel.textContent = row?.label ?? '';
   CARD.fig.textContent = row?.value ?? '';
-  CARD.foot.textContent = `${cite ? `${cite} ` : ''}The real ump: original calls vs ABS on these pitches.`;
+  CARD.foot.textContent = cardFoot(f);
 }
 
 /** ?state=card&correct=N: the card for a round with N right, the misses on the closest pitches. */

@@ -1,4 +1,4 @@
-// The source contract (docs/M2-DESIGN.md §4.8): what a dataset hands the game. The World Series pool and the season
+// The source contract: what a dataset hands the game. The World Series pool and the season
 // both implement it, and the game never reaches past it into a file.
 import type { PlayPoint } from '../math/lens';
 import type { Pitch } from '../math/types';

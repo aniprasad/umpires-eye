@@ -4,7 +4,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'coverage/', 'test-results/', 'playwright-report/', 'blob-report/', 'mockup/', 'public/'] },
+  { ignores: ['dist/', 'coverage/', 'test-results/', 'playwright-report/', 'blob-report/', 'tests/reference/', 'public/'] },
   js.configs.recommended,
   tseslint.configs.recommended,
   {
@@ -13,7 +13,7 @@ export default tseslint.config(
     },
     plugins: { '@stylistic': stylistic },
     rules: {
-      // The owner's style (AGENTS.md): a blank line after declarations, and before a return that follows other statements.
+      // The house style (AGENTS.md): a blank line after declarations, and before a return that follows other statements.
       '@stylistic/padding-line-between-statements': [
         'error',
         { blankLine: 'always', prev: ['const', 'let', 'var'], next: '*' },

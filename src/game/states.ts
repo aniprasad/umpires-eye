@@ -1,5 +1,5 @@
-// The start screen while the season's Today's Ten loads, and when it can't (docs/M2-DESIGN.md §5.1). The World Series
-// keeps M1's: its one file loads before the page opens.
+// The start screen while the season's Today's Ten loads, and when it can't. The World Series doesn't use these states:
+// its one file loads before the page opens.
 import { LoadError, type LoadErrorKind } from '../data/source';
 import { fail, UI } from '../ui/dom';
 import { announce } from '../ui/hud';
@@ -55,7 +55,7 @@ function say(lede: string, button: string): void {
 }
 
 /**
- * Failed or Broken, by the error's kind (§5.3). Failed resolves when Try again is pressed or the device comes back
+ * Failed or Broken, by the error's kind. Failed resolves when Try again is pressed or the device comes back
  * online, and the caller loads again. Broken never resolves: its button reloads the page, and the error box says what
  * was wrong with the data.
  */

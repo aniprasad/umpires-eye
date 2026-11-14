@@ -39,7 +39,7 @@ const MASK_PAD = 2;
 const DIM = 0.3;
 // Longest first, so that a backdrop-wide file is never taken for the plain backdrop.
 const MASTERS = ['backdrop-wide', 'card-art', 'backdrop', 'batter'] as const;
-const MASTER_DIR = new URL('../../mockup/assets/', import.meta.url);
+const MASTER_DIR = new URL('../../art/', import.meta.url);
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 
 type Mode = (typeof MODES)[number];
@@ -263,7 +263,7 @@ function markdown(out: string, rows: Row[]): string {
     '# Mockup and port pixel parity',
     '',
     `A pixel differs when any RGB channel moves by more than ${CHANNEL_TOLERANCE}/255. Masked leaves out the boxes of \`.footnote\` and \`.cards-foot\` on both pages${ALIGN_CREDIT ? '; before capture the mockup footnotes take the port footnote heights, so the longer credit does not move the rest of the screen' : ''}.`,
-    `Exact routes the port's WebP images to the PNG masters in \`mockup/assets\`; shipped uses the built files. Limits outside the masks: no differing pixel at all, except in shipped mode's card states, where up to ${pct(SHIPPED_CARD_LIMIT)} % may differ (the resampled WebP card art).`,
+    `Exact routes the port's WebP images to the PNG masters in \`art/\`; shipped uses the built files. Limits outside the masks: no differing pixel at all, except in shipped mode's card states, where up to ${pct(SHIPPED_CARD_LIMIT)} % may differ (the resampled WebP card art).`,
     '',
     `Shots: \`${repoPath(out)}/<mode>/<viewport>/<slug>-{mockup,port,diff}.png\`, where the slug is the state without \`state=\` and with \`&\` and \`=\` turned into \`-\`. In a diff, red marks a differing pixel and amber one inside the mask.`,
     '',

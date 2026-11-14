@@ -6,7 +6,7 @@ The files are built by a script in this repo (`tools/data/`) from the MLB Stats 
 
 ## Credit and terms
 
-- Data: **MLB Stats API, © MLB Advanced Media, L.P.; individual, non-commercial use. Not affiliated with MLB.** Every file carries this line in its `credit` field.
+- Data: the MLB Stats API, © MLB Advanced Media, L.P., under MLB's terms: "Only individual, non-commercial, non-bulk use of the Materials is permitted and any other use of the Materials is prohibited without prior written authorization from MLBAM." ([source](https://gdx.mlb.com/components/copyright.txt)). Not affiliated with MLB. Every file names its source in its `credit` field.
 - Each API response says: "Copyright 2026 MLB Advanced Media, L.P. Use of any content on this page acknowledges agreement to the terms posted here http://gdx.mlb.com/components/copyright.txt".
 - Umpire's Eye is a free, non-commercial fan project. It isn't affiliated with or endorsed by MLB or any team, and it uses no logos or player likenesses.
 - Whether the dataset goes into the public repo is decided at publish time. Anyone can rebuild it with the steps below.
@@ -52,7 +52,7 @@ Left out:
 
 ### Feed quirks the build handles
 
-The quirks found on the World Series (`mockup/data/DATA.md`) all hold for the full season:
+The quirks found on the World Series all hold for the full season:
 
 - **`details.call` is the final call, after any challenge.** When a challenge was overturned, the umpire's original call is the opposite.
 - **Challenges are `reviewType` `MJ`** (team challenge, pitch result).
@@ -268,13 +268,13 @@ The build deals 200 rounds from every shard with the mockup's Today's Ten rule a
 
 The shard count comes from a fixed size (`PITCHES_PER_SHARD` = 3,500 in `tools/data/lib/pipeline.ts`), not from measured gzip size. Gzip output can differ between zlib builds, and the files must rebuild identically anywhere. The build fails if manifest, stats and the largest shard would exceed the session budget; `data:validate` holds all three budgets, the month file included.
 
-**Where the budgets are enforced.** `data:validate` checks each month file, the boot fetch and the largest session against the shipped files. `data:test` shows each budget failing on a synthetic schedule, and an e2e test shows that only the manifest, the month file and `stats.json` load before Play is enabled, and no shard. They all run locally: in each session's self-check, and in the lead's gate before every merge. No CI runs them. The session budget covers a session within one month and one shard. A page left open past midnight asks for the manifest again for each new date, which usually costs a 304, and loads a month file again after a new build. Crossing into a new month adds that month's file, 32.5–35.5 KB gzipped, so a page left open from one month into the next comes to up to about 328 KB. A page that deals more tens than its shard holds (147 at the least) loads another shard, about 250 KB.
+**Where the budgets are enforced.** `data:validate` checks each month file, the boot fetch and the largest session against the shipped files. `data:test` shows each budget failing on a synthetic schedule, and an e2e test shows that only the manifest, the month file and `stats.json` load before Play is enabled, and no shard. They run with the other checks, locally or in the manual CI workflow. The session budget covers a session within one month and one shard. A page left open past midnight asks for the manifest again for each new date, which usually costs a 304, and loads a month file again after a new build. Crossing into a new month adds that month's file, 32.5–35.5 KB gzipped, so a page left open from one month into the next comes to up to about 328 KB. A page that deals more tens than its shard holds (147 at the least) loads another shard, about 250 KB.
 
 ## Today's Ten
 
-`npm run data:daily` chooses Today's Ten for every date from 2026-11-01 to 2028-12-31 ahead of time, and writes them to `daily/YYYY-MM.json`, one file per month. Everyone on the same date gets the same ten, and once a date may have been served, its ten never changes. `docs/M2-DESIGN.md` §2 has the design.
+`npm run data:daily` chooses Today's Ten for every date from 2026-11-01 to 2028-12-31 ahead of time, and writes them to `daily/YYYY-MM.json`, one file per month. Everyone on the same date gets the same ten, and once a date may have been served, its ten never changes. `docs/HOW-IT-WORKS.md` describes how the app plays them.
 
-**In the app.** The page reads the player's local date, asks for that month's file alongside the manifest, and plays the date's ten. So everyone whose clock shows the same date gets the same ten, and at local midnight the start screen moves on to the next date's. Before the first date or after the last, or on an unavailable day, it offers Another ten instead (M2-DESIGN §2.2 and §2.7). `?date=` picks a date.
+**In the app.** The page reads the player's local date, asks for that month's file alongside the manifest, and plays the date's ten. So everyone whose clock shows the same date gets the same ten, and at local midnight the start screen moves on to the next date's. Before the first date or after the last, or on an unavailable day, it offers Another ten instead. `?date=` picks a date.
 
 **The reserve.** A quarter of the pool is held back for the schedule. A pitch is reserved when `unitHash("umpires-eye-2026|daily|" + id)` is below 0.25: `isDailyReserve` in `src/core/daily.ts`.
 - It rests on the ID alone, so the tools and the app agree on it, and a rebuild can't change it.
@@ -314,7 +314,6 @@ The calibrator counts toward spreading games and batter sides. It's an easy call
 - The variety rules take **1.40 draws a day on average, and 6 at most**. Of the 1,235 days, 888 pass on the first draw, 246 on the second, 66 on the third, 28 on the fourth, 3 on the fifth and 4 on the sixth. Over the 792 shipped days, the figures are 1.38 and 6.
 - The shipped schedule is exactly that run's first 792 days.
 - After it, the reserve still holds 8,592 close calls (561 of them challenged), 1,107 near calls and 1,083 calibrators.
-- The design estimated 1,220 days and 1.34 draws, with 5 at most. That was before the review rebuild, with the two-strike rule counted over all ten.
 
 **Checks.** Besides the rebuild, `data:validate` checks the schedule from the files alone, in `tools/data/lib/daily-check.ts`:
 - every month file reads with the app's decoder, carries the manifest's build id, and has the size and hash the manifest lists;
@@ -336,7 +335,7 @@ All files are UTF-8 JSON. Shards and month files keep one row per line so diffs 
 `build` names the content of one build. It's the first 12 hex digits of a sha256 over the shards' and `stats.json`'s text as they were before the id was stamped in: the sha256 of each text, one per line, the shards in order and then stats. (`tools/data/lib/build-id.ts`)
 - `data:build` stamps it right after `season` in the manifest, `stats.json`, every shard and the build report. A rebuild from the same inputs keeps it, and `data:daily` writing the manifest's daily block doesn't change it.
 - `data:daily` stamps each month file with the id of the shards its rows came from.
-- So a file whose id differs from the manifest's comes from another build: the app refetches the manifest once, as `docs/M2-DESIGN.md` §4.3 describes.
+- So a file whose id differs from the manifest's comes from another build: the app refetches the manifest once (`matchBuild` in `src/data/fetch.ts`).
 - `data:validate` checks that every file carries the manifest's id, and recomputes the id from the shards and `stats.json` with their stamps taken out. A shard or `stats.json` whose stamp isn't right after `season`, as `data:build` writes it, fails instead of being skipped: `stats.json` has no hash in the manifest, so with `--no-rebuild`, as CI runs it, this is the only check that covers all of it.
 
 ### `manifest.json` (`umpires-eye.season-manifest`)

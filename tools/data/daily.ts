@@ -1,6 +1,6 @@
 // npm run data:daily -- [--from YYYY-MM-DD] [--through YYYY-MM-DD] [--served-through YYYY-MM-DD] [--check]
 // Writes Today's Ten: public/data/season-2026/daily/YYYY-MM.json, the manifest's daily block and the daily report, from
-// the shards and the month files already there, which it keeps as a history lock (docs/M2-DESIGN.md §2.5). The first run
+// the shards and the month files already there, which it keeps as a history lock (docs/DATA.md). The first run
 // needs --from and --through. servedThrough defaults to the day after today in UTC; pass a later date if the commit won't
 // go live by then. --check writes nothing: it reproduces the recorded schedule and fails if any file differs.
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';

@@ -129,7 +129,7 @@ export function resultText(opts: {
   ].join('\n');
 }
 
-/** The ump figure's words in each place that shows it (§5.4). */
+/** The ump figure's words in each place that shows it. */
 export interface FigureWords {
   /** The start screen's hook. */
   readonly hook: string;
@@ -155,10 +155,9 @@ export interface ChipLine {
 const NO_FIGURE: ChipLine = { long: 'Close calls', short: ['Close calls'] };
 
 /**
- * A cited figure reads as M1 wrote it, "MLB umps ≈ 94%". A measured one has two: the season overall for the hook, and
- * the close calls, which the tens are dealt from, wherever a score is set against the umps: "MLB umps 68.3% on close
- * calls" (the M3 review's finding 1). Without a figure, every place leaves it out, and the hook asks its question
- * without one.
+ * A cited figure reads as the mockup wrote it, "MLB umps ≈ 94%". A measured one has two: the season overall for the
+ * hook, and the close calls, which the tens are dealt from, wherever a score is set against the umps: "MLB umps 68.3%
+ * on close calls". Without a figure, every place leaves it out, and the hook asks its question without one.
  */
 export function figureWords(f: UmpFigure | null): FigureWords {
   if (!f) return { hook: 'Can you call balls and strikes like an MLB umpire?', chip: NO_FIGURE, scored: NO_FIGURE, verdict: null, row: null, cite: null, copy: null };
@@ -212,3 +211,18 @@ export function figureWords(f: UmpFigure | null): FigureWords {
  * holds two lines, and "Today's Ten" with a date would need three.
  */
 export const setLine = (label: string, roundLabel: string, date?: string | null): string => `${label} set · ${date ?? roundLabel}`;
+
+const REAL_UMP = 'The real ump: original calls vs ABS on these pitches.';
+
+/**
+ * The card back's foot. Under the longest Toughest it has room for three lines, so a measured figure keeps only its
+ * definition there: the hook's citation, with the real ump's line after it, ran past the card's edge. The real ump's
+ * row is spelled out by the summary above the card.
+ */
+export function cardFoot(f: UmpFigure | null): string {
+  if (!f) return REAL_UMP;
+  if (f.approx) return `${figureWords(f).cite} ${REAL_UMP}`;
+  const close = f.close ? `, ${f.close.pct}% within ${f.close.withinIn} in of the zone's edge` : '';
+
+  return `MLB umps' calls agree with our ABS reconstruction: ${f.pct}% ${f.label}${close}.`;
+}

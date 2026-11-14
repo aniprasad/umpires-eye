@@ -74,7 +74,7 @@ export interface FileHead {
   season: number;
   /**
    * The build id: a short hash of the shards' and stats' content, the same in every file of one build. A file whose
-   * id differs from the manifest's is from another build (docs/M2-DESIGN.md §4.3).
+   * id differs from the manifest's is from another build.
    */
   build: string;
   credit: string;

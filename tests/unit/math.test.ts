@@ -33,7 +33,7 @@ describe('camera', () => {
   });
 });
 
-describe("the pitcher figure's throwing side (§4.7)", () => {
+describe("the pitcher figure's throwing side", () => {
   // a path straight along y, so the release point's x is relX whatever the extension
   const releasedAt = (hand: Side, relX: number) => prep(synthPitch({
     pitcher: { id: 20, name: 'Pat Sample', hand },

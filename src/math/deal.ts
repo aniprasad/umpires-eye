@@ -38,7 +38,7 @@ export function todayLede(today: readonly Pitch[], label: string): string {
 /** A season ten comes from games all over the season, so its lede names none of them. It names its date instead. */
 export const seasonLede = (today: readonly Pitch[], label: string, date: string): string => lede(`Today's Ten for ${date}`, `the ${label}`, today);
 
-/** The start screen for a date without a Ten (§2.7): Another ten is what there is to play. */
+/** The start screen for a date without a Ten: Another ten is what there is to play. */
 export const noTodayLede = (date: string, label: string): string => `There's no Today's Ten for ${date}. Another ten deals fresh pitches from the ${label}.`;
 
 interface PitchCard extends Card {
@@ -57,7 +57,7 @@ export function dealFrom(deck: readonly Pitch[], leaveOut: ReadonlySet<string>, 
   return ten ? ten.map((c) => c.p) : null;
 }
 
-/** "Another ten" as M1 dealt it, leaving out only the pitches it's given (Today's Ten). Throws when it can't deal a ten. */
+/** The mockup's "Another ten", leaving out only the pitches it's given (Today's Ten). Throws when it can't deal a ten. */
 export function pickPoolTen(deck: readonly Pitch[], leaveOut: readonly Pitch[], rand: Rand): Pitch[] {
   const ten = dealFrom(deck, new Set(leaveOut.map((p) => p.id)), rand);
 

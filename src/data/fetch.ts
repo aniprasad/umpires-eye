@@ -1,4 +1,4 @@
-// The app's one way to load a data file (docs/M2-DESIGN.md §5.3). Every failure comes back as a LoadError whose kind
+// The app's one way to load a data file. Every failure comes back as a LoadError whose kind
 // picks the start screen's state, so the sources never look at a status code themselves.
 import { LoadError } from './source';
 
@@ -24,7 +24,7 @@ export const BROWSER_NET: Net = {
 export interface FetchJsonOptions {
   /** What the file holds, for messages: "the pitch data". */
   readonly what: string;
-  /** How the HTTP cache is used (§4.3). */
+  /** How the HTTP cache is used. */
   readonly cache?: RequestCache;
   /** Cancels the request and any retry still to come. The promise then rejects with the signal's reason. */
   readonly signal?: AbortSignal;
@@ -46,7 +46,7 @@ export async function fetchJson(url: string, opts: FetchJsonOptions): Promise<un
 
 /**
  * A file's body as text, fetched as fetchJson fetches it and failing the same ways, but left unparsed: a body that isn't
- * JSON only shows when parseJson reads it. Another ten's shard waits as text until the game wants it (§4.1).
+ * JSON only shows when parseJson reads it. Another ten's shard waits as text until the game wants it.
  */
 export function fetchText(url: string, opts: FetchJsonOptions): Promise<string> {
   return withRetries(() => fetchOnce(url, opts), RETRY_DELAYS_MS, opts);
@@ -132,7 +132,7 @@ function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
   });
 }
 
-/** A file stamped with the build of the data it came from (§4.3). */
+/** A file stamped with the build of the data it came from. */
 export interface Built {
   readonly build: string;
 }
@@ -141,7 +141,7 @@ export interface Built {
 export const versioned = (url: string, build: string): string => `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(build)}`;
 
 /**
- * A file and a manifest from the same build (§4.3). GitHub Pages lets browsers keep either one for ten minutes, so a
+ * A file and a manifest from the same build. GitHub Pages lets browsers keep either one for ten minutes, so a
  * deploy can pair a fresh copy with a stale one. On a mismatch the manifest is fetched again past the cache, and then,
  * unless that settled it, the file at the address the fresh manifest gives it: `versioned()` by the build, or a shard's
  * own ?v=. A mismatch that survives both is broken data.

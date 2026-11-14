@@ -97,8 +97,8 @@ export function updateScore(tick: boolean): void {
 }
 
 /**
- * Puts the ump figure, or its absence, in the World and in the places already showing (§5.4). The card reads it when it
- * shows. A measured figure is defined on the start screen too; the World Series' cited one keeps M1's footnote.
+ * Puts the ump figure, or its absence, in the World and in the places already showing. The card reads it when it
+ * shows. A measured figure is defined on the start screen too; the World Series' cited one keeps the mockup's footnote.
  */
 export function showFigure(f: UmpFigure | null): void {
   const fw = figureWords(f);

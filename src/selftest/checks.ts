@@ -166,8 +166,8 @@ function todayMakeUp(ctx: SelfTestCtx): CheckResult {
 }
 
 /**
- * The season's Today's Ten: the dealer's rules and the schedule's variety rules (docs/M2-DESIGN.md §2.3, §2.4), as the
- * build applied them, in the order the file gives. The real ump's tally is whatever the data says.
+ * The season's Today's Ten: the dealer's rules and the schedule's variety rules, as the build applied them, in the
+ * order the file gives. The real ump's tally is whatever the data says.
  */
 function todayRules(ctx: SelfTestCtx): CheckResult {
   const T = ctx.today;
