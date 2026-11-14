@@ -2,7 +2,7 @@
 
 Call real MLB pitches from the plate umpire's eye, at real speed. Then see the ABS truth, what the real umpire called, and your umpire card.
 
-**Status:** in development, not published yet. The approved mockup lives in `mockup/`; open `mockup/index.html` in a browser to play it. The app in this repo is its production port: Vite and strict TypeScript, canvas 2D and plain DOM, no UI framework.
+**Status:** in development, not published yet. The approved mockup lives in `mockup/`; open `mockup/index.html` in a browser to play it. The app in this repo is its production port: Vite and strict TypeScript, canvas 2D and plain DOM, no UI framework. It plays the 2026 season: a Today's Ten for each date, and Another ten from the whole season.
 
 ## Run it
 
@@ -32,7 +32,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 
 - `npx playwright install webkit` once, for the WebKit runs. Chromium-based runs use the installed Microsoft Edge (`channel: 'msedge'`), because Playwright's own Chromium doesn't run on Windows ARM64. CI on Linux uses Playwright's Chromium instead.
 - Projects:
-  - `desktop-edge` and `desktop-webkit`: a keyboard round on the World Series pool, season rounds and Today's Ten by date (midnight, time zones, a date without a Ten), on small synthetic files, screenshots at 1440×900 and 1024×768, the self-test page, the depth-of-field checks, the season's loading and error states with Another ten's "Dealing…", and the World Series' failure states (pitch data or card art that won't load). The tests from before the season pin `?pool=ws`.
+  - `desktop-edge` and `desktop-webkit`: a keyboard round on the World Series pool, season rounds and Today's Ten by date (midnight, time zones, a date without a Ten), on small synthetic files, screenshots at 1440×900 and 1024×768, the self-test page on the World Series and on a season date, the depth-of-field checks, the season's loading and error states with Another ten's "Dealing…", and the World Series' failure states (pitch data or card art that won't load). The tests from before the season pin `?pool=ws`.
   - `native-reference` (Edge): draws the native canvas filter's reference for the depth-of-field check, at each desktop project's size and density. It runs in the first phase, beside every project without dependencies, in its own worker, and comes along whenever a desktop project runs. In UI mode or the VS Code extension, tick it too: they keep `test-results/` between runs, and the check refuses a reference drawn from another build.
   - `speed-edge` and `speed-webkit`: a live pitch's frame times with the fallback filter, against the mockup's in the same engine. Each runs one test at a time, because copies side by side slow each other's samples.
   - `iphone` (WebKit) and `pixel` (Edge): touch rounds in device emulation, the card's set line, which must keep to two lines, and the season's loading, Try again and "Dealing…" by tap.
@@ -48,7 +48,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 | `?state=pitch&i=3&t=0.2` | Pitch 3 of Today's Ten, frozen 0.2 s after release (`t` may be negative: the windup). |
 | `?state=reveal&i=4&call=strike` | The reveal for pitch 4 after a strike call. |
 | `?state=card&correct=8` | The umpire card for a round with 8 right. |
-| `?selftest=1` | The self-test report, on the World Series pool, since its figures are the mockup's. The page title becomes `SELFTEST PASS` or `SELFTEST FAIL`. |
+| `?selftest=1` | The self-test report, on the World Series pool, since its figures are the mockup's. The page title becomes `SELFTEST PASS` or `SELFTEST FAIL`. With `?pool=season`, or a `?pool=` the app doesn't know, it checks the season's Today's Ten for the date instead; the season's pool-wide checks are `data:validate`'s. |
 | `?pool=ws` | The 2026 World Series pool, as in the mockup. Without a `?pool=`, or with a value the app doesn't know, it plays the 2026 season (`?pool=season`). |
 | `?date=2026-11-14` | Today's Ten for that date rather than the local one, and no switch at midnight. Anything that isn't a valid date is ignored. A date without a Ten offers Another ten instead. |
 | `?canvasFilter=fallback` | Draws the depth of field without the canvas `filter`, as WebKit does. |
@@ -60,7 +60,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 - `src/data/`: the source contract a dataset implements (`source.ts`: Today's Ten for a date, the deck for Another ten and an optional prefetch of it, the lens points and the ump figure), the `?pool=` switch, the 2026 season source (`public/data/season-2026/`, the default) and the 2026 World Series source (`public/data/ws-2026/pool.json`).
 - `src/render/`: the scene. Static layers are painted once per stance, and the next pitch's are painted ahead. The ball, mitt, pitcher and reveal are drawn every frame. `filter.ts` draws every blur and colour grade, with a fallback for engines without canvas `filter`, such as Safari.
 - `src/game/` and `src/ui/`: the flow (start, ten pitches, reveal, card), input, the HUD, the verdict panel and the card. `src/game/another.ts` deals Another ten for a page, so no pitch comes up twice, and `src/game/today.ts` keeps the start screen's Today's Ten on the local date, through midnight.
-- `src/selftest/`: the mockup's self-test checks as pure functions. Vitest runs them, and so does `?selftest=1`.
+- `src/selftest/`: the mockup's self-test checks as pure functions, and the season's, over a date's Today's Ten. Vitest runs them, and so does `?selftest=1`.
 
 ## Assets
 
@@ -77,5 +77,11 @@ The masters stay in `mockup/assets/`, and `batter-src.png` is source art that ne
 ## Data
 
 Pitch data comes from the MLB Stats API, © MLB Advanced Media, L.P., for individual, non-commercial use. Umpire's Eye is free and isn't affiliated with or endorsed by MLB. The ABS zone it shows is our reconstruction. Players, field and catch are illustrations.
+
+- **Today's Ten** is chosen ahead of time for every date by `npm run data:daily`, and shipped in `public/data/season-2026/daily/`, one file per month. The app plays the ten for the player's local date, so everyone whose clock shows the same date gets the same ten.
+- **"MLB umps 93.2%, season overall"** is our own figure: how often the umpires' original calls agree with our ABS reconstruction, over the 2026 season's called pitches (`stats.json`). Other sites' accuracy numbers use their own zones, so they aren't directly comparable.
+- **The data budgets** are 50 KB gzipped before Play is enabled and 300 KB for a session. `npm run data:validate` and the tests enforce them, run locally before every merge.
+
+`docs/DATA.md` has the details.
 
 The fonts are Big Shoulders Display and Courier Prime, under the SIL Open Font License (`public/fonts/`).
