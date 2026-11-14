@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { seasonMini } from '../fixtures/season-mini';
 import type { CallKey } from './helpers';
 import { activeId, callOf, callPitch, openPaused, trackErrors, waitReady } from './helpers';
-import { loadsOf, mini, PAST_IDLE_MS, parsesOf, saveData, serveSeason, shards, watchLoads } from './season-data';
+import { hold, loadsOf, mini, PAST_IDLE_MS, parsesOf, saveData, serveSeason, shards, watchLoads } from './season-data';
 
 // Every binding gets used, as in round.spec.ts.
 const KEYS: readonly CallKey[] = ['S', 'B', 'ArrowRight', 'ArrowLeft', 's', 'b', 'S', 'ArrowLeft', 'ArrowRight', 'B'];
@@ -205,5 +205,22 @@ test('without the stats, the copy leaves the ump figure out, and play goes on', 
   await expect(page.locator('#ubFoot')).toHaveText('The real ump: original calls vs ABS on these pitches.');
   await expect(page.locator('#err')).toBeHidden();
   expect(notFound).toHaveLength(2);
+  expect(errors).toEqual([]);
+});
+
+test('a card that is up before the stats arrive takes the ump figure when they do', async ({ page }) => {
+  const errors = trackErrors(page);
+
+  await serveSeason(page);
+  const release = await hold(page, 'stats.json');
+
+  await page.goto(`./?date=${mini.date}&state=card&correct=7`);
+  await waitReady(page);
+  await expect(page.locator('#ubFigRow')).toBeHidden();
+  await expect(page.locator('#ubFoot')).toHaveText('The real ump: original calls vs ABS on these pitches.');
+  release();
+  await expect(page.locator('#ubFigRow')).toBeVisible();
+  await expect(page.locator('#ubFig')).toHaveText(`${FIG}%`);
+  await expect(page.locator('#ubFoot')).toHaveText(`${CITE} The real ump: original calls vs ABS on these pitches.`);
   expect(errors).toEqual([]);
 });
