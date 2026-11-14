@@ -16,13 +16,13 @@ Put the visitor behind the plate. Real MLB pitches fly in along their tracked fl
 
 ## Positioning
 
-This isn't a stats chart with a dot. Each pitch is replayed from its tracked trajectory, seen through the ump's eyes, and graded against the 2026 ABS zone and against the human umpire who called it live. Hook: MLB umpires got 93.2% of calls right this season. Can you?
+This isn't a stats chart with a dot. Each pitch is replayed from its tracked trajectory, seen through the ump's eyes, and graded against the 2026 ABS zone and against the human umpire who called it live. Hook: MLB umpires got 93.2% of calls right in 2026. Can you?
 
 ## Operating Context
 
 - Short rounds of 10 real pitches.
-  - "Today's Ten" is chosen ahead of time for every date by a script in this repo, so everyone whose clock shows the same date gets the same ten, and it changes at local midnight.
-  - "Another ten" deals a fresh set from the season, never a pitch already dealt on the page, and never one held back for a future Today's Ten.
+  - "Today's Ten" is chosen ahead of time by a script in this repo, for each date from November 1, 2026 to December 31, 2028, so everyone whose clock shows the same date gets the same ten, and it changes at local midnight. A date outside that range has none, and neither does a day that a later data rebuild made unavailable; the page offers Another ten instead.
+  - "Another ten" deals a fresh set from the season, and never a pitch held back for a future Today's Ten. On one page, no pitch comes back until the page has dealt from all of the season's data, at least 3,430 tens; then it starts over.
 - 2026 was MLB's first season with the ABS Challenge System, so fans know challenges, overturns and the height-based zone.
 - Content: called pitches from the 2026 MLB season (regular season and postseason), from the MLB Stats API. They're bundled with the app as a compact dataset built by a script in this repo.
 

@@ -2,7 +2,7 @@
 
 Call real MLB pitches from the plate umpire's eye, at real speed. Then see the ABS truth, what the real umpire called, and your umpire card.
 
-**Status:** in development, not published yet. The approved mockup lives in `mockup/`; open `mockup/index.html` in a browser to play it. The app in this repo is its production port: Vite and strict TypeScript, canvas 2D and plain DOM, no UI framework. It plays the 2026 season: a Today's Ten for each date, and Another ten from the whole season.
+**Status:** in development, not published yet. The approved mockup lives in `mockup/`; open `mockup/index.html` in a browser to play it. The app in this repo is its production port: Vite and strict TypeScript, canvas 2D and plain DOM, no UI framework. It plays the 2026 season: Today's Ten for the player's date, and Another ten from the whole season.
 
 ## Run it
 
@@ -78,9 +78,9 @@ The masters stay in `mockup/assets/`, and `batter-src.png` is source art that ne
 
 Pitch data comes from the MLB Stats API, © MLB Advanced Media, L.P., for individual, non-commercial use. Umpire's Eye is free and isn't affiliated with or endorsed by MLB. The ABS zone it shows is our reconstruction. Players, field and catch are illustrations.
 
-- **Today's Ten** is chosen ahead of time for every date by `npm run data:daily`, and shipped in `public/data/season-2026/daily/`, one file per month. The app plays the ten for the player's local date, so everyone whose clock shows the same date gets the same ten.
+- **Today's Ten** is chosen ahead of time by `npm run data:daily`, for each date from 2026-11-01 to 2028-12-31, and shipped in `public/data/season-2026/daily/`, one file per month. The app plays the ten for the player's local date, so everyone whose clock shows the same date gets the same ten. A date outside that range, or a day that a later rebuild made unavailable, has none, and the app offers Another ten instead.
 - **"MLB umps 93.2%, season overall"** is our own figure: how often the umpires' original calls agree with our ABS reconstruction, over the 2026 season's called pitches (`stats.json`). Other sites' accuracy numbers use their own zones, so they aren't directly comparable.
-- **The data budgets** are 50 KB gzipped before Play is enabled and 300 KB for a session. `npm run data:validate` and the tests enforce them, run locally before every merge.
+- **The data budgets** are 50 KB gzipped before Play is enabled, and 300 KB for a session within one month and one shard. `npm run data:validate` and the tests enforce them, run locally before every merge. A page left open into a new month adds that month's file, about 35 KB, and a page that deals more tens than its shard holds (147 at the least) adds another shard, about 250 KB.
 
 `docs/DATA.md` has the details.
 
