@@ -35,7 +35,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
   - `desktop-edge` and `desktop-webkit`: a keyboard round on the World Series pool, season rounds and Today's Ten by date (midnight, time zones, a date without a Ten), on small synthetic files, screenshots at 1440×900 and 1024×768, the self-test page on the World Series and on a season date, the depth-of-field checks, the season's loading and error states with Another ten's "Dealing…", and the World Series' failure states (pitch data or card art that won't load). The tests from before the season pin `?pool=ws`.
   - `native-reference` (Edge): draws the native canvas filter's reference for the depth-of-field check, at each desktop project's size and density. It runs in the first phase, beside every project without dependencies, in its own worker, and comes along whenever a desktop project runs. In UI mode or the VS Code extension, tick it too: they keep `test-results/` between runs, and the check refuses a reference drawn from another build.
   - `speed-edge` and `speed-webkit`: a live pitch's frame times with the fallback filter, against the mockup's in the same engine. Each runs one test at a time, because copies side by side slow each other's samples.
-  - `iphone` (WebKit) and `pixel` (Edge): touch rounds in device emulation, the card's set line, which must keep to two lines, and the season's loading, Try again and "Dealing…" by tap.
+  - `iphone` (WebKit) and `pixel` (Edge): touch rounds in device emulation, the card's set line, which must keep to two lines, the season's loading, Try again and "Dealing…" by tap, the touch layout (no key caps, the card's actions in reach, a phone on its side), and the paint and load measurements that `?timing=1` shows.
   - `parity`: screenshots the mockup and the port at the same URL states and writes `test-results/parity/report.md`. By default the mockup's footnotes take the height of the port's longer credit line, so the rest of the screen lines up. Set `UE_PARITY_ALIGN=0` to compare the pages untouched.
 - Run one project with `npx playwright test --project=desktop-webkit`.
 - Each run builds and serves its own copy on port 4173 and stops at once if that port is taken, so it never tests another checkout's server. Set `UE_E2E_PORT` (for example `UE_E2E_PORT=4191`) to run on another port, such as beside a running `npm run preview`; ports that browsers block, such as 4190, are refused.
@@ -52,6 +52,7 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 | `?pool=ws` | The 2026 World Series pool, as in the mockup. Without a `?pool=`, or with a value the app doesn't know, it plays the 2026 season (`?pool=season`). |
 | `?date=2026-11-14` | Today's Ten for that date rather than the local one, and no switch at midnight. Anything that isn't a valid date is ignored. A date without a Ten offers Another ten instead. |
 | `?canvasFilter=fallback` | Draws the depth of field without the canvas `filter`, as WebKit does. |
+| `?timing=1` | A plain-text readout over the scene, for checking a real phone: how long each new stance's static layers took to paint on the main thread during play, and the KB the page has loaded so far (images, data, code; compressed bodies). |
 
 ## How it's built
 
@@ -60,6 +61,9 @@ CI and the GitHub Pages deploy (`.github/workflows/`) are manual-only for now: t
 - `src/data/`: the source contract a dataset implements (`source.ts`: Today's Ten for a date, the deck for Another ten and an optional prefetch of it, the lens points and the ump figure), the `?pool=` switch, the 2026 season source (`public/data/season-2026/`, the default) and the 2026 World Series source (`public/data/ws-2026/pool.json`).
 - `src/render/`: the scene. Static layers are painted once per stance, and the next pitch's are painted ahead. The ball, mitt, pitcher and reveal are drawn every frame. `filter.ts` draws every blur and colour grade, with a fallback for engines without canvas `filter`, such as Safari.
 - `src/game/` and `src/ui/`: the flow (start, ten pitches, reveal, card), input, the HUD, the verdict panel and the card. `src/game/another.ts` deals Another ten for a page, so no pitch comes up twice, and `src/game/today.ts` keeps the start screen's Today's Ten on the local date, through midnight.
+  - While the start panel or the card is up, the rest of the game is inert, so Tab and screen readers stay on it. After Watch it slow, focus goes on to Next.
+  - On touch screens there are no key caps, the card's actions stay in a bar at the bottom while it scrolls, and a phone on its side scrolls its start card and suggests turning upright.
+  - `index.html` listens for errors before the modules load: if the app's code fails to load, Play becomes Reload. Errors from other sites' scripts, such as extensions', are ignored, and the error box sits at the top and can be closed.
 - `src/selftest/`: the mockup's self-test checks as pure functions, and the season's, over a date's Today's Ten. Vitest runs them, and so does `?selftest=1`.
 
 ## Assets
@@ -71,7 +75,7 @@ The masters stay in `mockup/assets/`, and `batter-src.png` is source art that ne
 | `backdrop-wide.webp` (1536×1024) | 97 KB | 2,070 KB PNG |
 | `backdrop.webp` (fallback, 1536×1024) | 97 KB | 2,331 KB PNG |
 | `batter.webp` (831×1445) | 96 KB | 1,027 KB PNG |
-| `card-art-600.webp` / `card-art-1024.webp` | 81 / 325 KB | 3,506 KB PNG |
+| `card-art-600.webp` / `card-art-860.webp` / `card-art-1024.webp` | 81 / 207 / 325 KB | 3,506 KB PNG |
 | Fonts (3 × WOFF2, OFL) | 64 KB | same |
 
 ## Data
