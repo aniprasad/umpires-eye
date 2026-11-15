@@ -48,7 +48,7 @@ export interface UmpFigure {
   readonly pct: number;
   /** Whose calls a cited figure counts, e.g. "MLB umps", or what a measured one covers, e.g. "season overall". */
   readonly label: string;
-  /** Where the figure comes from, or what it measures, to follow a colon: "UmpScorecards via mlb.com". */
+  /** Where a cited figure comes from, "UmpScorecards via mlb.com", or what a measured one measures. */
   readonly definition: string;
   /** True for a rounded, cited figure, written with "≈". */
   readonly approx: boolean;

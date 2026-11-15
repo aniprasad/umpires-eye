@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { CREDIT } from '../../src/core/rules.ts';
 import { seasonMini } from '../fixtures/season-mini';
 import type { CallKey } from './helpers';
 import { activeId, callOf, callPitch, openPaused, trackErrors, waitReady } from './helpers';
@@ -12,9 +13,11 @@ const CALL = { S: 'strike', B: 'ball' } as const;
 const VS = (mini.files.get('stats.json') as { umpVsAbs: { overall: { pct: number }; close: { pct: number } } }).umpVsAbs;
 const FIG = Math.round(VS.overall.pct * 10) / 10;
 const CLOSE = Math.round(VS.close.pct * 10) / 10;
-const CITE = `MLB umps ${FIG}% season overall, and ${CLOSE}% on close calls, within 1.5 in of the zone's edge: agreement with our ABS reconstruction on 2026 called pitches.`;
-// the card back's shorter form of the same definition
-const FOOT = `MLB umps' calls agree with our ABS reconstruction: ${FIG}% season overall, ${CLOSE}% within 1.5 in of the zone's edge.`;
+// the footnotes under the start screen and under the cards, with the figure and without it
+const NOTE = `Real pitches: ${CREDIT} ABS calls are our reconstruction, and the ump figures are measured against it. Players, field and catch are illustrations.`;
+const BARE_NOTE = `Real pitches: ${CREDIT} ABS calls are our reconstruction. Players, field and catch are illustrations.`;
+// the card back's foot defines the figures, and leaves their numbers to the rows above it
+const FOOT = "Ump figures: MLB's calls against our ABS reconstruction; close calls are within 1.5 in of the zone's edge.";
 
 // Each pitch repaints the static layers for a new stance: 2-5 s of WebKit's time at 2x, about 1 s at 1x. At 2x this round
 // took 108 s alone of its 180 s; at 1x, 28 s. Nothing it checks depends on the pixel density.
@@ -35,8 +38,9 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
   await expect(page.locator('#startLede')).toHaveText(/^Today's Ten for November 14, 2026: real pitches from the 2026 season, \d+ of them close calls/);
   await expect(page.locator('#hook')).toHaveText(`MLB umpires got ${FIG}% of calls right in 2026, but only ${CLOSE}% of the close ones. Can you?`);
-  await expect(page.locator('.footnote')).toContainText(`tracking data. ${CITE} Players`, { useInnerText: true });
-  await expect(page.locator('#scSub .sc-long')).toHaveText(`MLB umps ${CLOSE}% on close calls`);
+  await expect(page.locator('.footnote')).toHaveText(NOTE, { useInnerText: true });
+  // the figures are the start's and the end's: the chip names only what the tens are made of
+  await expect(page.locator('#scSub .sc-long')).toHaveText('Close calls');
   // the manifest, the month file and the stats while the page boots, and no shard before Play; then the shard's text,
   // once the start screen is ready and idle
   await expect.poll(async () => (await loadsOf(page)).length).toBe(4);
@@ -58,7 +62,11 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
       await callPitch(page, key);
       await expect(app).toHaveAttribute('data-phase', 'reveal');
       await expect(page.locator('#vLine')).toHaveText(new RegExp(`^\\s*You ${WORD[callOf(key)]}`));
-      if (n === 1) await expect(page.locator('#vScore')).toHaveText(new RegExp(` · MLB umps ${CLOSE}% on close calls$`));
+      if (n === 1) {
+        // the score, against the real ump's on the same pitches, and no figure during the round
+        await expect(page.locator('#vScore')).toHaveText(/^You [01]\/1 · Real ump on these [01]\/1$/);
+        await expect(page.locator('#scSub .sc-long')).toHaveText('Close calls');
+      }
       await expect.poll(() => activeId(page)).toBe('btnNext');
       await page.keyboard.press('Space');
     });
@@ -72,8 +80,8 @@ test("?pool=season&date= plays that day's ten to the card by keyboard, then Anot
   await expect(page.locator('#ubFigLabel')).toHaveText('MLB umps on close calls');
   await expect(page.locator('#ubFig')).toHaveText(`${CLOSE}%`);
   await expect(page.locator('#ubFoot')).toHaveText(FOOT);
-  // the World Series' footnote counts its real challenges; the season's has no such count
-  await expect(page.locator('.cards-foot')).toContainText('ABS truth reconstructed from tracking data. Players', { useInnerText: true });
+  // under the cards, the start screen's footnote
+  await expect(page.locator('.cards-foot')).toHaveText(NOTE, { useInnerText: true });
   // The card paints before the text the start screen fetched is parsed: the parse waits until the page is idle, and the
   // paused clock keeps it from being idle until the test runs it. It's never parsed during a pitch.
   expect(await parsesOf(page)).toEqual([]);
@@ -203,11 +211,12 @@ test('without the stats, the copy leaves the ump figure out, and play goes on', 
   await expect(page.locator('#btnPlay')).toHaveText('Play ball');
   await expect(page.locator('#hook')).toHaveText('Can you call balls and strikes like an MLB umpire?');
   await expect(page.locator('#scSub .sc-long')).toHaveText('Close calls');
-  await expect(page.locator('.footnote')).toContainText('tracking data. Players', { useInnerText: true });
+  await expect(page.locator('.footnote')).toHaveText(BARE_NOTE, { useInnerText: true });
   await page.goto(`./?date=${mini.date}&state=card&correct=7`);
   await waitReady(page);
   await expect(page.locator('#ubFigRow')).toBeHidden();
   await expect(page.locator('#ubFoot')).toHaveText('The real ump: original calls vs ABS on these pitches.');
+  await expect(page.locator('.cards-foot')).toHaveText(BARE_NOTE, { useInnerText: true });
   await expect(page.locator('#err')).toBeHidden();
   expect(notFound).toHaveLength(2);
   expect(errors).toEqual([]);
@@ -223,9 +232,11 @@ test('a card that is up before the stats arrive takes the ump figure when they d
   await waitReady(page);
   await expect(page.locator('#ubFigRow')).toBeHidden();
   await expect(page.locator('#ubFoot')).toHaveText('The real ump: original calls vs ABS on these pitches.');
+  await expect(page.locator('.cards-foot')).toHaveText(BARE_NOTE, { useInnerText: true });
   release();
   await expect(page.locator('#ubFigRow')).toBeVisible();
   await expect(page.locator('#ubFig')).toHaveText(`${CLOSE}%`);
   await expect(page.locator('#ubFoot')).toHaveText(FOOT);
+  await expect(page.locator('.cards-foot')).toHaveText(NOTE, { useInnerText: true });
   expect(errors).toEqual([]);
 });

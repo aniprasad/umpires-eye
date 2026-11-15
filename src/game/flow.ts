@@ -554,8 +554,6 @@ export function bootFlow(): void {
   const w = world();
   const de = document.documentElement;
 
-  // only the World Series' footnotes count its real challenges
-  for (const el of document.querySelectorAll<HTMLElement>('.ws-only')) el.hidden = !isWorldSeries(w.source);
   de.dataset.viewport = `${view.w}x${view.h}@${view.dpr}`;
   de.dataset.canvasFilter = nativeFilter() ? 'native' : 'fallback';
   if (w.today.length && (STATE === 'pitch' || STATE === 'reveal' || STATE === 'card')) bootState();

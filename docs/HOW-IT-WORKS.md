@@ -167,7 +167,7 @@ The umpires' figure is how often their original calls agree with the reconstruct
 - **Season overall:** 337,685 of 362,177 called pitches, 93.24%, shown as 93.2%.
 - **Close calls:** 40,933 of the 59,910 called pitches within 1.5 in of flipping the call (worded "within 1.5 in of the zone's edge"), 68.32%, shown as 68.3%.
 
-The hook gives both: "MLB umpires got 93.2% of calls right in 2026, but only 68.3% of the close ones. Can you?" The score chip, the verdict, the card and the copied result set your score against the close-call figure, since eight of each ten are close calls, and the footnotes define both figures. Other sites' figures use their own zones, so they aren't directly comparable.
+The hook gives both: "MLB umpires got 93.2% of calls right in 2026, but only 68.3% of the close ones. Can you?" The card's row and the copied result set your score against the close-call figure, since eight of each ten are close calls. During the round, the score chip and the verdict show only your score and the real umpire's on the same pitches. The card back's foot defines the figures without their numbers, and the footnotes say they're measured against the reconstruction. Other sites' figures use their own zones, so they aren't directly comparable.
 
 ### Loading and errors
 

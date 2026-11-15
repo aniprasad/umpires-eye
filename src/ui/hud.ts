@@ -1,8 +1,9 @@
 import type { UmpFigure } from '../data/source';
+import { isWorldSeries } from '../data/ws2026';
 import { REDUCED } from '../game/params';
 import { G, world, type Phase } from '../game/state';
 import type { PreparedPitch } from '../math/kinematics';
-import { countWords, figureWords, fmtHeight, type Result } from '../math/words';
+import { absNote, countWords, figureWords, fmtHeight, type Result } from '../math/words';
 import { CARD, UI } from './dom';
 
 /** Screen readers hear it even when the same words come twice. */
@@ -77,18 +78,17 @@ export function scoreLine(): { right: number; n: number; ump: number } {
 
 export function updateScore(tick: boolean): void {
   const { right, n, ump } = scoreLine();
-  const fw = figureWords(world().figure);
-  const line = n ? fw.scored : fw.chip;
-  // one phrase per line on a phone; once a call is made, a lone phrase sits bare, as it always has
-  const short = n && line.short.length === 1 ? line.short.join('') : line.short.map((s) => `<span class="sc-ph">${s}</span>`).join('');
+  // The umps' figure shows at the start and at the end of a round, not during it, so the chip names only what the tens
+  // are made of. On a phone it's one phrase per line until a call is made, then it sits bare.
+  const sub = n ? 'Close calls' : '<span class="sc-ph">Close calls</span>';
 
-  // like for like: the real ump's original calls on these same pitches sit next to the umps' figure
-  // (desktop: long form; phone: "You 2/2" / "Ump 2/2" over the short figure, one phrase per line)
+  // like for like: the real ump's original calls on these same pitches
+  // (desktop: long form; phone: "You 2/2" / "Ump 2/2", one phrase per line)
   UI.scMain.innerHTML = n
     ? `<b class="sc-ph">You ${right}/${n}</b><span class="sc-dot"> · </span><span class="sc-ph"><span class="sc-long">Real ump on these</span><span class="sc-short">Ump</span> ${ump}/${n}</span>`
     : (G.mode === 'today' ? "Today's Ten" : 'Another ten');
-  UI.scSub.innerHTML = `<span class="sc-long">${line.long}</span><span class="sc-short">${short}</span>`;
-  UI.vScore.textContent = n ? `You ${right}/${n} · Real ump on these ${ump}/${n}${fw.verdict ? ` · ${fw.verdict}` : ''}` : '';
+  UI.scSub.innerHTML = `<span class="sc-long">Close calls</span><span class="sc-short">${sub}</span>`;
+  UI.vScore.textContent = n ? `You ${right}/${n} · Real ump on these ${ump}/${n}` : '';
   if (tick && !REDUCED) {
     UI.score.classList.remove('tick');
     void UI.score.offsetWidth;
@@ -97,15 +97,13 @@ export function updateScore(tick: boolean): void {
 }
 
 /**
- * Puts the ump figure, or its absence, in the World and in the places already showing. The card reads it when it
- * shows. A measured figure is defined on the start screen too; the World Series' cited one keeps the mockup's footnote.
+ * Puts the ump figure, or its absence, in the World, the hook and the footnotes under the start screen and the cards.
+ * The card reads it when it shows.
  */
 export function showFigure(f: UmpFigure | null): void {
-  const fw = figureWords(f);
+  const note = absNote(f, isWorldSeries(world().source));
 
   world().figure = f;
-  UI.hook.textContent = fw.hook;
-  UI.figCite.textContent = fw.cite ? ` ${fw.cite}` : '';
-  UI.figCite.hidden = !f || f.approx;
-  if (G.phase !== 'boot') updateScore(false);
+  UI.hook.textContent = figureWords(f).hook;
+  for (const el of UI.absNotes) el.textContent = note;
 }

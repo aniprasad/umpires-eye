@@ -15,7 +15,7 @@ export const UI = {
   btnPlay: $<HTMLButtonElement>('#btnPlay'),
   slow: $('#slowHint'),
   startLede: $('#startLede'),
-  figCite: $('#figCite'),
+  absNotes: [$('.footnote .abs-note'), $('.cards-foot .abs-note')],
   matchup: $('#matchup'),
   muInning: $('#muInning'),
   muOuts: $('#muOuts'),

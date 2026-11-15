@@ -60,7 +60,7 @@ test('Try again brings back the ump figure too, when it failed along with the pi
   await play.click();
   await waitReady(page);
   await expect(page.locator('#hook')).toHaveText(/, but only [\d.]+% of the close ones\. Can you\?$/);
-  await expect(page.locator('#scSub .sc-long')).toHaveText(/^MLB umps [\d.]+% on close calls$/);
+  await expect(page.locator('.footnote')).toContainText('the ump figures are measured against it', { useInnerText: true });
   expect(allowed).toHaveLength(2);
   expect(errors).toEqual([]);
 });
