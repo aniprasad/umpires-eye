@@ -6,7 +6,7 @@ import { latestToday } from '../../src/game/today';
 import { prep } from '../../src/math/kinematics';
 import { noTodayLede, seasonLede } from '../../src/math/deal';
 import { judged } from '../../src/math/flow';
-import { figureWords, resultText, setLine } from '../../src/math/words';
+import { absNote, cardFoot, figureWords, resultText, setLine } from '../../src/math/words';
 import { synthPitch } from './fixtures';
 
 const HOUR = 3_600_000;
@@ -126,29 +126,21 @@ describe('the ump figure in words', () => {
   const ump = `The real ump: ${set.filter((P) => P.umpCorrect).length}/1.`;
   const copied = (figure: UmpFigure | null): string | undefined => resultText({ label: 'x', roundLabel: 'y', figure, set, results }).split('\n')[1];
 
-  it("keeps the World Series' words for its cited figure", () => {
+  it("gives the World Series' cited figure in the hook, on the card and in a copied result", () => {
     expect(figureWords(cited)).toEqual({
       hook: 'MLB umpires get about 94% of calls right. Can you?',
-      chip: { long: 'Close calls · MLB umps ≈ 94%', short: ['Close calls', 'MLB ≈ 94%'] },
-      scored: { long: 'Close calls · MLB umps ≈ 94% overall', short: ['MLB ≈ 94%'] },
-      verdict: 'MLB umps ≈ 94% overall',
       row: { label: 'MLB umps', value: '≈ 94%' },
-      cite: 'MLB umps ≈ 94%: UmpScorecards via mlb.com.',
       copy: 'MLB umps ≈ 94%.',
     });
     expect(copied(cited)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps ≈ 94%.`);
   });
 
-  it("sets a score against the season's close calls, and the hook gives both figures", () => {
+  it("sets a score against the season's close calls on the card and in a copied result, and the hook gives both figures", () => {
     const band = "within 1.5 in of the zone's edge";
 
     expect(figureWords(measured)).toEqual({
       hook: 'MLB umpires got 93.2% of calls right in 2026, but only 68.3% of the close ones. Can you?',
-      chip: { long: 'MLB umps 68.3% on close calls', short: ['Close calls', 'MLB 68.3%'] },
-      scored: { long: 'MLB umps 68.3% on close calls', short: ['Close calls', 'MLB 68.3%'] },
-      verdict: 'MLB umps 68.3% on close calls',
       row: { label: 'MLB umps on close calls', value: '68.3%' },
-      cite: `MLB umps 93.2% season overall, and 68.3% on close calls, ${band}: agreement with our ABS reconstruction on 2026 called pitches.`,
       copy: `MLB umps 68.3% on close calls, ${band}, against our ABS reconstruction.`,
     });
     expect(copied(measured)).toBe(`I called 1 of 1 right (100%). ${ump} MLB umps 68.3% on close calls, ${band}, against our ABS reconstruction.`);
@@ -156,16 +148,12 @@ describe('the ump figure in words', () => {
     expect(figureWords({ ...measured, season: undefined }).hook).toBe('MLB umpires got 93.2% of calls right, but only 68.3% of the close ones. Can you?');
   });
 
-  it('keeps the overall words without the close calls, and never puts them beside "Close calls"', () => {
+  it('keeps the overall words without the close calls', () => {
     const words = figureWords(overallOnly);
 
     expect(words).toEqual({
       hook: 'MLB umpires got 93.2% of calls right in 2026. Can you?',
-      chip: { long: 'MLB umps 93.2% season overall', short: ['MLB 93.2%'] },
-      scored: { long: 'MLB umps 93.2% season overall', short: ['MLB 93.2%'] },
-      verdict: 'MLB umps 93.2% season overall',
       row: { label: 'MLB umps', value: '93.2%' },
-      cite: 'MLB umps 93.2%, season overall: agreement with our ABS reconstruction on 2026 called pitches.',
       copy: 'MLB umps 93.2% against our ABS reconstruction, season overall.',
     });
     expect(JSON.stringify(words)).not.toMatch(/close/i);
@@ -173,10 +161,23 @@ describe('the ump figure in words', () => {
 
   it('leaves the figure out when there is none, and the hook asks without a number', () => {
     const words = figureWords(null);
-    const bare = { long: 'Close calls', short: ['Close calls'] };
 
-    expect(words).toEqual({ hook: 'Can you call balls and strikes like an MLB umpire?', chip: bare, scored: bare, verdict: null, row: null, cite: null, copy: null });
+    expect(words).toEqual({ hook: 'Can you call balls and strikes like an MLB umpire?', row: null, copy: null });
     expect(words.hook).not.toMatch(/\d/);
     expect(copied(null)).toBe(`I called 1 of 1 right (100%). ${ump}`);
+  });
+
+  it("defines the card's figures without their numbers, and a cited figure keeps its source", () => {
+    expect(cardFoot(measured)).toBe("Ump figures: MLB's calls against our ABS reconstruction; close calls are within 1.5 in of the zone's edge.");
+    expect(cardFoot(overallOnly)).toBe("Ump figures: MLB's calls against our ABS reconstruction.");
+    expect(cardFoot(cited)).toBe('MLB umps: UmpScorecards via mlb.com. The real ump: original calls vs ABS on these pitches.');
+    expect(cardFoot(null)).toBe('The real ump: original calls vs ABS on these pitches.');
+  });
+
+  it('says in the footnotes what the ABS calls are, and what the figure is measured against or where it comes from', () => {
+    expect(absNote(measured, false)).toBe('ABS calls are our reconstruction, and the ump figures are measured against it.');
+    expect(absNote(overallOnly, false)).toBe('ABS calls are our reconstruction, and the ump figure is measured against it.');
+    expect(absNote(null, false)).toBe('ABS calls are our reconstruction.');
+    expect(absNote(cited, true)).toBe('ABS calls are our reconstruction, which matches all 29 real challenges in the Series. The ump figure is from UmpScorecards via mlb.com.');
   });
 });

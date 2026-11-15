@@ -38,7 +38,7 @@ This isn't a stats chart with a dot. Each pitch is replayed from its tracked tra
 ## Evidence on Hand
 
 - Real 2026 World Series data (all five games), validated: the ABS reconstruction matches 29 of 29 challenges, and the umps' original calls agree with it 92.0% of the time (683 of 742).
-- The ump figures are our own: the umps' original calls agree with our ABS reconstruction on 93.24% of the season's 362,177 called pitches ("season overall"), and on 68.32% of the 59,910 within 1.5 in of the zone's edge ("on close calls") (`docs/DATA.md`). The app shows them to one decimal, with that definition. A player's score is set against the close-call figure, since eight of each ten's pitches are close calls; the hook gives both. Other sites' accuracy numbers use their own zones and margins, so they aren't directly comparable.
+- The ump figures are our own: the umps' original calls agree with our ABS reconstruction on 93.24% of the season's 362,177 called pitches ("season overall"), and on 68.32% of the 59,910 within 1.5 in of the zone's edge ("on close calls") (`docs/DATA.md`). The app shows them to one decimal, at the start of a round and at its end: the hook gives both, and the card defines them. A player's score is set against the close-call figure, since eight of each ten's pitches are close calls. Other sites' accuracy numbers use their own zones and margins, so they aren't directly comparable.
 - "~94%" comes from UmpScorecards, cited by mlb.com on 2026-02-05. Only the World Series pool, which keeps the design reference's wording, still shows it.
 - There are no users, testimonials or usage numbers. Never invent leaderboards, player counts or quotes.
 

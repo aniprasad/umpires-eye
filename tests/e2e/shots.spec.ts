@@ -58,7 +58,7 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
-// The season's hook and its footnote both give a second figure, and the start screen must still fit them.
+// The season's hook gives two figures, and the start screen must still fit it and its footnote.
 for (const viewport of [...VIEWPORTS, { width: 1280, height: 720 }]) {
   const size = `${viewport.width}x${viewport.height}`;
 
@@ -70,7 +70,7 @@ for (const viewport of [...VIEWPORTS, { width: 1280, height: 720 }]) {
     await page.goto(`./?date=${mini.date}`);
     await waitReady(page);
     await expect(page.locator('#hook')).toContainText('of the close ones');
-    await expect(page.locator('#figCite')).toContainText('on close calls');
+    await expect(page.locator('.footnote')).toContainText('the ump figures are measured against it', { useInnerText: true });
     await attachShot(page, testInfo, `season-start-${size}`);
 
     const area = viewportOf(page);

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { CREDIT } from '../../src/core/rules.ts';
 import type { CallKey } from './helpers';
 import { activeId, callOf, callPitch, openPaused, phaseMarks, recordPhases, secondsBetween, stepClockUntil, todaysTen, trackErrors, waitReady } from './helpers';
 import { mini, serveSeason } from './season-data';
@@ -11,6 +12,8 @@ const COPY_DONE = /^(Copied ✓|Copy failed: select the text)$/;
 const EARLIEST_REVEAL_S = 3.9;
 const LATEST_REVEAL_S = 6.5;
 const REVEAL_STEP_MS = 200;
+// the World Series' footnotes, under the start screen and under the cards
+const WS_NOTE = `Real pitches: ${CREDIT} ABS calls are our reconstruction, which matches all 29 real challenges in the Series. The ump figure is from UmpScorecards via mlb.com. Players, field and catch are illustrations.`;
 
 test.describe(() => {
   // Each pitch repaints the static layers for a new stance: 2-5 s of WebKit's time at 2x, about 1 s at 1x. At 2x this
@@ -125,6 +128,9 @@ test('the card copies the result and deals another ten', async ({ page }) => {
 
   await openPaused(page, './?pool=ws&state=card&correct=7');
   await expect(page.locator('#cards')).toBeVisible();
+  // the cited figure keeps its source on the card, and its number stays in the row above
+  await expect(page.locator('#ubFoot')).toHaveText('MLB umps: UmpScorecards via mlb.com. The real ump: original calls vs ABS on these pitches.');
+  await expect(page.locator('.cards-foot')).toHaveText(WS_NOTE, { useInnerText: true });
   await expect(copy).toHaveText('Copy result');
   await copy.click();
   // Headless clipboards may refuse the write; the app then says so and offers a prompt, which Playwright dismisses.
@@ -137,6 +143,8 @@ test('the card copies the result and deals another ten', async ({ page }) => {
   await callPitch(page, 'S');
   await expect(app).toHaveAttribute('data-phase', 'reveal');
   await expect(page.locator('#vLine')).toHaveText(/^\s*You Strike/);
+  // no figure during the round, the World Series' cited one included
+  await expect(page.locator('#vScore')).toHaveText(/^You [01]\/1 · Real ump on these [01]\/1$/);
   await expect(page.locator('#err')).toBeHidden();
   expect(errors).toEqual([]);
 });
@@ -151,7 +159,7 @@ test('?pool=ws plays the World Series pool', async ({ page }) => {
   await page.goto('./?pool=ws');
   await waitReady(page);
   await expect(page.locator('#startLede')).toContainText('from Games 1, 2 and 5 of the 2026 World Series');
-  await expect(page.locator('.footnote')).toContainText('ABS truth reconstructed from tracking data and matches all 29 real challenges in the Series.', { useInnerText: true });
+  await expect(page.locator('.footnote')).toHaveText(WS_NOTE, { useInnerText: true });
   await page.keyboard.press('Enter');
   await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pitch');
   await expect(page.locator('#muGame')).toHaveText(/^2026 World Series · Game 5 · \d–\d count$/);

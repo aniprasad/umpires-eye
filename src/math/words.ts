@@ -129,80 +129,46 @@ export function resultText(opts: {
   ].join('\n');
 }
 
-/** The ump figure's words in each place that shows it. */
+/** The ump figure's words in each place that shows it: at the start of a round and at its end, never during it. */
 export interface FigureWords {
   /** The start screen's hook. */
   readonly hook: string;
-  /** The score chip's figure line before a call: on desktop, and as a phone's lines. */
-  readonly chip: ChipLine;
-  /** The same once a call is made. */
-  readonly scored: ChipLine;
-  /** The figure after the score in the verdict. */
-  readonly verdict: string | null;
   /** The card back's row. */
   readonly row: { readonly label: string; readonly value: string } | null;
-  /** The figure with its definition, as the card cites it. */
-  readonly cite: string | null;
   /** The figure in a copied result. */
   readonly copy: string | null;
 }
 
-export interface ChipLine {
-  readonly long: string;
-  readonly short: readonly string[];
-}
-
-const NO_FIGURE: ChipLine = { long: 'Close calls', short: ['Close calls'] };
-
 /**
  * A cited figure reads as the mockup wrote it, "MLB umps ≈ 94%". A measured one has two: the season overall for the
- * hook, and the close calls, which the tens are dealt from, wherever a score is set against the umps: "MLB umps 68.3%
- * on close calls". Without a figure, every place leaves it out, and the hook asks its question without one.
+ * hook, and the close calls, which the tens are dealt from, wherever a score is set against the umps: the card's row
+ * and a copied result. Without a figure, every place leaves it out, and the hook asks its question without one.
  */
 export function figureWords(f: UmpFigure | null): FigureWords {
-  if (!f) return { hook: 'Can you call balls and strikes like an MLB umpire?', chip: NO_FIGURE, scored: NO_FIGURE, verdict: null, row: null, cite: null, copy: null };
+  if (!f) return { hook: 'Can you call balls and strikes like an MLB umpire?', row: null, copy: null };
   if (f.approx) {
-    const fig = `${f.label} ≈ ${f.pct}%`;
-
     return {
       hook: `MLB umpires get about ${f.pct}% of calls right. Can you?`,
-      chip: { long: `Close calls · ${fig}`, short: ['Close calls', `MLB ≈ ${f.pct}%`] },
-      scored: { long: `Close calls · ${fig} overall`, short: [`MLB ≈ ${f.pct}%`] },
-      verdict: `${fig} overall`,
       row: { label: f.label, value: `≈ ${f.pct}%` },
-      cite: `${fig}: ${f.definition}.`,
-      copy: `${fig}.`,
+      copy: `${f.label} ≈ ${f.pct}%.`,
     };
   }
   const right = `MLB umpires got ${f.pct}% of calls right${f.season ? ` in ${f.season}` : ''}`;
-  const overall = `MLB umps ${f.pct}% ${f.label}`;
 
-  // Without its close calls, a measured figure keeps its overall words, but never beside "Close calls", which they
-  // don't measure.
+  // without its close calls, a measured figure keeps its overall words
   if (!f.close) {
     return {
       hook: `${right}. Can you?`,
-      chip: { long: overall, short: [`MLB ${f.pct}%`] },
-      scored: { long: overall, short: [`MLB ${f.pct}%`] },
-      verdict: overall,
       row: { label: 'MLB umps', value: `${f.pct}%` },
-      cite: `MLB umps ${f.pct}%, ${f.label}: ${f.definition}.`,
-      // a copied result leaves the page, and with it the cite, so it says briefly what the figure measures
+      // a copied result leaves the page, and with it the card's foot, so it says briefly what the figure measures
       copy: `MLB umps ${f.pct}% against our ABS reconstruction, ${f.label}.`,
     };
   }
-  const close = `MLB umps ${f.close.pct}% on close calls`;
-  const band = `within ${f.close.withinIn} in of the zone's edge`;
-  const phone = ['Close calls', `MLB ${f.close.pct}%`];
 
   return {
     hook: `${right}, but only ${f.close.pct}% of the close ones. Can you?`,
-    chip: { long: close, short: phone },
-    scored: { long: close, short: phone },
-    verdict: close,
     row: { label: 'MLB umps on close calls', value: `${f.close.pct}%` },
-    cite: `${overall}, and ${f.close.pct}% on close calls, ${band}: ${f.definition}.`,
-    copy: `${close}, ${band}, against our ABS reconstruction.`,
+    copy: `MLB umps ${f.close.pct}% on close calls, within ${f.close.withinIn} in of the zone's edge, against our ABS reconstruction.`,
   };
 }
 
@@ -215,14 +181,27 @@ export const setLine = (label: string, roundLabel: string, date?: string | null)
 const REAL_UMP = 'The real ump: original calls vs ABS on these pitches.';
 
 /**
- * The card back's foot. Under the longest Toughest it has room for three lines, so a measured figure keeps only its
- * definition there: the hook's citation, with the real ump's line after it, ran past the card's edge. The real ump's
- * row is spelled out by the summary above the card.
+ * The card back's foot says what its ump figures measure, and leaves their numbers to the rows above it. A cited figure
+ * keeps its source. Under the longest Toughest it has room for three lines.
  */
 export function cardFoot(f: UmpFigure | null): string {
   if (!f) return REAL_UMP;
-  if (f.approx) return `${figureWords(f).cite} ${REAL_UMP}`;
-  const close = f.close ? `, ${f.close.pct}% within ${f.close.withinIn} in of the zone's edge` : '';
+  if (f.approx) return `${f.label}: ${f.definition}. ${REAL_UMP}`;
+  const close = f.close ? `; close calls are within ${f.close.withinIn} in of the zone's edge` : '';
 
-  return `MLB umps' calls agree with our ABS reconstruction: ${f.pct}% ${f.label}${close}.`;
+  return `Ump figures: MLB's calls against our ABS reconstruction${close}.`;
+}
+
+/**
+ * The footnotes' word on the ABS calls and the umps' figure, under the start screen and under the cards. The lede
+ * defines the close calls, and the hook and the card give the numbers, so a measured figure is only said to be measured
+ * against the reconstruction, and a cited one names its source. Only the World Series counts its real challenges.
+ */
+export function absNote(f: UmpFigure | null, worldSeries: boolean): string {
+  const calls = `ABS calls are our reconstruction${worldSeries ? ', which matches all 29 real challenges in the Series' : ''}`;
+
+  if (!f) return `${calls}.`;
+  if (f.approx) return `${calls}. The ump figure is from ${f.definition}.`;
+
+  return `${calls}, and the ump ${f.close ? 'figures are' : 'figure is'} measured against it.`;
 }

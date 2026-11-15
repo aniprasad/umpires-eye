@@ -245,7 +245,7 @@ test("the season's close-call figure fits a phone: Play in view, the chip says c
   await expect(page.locator('#btnPlay')).toBeInViewport();
   await page.goto(`./?date=${mini.date}&state=pitch&i=3&t=0.2`);
   await waitReady(page);
-  await expect(page.locator('#scSub .sc-short .sc-ph')).toHaveText(['Close calls', `MLB ${CLOSE}%`]);
+  await expect(page.locator('#scSub .sc-short')).toHaveText('Close calls');
   await attachShot(page, testInfo, 'season-chip');
 
   const area = viewportOf(page);
@@ -256,6 +256,7 @@ test("the season's close-call figure fits a phone: Play in view, the chip says c
   await page.goto(`./?date=${mini.date}&state=card&correct=7`);
   await waitReady(page);
   await expect(label).toHaveText('MLB umps on close calls');
+  await expect(page.locator('#ubFig')).toHaveText(`${CLOSE}%`);
   await attachShot(page, testInfo, 'season-card');
   // its height over its height on one unbroken line
   expect(await label.evaluate((el: HTMLElement) => {
